@@ -1,0 +1,10 @@
+test.wav
+tone.wav
+long.wav
+qa-long.wav
+.venv/
+__pycache__/
+*.py[cod]
+.DS_Store
+logs/*.log
+logs/*.pid
