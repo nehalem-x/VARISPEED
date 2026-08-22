@@ -1,0 +1,196 @@
+:root {
+  color-scheme: dark light;
+  --bg: #000;
+  --panel: #050505;
+  --text: #f4f4f4;
+  --muted: #858585;
+  --line: #242424;
+  --line2: #383838;
+  --error: #d98585;
+  --ease: cubic-bezier(.2,.75,.25,1);
+  --ease-out: cubic-bezier(.16,1,.3,1);
+  --ease-emph: cubic-bezier(.2,.9,.25,1);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #fff;
+    --panel: #fafafa;
+    --text: #090909;
+    --muted: #6b6b6b;
+    --line: #dedede;
+    --line2: #c9c9c9;
+    --error: #a33e3e;
+  }
+}
+* { box-sizing: border-box; }
+html, body { min-height: 100%; }
+body { margin: 0; background: var(--bg); color: var(--text); overflow: hidden; }
+button { font: inherit; }
+.mono { font-family: "JetBrains Mono", "Cascadia Mono", Consolas, monospace; font-variant-numeric: tabular-nums; }
+.boot {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: clamp(20px, 4vw, 48px);
+}
+.boot__panel {
+  width: min(470px, calc(100vw - 40px));
+  padding: 0;
+}
+.boot__head {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 0 0 clamp(46px, 7vh, 58px);
+}
+.boot__icon {
+  width: 60px;
+  height: 60px;
+  object-fit: cover;
+  border: 1px solid var(--line);
+  flex: 0 0 auto;
+}
+h1 {
+  margin: 0;
+  font-size: clamp(25px, 4vw, 32px);
+  letter-spacing: .075em;
+  line-height: 1;
+  font-weight: 650;
+  white-space: nowrap;
+}
+h1 span {
+  color: var(--muted);
+  font-weight: 500;
+  font-size: .54em;
+  letter-spacing: .035em;
+}
+.boot__status {
+  min-height: 30px;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+}
+.boot__status strong {
+  display: block;
+  min-width: 0;
+  font-family: "JetBrains Mono", "Cascadia Mono", Consolas, monospace;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: .11em;
+  white-space: nowrap;
+}
+.boot__track {
+  position: relative;
+  height: 2px;
+  margin-top: 14px;
+  background: var(--line);
+  overflow: hidden;
+}
+.boot__track span {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 24%;
+  background: var(--text);
+  animation: sweep 1.05s var(--ease) infinite;
+}
+@keyframes sweep {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(420%); }
+}
+body[data-state="ready"] .boot__track span {
+  width: 100%;
+  transform: none;
+  animation: none;
+}
+body[data-state="error"] .boot__track span {
+  width: 100%;
+  transform: none;
+  animation: none;
+  background: var(--error);
+}
+.boot__error {
+  margin: 18px 0 0;
+  color: var(--error);
+  font-size: 11px;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+.boot__actions { display: flex; gap: 8px; padding-top: 20px; }
+.boot__actions[hidden] { display: none; }
+button {
+  min-height: 36px;
+  border: 1px solid var(--line2);
+  border-radius: 0;
+  background: transparent;
+  color: var(--text);
+  padding: 0 14px;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .04em;
+}
+button:hover { border-color: var(--text); }
+button:focus-visible { outline: 1px solid var(--text); outline-offset: 2px; }
+.details {
+  max-height: 230px;
+  overflow: auto;
+  margin: 18px 0 0;
+  padding: 14px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* Mesmos glifos da animação padrão de status do VARISPEED. */
+.eph-phrase { display: inline; }
+.eph {
+  display: inline-block;
+  white-space: pre;
+  opacity: 0;
+  transform: translate(var(--dx, 0), var(--dy, 2px)) rotate(var(--rot, 0deg)) scale(var(--scl, 1));
+  filter: blur(var(--blur, .8px));
+  transition: opacity var(--dur, 190ms) var(--ease-out), transform var(--dur, 190ms) var(--ease-emph), filter var(--dur, 190ms) var(--ease-out);
+}
+.eph--space { transform: none; filter: none; }
+.eph--in { opacity: 1; transform: none; filter: blur(0); }
+.eph--out { opacity: 0; transform: translateY(calc(var(--dy, 2px) * -.55)) scale(var(--scl, 1)); filter: blur(calc(var(--blur, .8px) * .9)); }
+.caret {
+  display: inline-block;
+  width: 1px;
+  height: .95em;
+  margin-left: 2px;
+  vertical-align: -.12em;
+  background: currentColor;
+  animation: caretBlink 820ms steps(2, end) infinite;
+}
+.caret--out { animation: none; opacity: 0; transition: opacity 260ms var(--ease-out); }
+@keyframes caretBlink { 50% { opacity: 0; } }
+
+/* Primitiva typeOut mantida porque motion.js a compartilha com o app. */
+.ch { display: inline-block; white-space: pre; }
+.ch--pending { opacity: 0; }
+.ch--in { animation: chIn var(--ch-dur, 200ms) var(--ease-out) both; }
+@keyframes chIn {
+  from { opacity: 0; transform: translateY(var(--ch-dy, 1.5px)); filter: blur(var(--ch-blur, 1px)); }
+  to { opacity: 1; transform: translateY(0); filter: blur(0); }
+}
+@media (max-width: 560px) {
+  .boot { padding: 24px 20px; }
+  .boot__panel { width: min(420px, 100%); }
+  .boot__head { gap: 13px; padding-bottom: 40px; }
+  .boot__icon { width: 50px; height: 50px; }
+  h1 { font-size: clamp(22px, 7vw, 28px); }
+  .boot__status strong { font-size: 11px; letter-spacing: .09em; }
+  .boot__actions { flex-direction: column; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .boot__track span { animation: none; width: 100%; opacity: .45; transform: none; }
+  .ch--in { animation: none; opacity: 1; }
+  .eph { opacity: 1; transform: none; filter: none; transition: none; }
+}

@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dark">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="color-scheme" content="dark light" />
+<meta name="theme-color" id="themeColor" content="#000000" />
+<script>
+  /* Aplica tema/densidade persistidos antes do primeiro paint para evitar flash.
+     A chave legado tempo.cfg.v1 é mantida para não perder preferências existentes. */
+  (() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem('tempo.cfg.v1') || '{}');
+      const theme = saved['ui.theme'];
+      const density = saved['ui.density'];
+      const resolved = theme === 'light' || theme === 'dark'
+        ? theme
+        : (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+      document.documentElement.dataset.theme = resolved;
+      const themeColor = document.getElementById('themeColor');
+      if (themeColor) themeColor.content = resolved === 'light' ? '#ffffff' : '#000000';
+      if (density === 'comfortable' || density === 'compact') document.documentElement.dataset.density = density;
+    } catch (_) {}
+  })();
+</script>
+<title>VARISPEED — Editor de velocidade de áudio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="styles.css" />
+<link rel="icon" type="image/x-icon" href="assets/varispeed.ico" />
+<link rel="icon" type="image/png" href="assets/favicon.png" />
+</head>
+<body>
+<div class="app">
+
+  <!-- ─── HEADER ─────────────────────────────────────────── -->
+  <header class="hdr">
+    <div class="hdr__mascot" role="img" aria-label="Mascote do VARISPEED">
+      <img class="hdr__cat hdr__cat--light" src="assets/cat-brand-light.png" alt="" draggable="false" />
+      <img class="hdr__cat hdr__cat--dark" src="assets/cat-brand-dark.png" alt="" draggable="false" />
+    </div>
+
+    <div class="hdr__file" id="hdrFile">
+      <div class="hdr__scope-tools" aria-label="Osciloscópio">
+        <button class="btn btn--ghost btn--icon hdr__scope-pop" id="btnPop" type="button" aria-pressed="false" title="Osciloscópio em janela separada" aria-label="Osciloscópio em janela separada">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M7 2.5H2.5v11h11V9" stroke="currentColor" stroke-width="1.4" stroke-linecap="square"/><path d="M9.5 2.5h4v4M13.5 2.5 7.8 8.2" stroke="currentColor" stroke-width="1.4" stroke-linecap="square"/></svg>
+        </button>
+        <button class="scope-wrap" id="scopeWrap" data-state="idle" type="button" title="Ampliar osciloscópio" aria-label="Ampliar osciloscópio">
+          <canvas id="scope" class="scope"></canvas>
+        </button>
+      </div>
+      <span class="hdr__filename" id="fileName">nenhum arquivo</span>
+      <span class="hdr__filemeta mono" id="fileMeta">—</span>
+    </div>
+
+    <div class="hdr__actions">
+      <div class="import-menu-wrap">
+        <button class="btn" id="btnImport" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="importMenu">
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 11V2M8 11L4.5 7.5M8 11l3.5-3.5M2 13.5h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="square"/></svg>
+          Importar
+          <svg class="import-menu__chev" width="10" height="10" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="m3 4.5 3 3 3-3" stroke="currentColor" stroke-width="1.3" stroke-linecap="square"/></svg>
+        </button>
+        <div class="import-menu" id="importMenu" role="menu" aria-label="Opções de importação" hidden>
+          <button class="import-menu__item" id="importFile" type="button" role="menuitem">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M2.5 4.5h4l1.2 1.5h5.8v7.5h-11z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="miter"/><path d="M2.5 6h11" stroke="currentColor" stroke-width="1.3"/></svg>
+            <span>Arquivo local</span>
+          </button>
+          <button class="import-menu__item" id="importLink" type="button" role="menuitem">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M6.6 9.4 9.4 6.6" stroke="currentColor" stroke-width="1.4"/><path d="M7.3 4.5l1.4-1.4a2.6 2.6 0 0 1 3.7 3.7l-1.4 1.4M8.7 11.5l-1.4 1.4a2.6 2.6 0 0 1-3.7-3.7l1.4-1.4" stroke="currentColor" stroke-width="1.4" stroke-linecap="square"/></svg>
+            <span>Link</span>
+          </button>
+        </div>
+      </div>
+      <button class="btn btn--icon" id="btnConfig" type="button" title="Configurações (,)" aria-label="Configurações" aria-expanded="false" aria-controls="cfg">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M6.93 3.22 6.54 1.46h2.92L9.07 3.22l2.54 1.46 1.32-1.22L14.39 6l-1.71.53v2.94L14.39 10l-1.46 2.54-1.32-1.22-2.54 1.46.39 1.76H6.54l.39-1.76-2.54-1.46-1.32 1.22L1.61 10l1.71-.53V6.53L1.61 6l1.46-2.54 1.32 1.22Z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/><circle cx="8" cy="8" r="2.15" stroke="currentColor" stroke-width="1.3"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- ─── IMPORTAÇÃO POR LINK / yt-dlp ──────────────────── -->
+  <div class="linkbar" id="linkbar" aria-busy="false" hidden>
+    <div class="linkbar__query">
+      <label class="linkbar__lbl" for="url">Link</label>
+      <input class="txt linkbar__in mono" id="url" type="text" inputmode="url" spellcheck="false" autocomplete="off"
+             placeholder="cole um link compatível com yt-dlp" maxlength="8192" aria-describedby="urlMsg" />
+      <button class="btn linkbar__analyze" id="btnUrlGo" type="button">Analisar</button>
+      <button class="btn btn--ghost btn--icon linkbar__close" id="btnUrlClose" type="button" title="Fechar" aria-label="Fechar importação por link">
+        <svg width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3.5 3.5l9 9M12.5 3.5l-9 9" stroke="currentColor" stroke-width="1.4" stroke-linecap="square"/></svg>
+      </button>
+    </div>
+
+    <div class="linkbar__preview" id="urlPreview" hidden>
+      <div class="linkbar__thumb" id="urlThumbWrap" aria-hidden="true">
+        <img id="urlThumb" alt="" referrerpolicy="no-referrer" />
+        <span class="linkbar__thumb-fallback mono">AUDIO</span>
+      </div>
+      <div class="linkbar__media">
+        <span class="linkbar__source mono" id="urlSource">yt-dlp</span>
+        <strong class="linkbar__title" id="urlTitle">—</strong>
+        <span class="linkbar__byline" id="urlByline">—</span>
+      </div>
+      <span class="linkbar__duration mono" id="urlDuration">—</span>
+      <button class="btn linkbar__import" id="btnUrlImport" type="button">Importar áudio</button>
+    </div>
+
+    <div class="linkbar__prog" id="urlProg" hidden>
+      <span class="linkbar__stage" id="urlStage"></span>
+      <span class="linkbar__pct mono" id="urlPct" aria-hidden="true"></span>
+      <span class="linkbar__track" id="urlTrack" data-mode="indet" role="progressbar" aria-label="Progresso da importação" aria-valuemin="0" aria-valuemax="100"><span class="linkbar__fill" id="urlFill"></span></span>
+    </div>
+    <p class="linkbar__msg" id="urlMsg" role="status" aria-live="polite" aria-atomic="true" hidden></p>
+  </div>
+
+  <!-- ─── BODY ───────────────────────────────────────────── -->
+  <main class="main" aria-label="Editor de áudio">
+
+    <!-- STAGE -->
+    <section class="stage" id="stage">
+      <div class="stage__bar">
+        <div class="stage__group">
+          <span class="lbl">Timeline</span>
+          <span class="sep" aria-hidden="true"></span>
+          <span class="kv"><span class="kv__k">POS</span><span class="kv__v mono" id="posTime">0:00.00</span></span>
+          <span class="kv kv--dur"><span class="kv__k">DUR</span><span class="kv__v mono" id="outTime">0:00.00</span></span>
+        </div>
+        <div class="stage__group">
+          <span class="kv kv--rate"><span class="kv__k">RATE</span><span class="kv__v mono" id="rateTag">100.0%</span></span>
+          <span class="sep sep--rate" aria-hidden="true"></span>
+          <button class="btn btn--ghost" id="btnZoomOut" type="button" title="Reduzir zoom" aria-label="Reduzir zoom" disabled>−</button>
+          <span class="kv__v mono zoomval" id="zoomTag">1.0×</span>
+          <button class="btn btn--ghost" id="btnZoomIn" type="button" title="Ampliar zoom" aria-label="Ampliar zoom" disabled>+</button>
+        </div>
+      </div>
+
+      <div class="stage__canvas canvas-wrap" id="canvasWrap">
+        <canvas id="ruler" class="cv cv--ruler"></canvas>
+        <div class="hr" aria-hidden="true"></div>
+        <div class="wave" id="waveHost">
+          <canvas id="wave" class="cv cv--wave"></canvas>
+          <div class="playhead" id="playhead" hidden><span class="playhead__cap"></span></div>
+          <div class="empty" id="empty">
+            <p class="empty__title">Arraste um arquivo de áudio</p>
+            <p class="empty__hint mono">WAV · MP3 · FLAC · OGG · M4A</p>
+          </div>
+          <div class="loading" id="loading" hidden><span class="loading__bar"></span></div>
+        </div>
+      </div>
+
+      <div class="transport">
+        <div class="transport__group">
+          <button class="btn btn--icon" id="btnPlay" type="button" title="Reproduzir (Espaço)" aria-label="Reproduzir" disabled>
+            <svg class="ico-play" width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 2.5v11l9-5.5-9-5.5Z" fill="currentColor"/></svg>
+            <svg class="ico-pause" width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 2.5h3v11H4zM9 2.5h3v11H9z" fill="currentColor"/></svg>
+          </button>
+          <button class="btn btn--icon" id="btnStop" type="button" title="Parar" aria-label="Parar" disabled>
+            <svg width="12" height="12" viewBox="0 0 16 16" aria-hidden="true"><rect x="3" y="3" width="10" height="10" fill="currentColor"/></svg>
+          </button>
+          <button class="btn btn--icon" id="btnLoop" type="button" title="Repetir" aria-label="Ativar repetição" aria-pressed="false" disabled>
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 6.5V5.2A1.2 1.2 0 0 1 4.2 4h7.6A1.2 1.2 0 0 1 13 5.2v5.6a1.2 1.2 0 0 1-1.2 1.2H4.2A1.2 1.2 0 0 1 3 10.8V9.5" stroke="currentColor" stroke-width="1.4"/><path d="M4.8 7.8 3 9.6l1.8 1.8" stroke="currentColor" stroke-width="1.4" stroke-linecap="square"/></svg>
+          </button>
+        </div>
+
+        <div class="transport__scrub">
+          <span class="mono t-cur" id="tCur">0:00.00</span>
+          <input class="scrub" id="scrub" type="range" min="0" max="1000" value="0" step="1" aria-label="Posição" disabled />
+          <span class="mono t-tot" id="tTot">0:00.00</span>
+        </div>
+
+        <div class="transport__group transport__group--end">
+          <span class="kv"><span class="kv__k">VOL</span><span class="kv__v mono" id="volTag">100</span></span>
+          <input class="slider slider--sm" id="vol" type="range" min="0" max="100" value="100" step="1" aria-label="Volume" />
+        </div>
+      </div>
+    </section>
+
+    <div class="vr" aria-hidden="true"></div>
+
+    <!-- INSPECTOR -->
+    <aside class="insp" aria-label="Controles e informações do áudio">
+
+      <section class="panel">
+        <h2 class="panel__title">Velocidade</h2>
+        <div class="rate">
+          <div class="rate__read">
+            <span class="rate__field">
+              <input class="rate__input mono" id="rateInput" type="text" inputmode="decimal" value="100.0" aria-label="Velocidade em porcentagem" spellcheck="false" />
+              <span class="rate__ghost mono" id="rateGhost" aria-hidden="true" hidden></span>
+            </span>
+            <span class="rate__unit">%</span>
+            <div class="rate__step">
+              <button class="btn btn--step" id="rateUp" type="button" title="Aumentar" aria-label="Aumentar velocidade">+</button>
+              <button class="btn btn--step" id="rateDown" type="button" title="Reduzir" aria-label="Reduzir velocidade">−</button>
+            </div>
+          </div>
+          <div class="rate__slider">
+            <input class="slider" id="rateSlider" type="range" min="25" max="400" step="0.5" value="100" aria-label="Velocidade" />
+            <div class="ticks mono" aria-hidden="true">
+              <span>25</span><span>100</span><span>200</span><span>300</span><span>400</span>
+            </div>
+          </div>
+          <div class="presets" role="group" aria-label="Presets de velocidade">
+            <button class="btn btn--preset mono" data-rate="50" type="button">50</button>
+            <button class="btn btn--preset mono" data-rate="75" type="button">75</button>
+            <button class="btn btn--preset mono is-on" data-rate="100" type="button">100</button>
+            <button class="btn btn--preset mono" data-rate="125" type="button">125</button>
+            <button class="btn btn--preset mono" data-rate="150" type="button">150</button>
+            <button class="btn btn--preset mono" data-rate="200" type="button">200</button>
+          </div>
+        </div>
+      </section>
+
+      <div class="hr" aria-hidden="true"></div>
+
+      <section class="panel">
+        <h2 class="panel__title">Resultado</h2>
+        <dl class="rows">
+          <div class="row"><dt>Pitch</dt><dd class="mono" id="rPitch">0.00 st</dd></div>
+          <div class="row"><dt>Frequência</dt><dd class="mono" id="rFreq">1.000×</dd></div>
+          <div class="row"><dt>Duração</dt><dd class="mono" id="rDur">0:00.00</dd></div>
+          <div class="row"><dt>Δ Duração</dt><dd class="mono" id="rDelta">+0.00 s</dd></div>
+        </dl>
+      </section>
+
+      <div class="hr" aria-hidden="true"></div>
+
+      <section class="panel">
+        <h2 class="panel__title">Fonte</h2>
+        <dl class="rows">
+          <div class="row"><dt>Arquivo</dt><dd class="mono ell" id="sName">—</dd></div>
+          <div class="row"><dt>Duração</dt><dd class="mono" id="sDur">—</dd></div>
+          <div class="row"><dt>Sample rate</dt><dd class="mono" id="sRate">—</dd></div>
+          <div class="row"><dt>Canais</dt><dd class="mono" id="sCh">—</dd></div>
+          <div class="row"><dt>Tamanho</dt><dd class="mono" id="sSize">—</dd></div>
+        </dl>
+      </section>
+
+      <div class="insp__foot">
+        <button class="btn btn--primary" id="btnExport" type="button" disabled>
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 2v9M8 11l3.5-3.5M8 11 4.5 7.5M2 13.5h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="square"/></svg>
+          <span id="exportLabel">Exportar WAV</span>
+        </button>
+        <p class="foot__note mono" id="footNote">sem correção de pitch</p>
+      </div>
+    </aside>
+  </main>
+
+  <!-- ─── STATUS BAR ─────────────────────────────────────── -->
+  <footer class="sbar">
+    <span class="sbar__msg" id="statusMsg" role="status" aria-live="polite" aria-atomic="true">Pronto</span>
+    <span class="sbar__spacer"></span>
+    <span class="sbar__item mono"><kbd>Espaço</kbd> reproduzir</span>
+    <span class="sbar__item mono"><kbd>←</kbd><kbd>→</kbd> buscar</span>
+    <span class="sbar__item mono"><kbd>[</kbd><kbd>]</kbd> velocidade</span>
+    <span class="sbar__item mono"><kbd>0</kbd> restaurar</span>
+  </footer>
+
+  <!-- ─── CONFIGURAÇÕES ──────────────────────────────────── -->
+  <aside class="cfg" id="cfg" role="dialog" aria-label="Configurações" aria-modal="false" hidden>
+    <header class="cfg__bar">
+      <h2 class="cfg__title">Configurações</h2>
+      <button class="btn btn--ghost btn--icon" id="cfgClose" type="button" title="Fechar (Esc)" aria-label="Fechar configurações">
+        <svg width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3.5 3.5l9 9M12.5 3.5l-9 9" stroke="currentColor" stroke-width="1.4" stroke-linecap="square"/></svg>
+      </button>
+    </header>
+    <div class="cfg__body" id="cfgBody"></div>
+    <footer class="cfg__foot">
+      <button class="btn btn--ghost" id="cfgReset" type="button" title="Restaurar todos os ajustes">Restaurar</button>
+      <span class="cfg__foot-spacer"></span>
+      <button class="btn btn--ghost" id="cfgLoad" type="button" title="Carregar preset JSON">Carregar</button>
+      <button class="btn btn--ghost" id="cfgSave" type="button" title="Salvar preset JSON">Salvar</button>
+    </footer>
+  </aside>
+
+  <!-- ─── FOCUS MODE ─────────────────────────────────────── -->
+  <div class="focus" id="focus" role="dialog" aria-modal="true" aria-label="Modo foco do osciloscópio" hidden>
+    <div class="focus__stage">
+      <canvas class="focus__scope" id="scopeFocus"></canvas>
+    </div>
+    <div class="focus__bar">
+      <span class="mono focus__t" id="fCur">0:00.00</span>
+      <input class="scrub scrub--focus" id="fScrub" disabled type="range" min="0" max="1000" value="0" step="1" aria-label="Posição" />
+      <span class="mono focus__t" id="fTot">0:00.00</span>
+      <span class="focus__sep" aria-hidden="true"></span>
+      <button class="btn btn--step" id="fRateDown" type="button" title="Reduzir velocidade" aria-label="Reduzir velocidade">−</button>
+      <span class="mono focus__rate" id="fRate">100.0%</span>
+      <button class="btn btn--step" id="fRateUp" type="button" title="Aumentar velocidade" aria-label="Aumentar velocidade">+</button>
+    </div>
+    <button class="btn btn--ghost btn--icon focus__exit" id="fExit" type="button" title="Sair (Esc)" aria-label="Sair do modo foco">
+      <svg width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3.5 3.5l9 9M12.5 3.5l-9 9" stroke="currentColor" stroke-width="1.4" stroke-linecap="square"/></svg>
+    </button>
+  </div>
+
+  <div class="drop" id="drop" hidden><span class="drop__box">Soltar para carregar</span></div>
+</div>
+
+<input type="file" id="file" accept="audio/*" hidden />
+<input type="file" id="cfgFile" accept="application/json,.json" hidden />
+<!-- core.js: lógica pura testável (formatação, velocidade, geometria,
+     nome de arquivo). Precisa vir antes de app.js, que aborta sem ele. -->
+<script src="core.js"></script>
+<script src="motion.js"></script>
+<script src="scope-view.js"></script>
+<script src="remote-import.js"></script>
+<script src="settings.js"></script>
+<script src="app.js"></script>
+<script data-pplx-inline-edit>
+(function () {
+  if (window === window.top) return;
+
+  const allowedParentOrigins = ["https://www.perplexity.ai","https://perplexity.ai","https://testing.perplexity.ai","https://staging.perplexity.ai","https://*.preview.i.perplexity.ai","http://perplexity.localhost","http://localhost:1420","http://127.0.0.1:1420","http://localhost:3000","http://127.0.0.1:3000","http://localhost:5173","http://127.0.0.1:5173"];
+  const MAX_FONT_BYTES = 500 * 1024;
+  const MAX_TOTAL_FONT_BYTES = 2 * 1024 * 1024;
+  let scrollForwarding = false;
+  let scrollRaf = 0;
+  let trustedTopOrigin = null;
+
+  // Allow entries like "https://*.preview.i.perplexity.ai" — the wildcard
+  // matches a single DNS label (no dots), so "https://*.foo" cannot stretch
+  // across multiple labels.
+  function matchesAllowedOrigin(origin) {
+    if (!origin) return false;
+    for (const entry of allowedParentOrigins) {
+      if (!entry.includes("*")) {
+        if (entry === origin) return true;
+        continue;
+      }
+      const pattern = new RegExp(
+        "^" +
+          entry.replace(/[.+?^${}()|[\]\\]/g, "\\$&").replace(/\*/g, "[^.]+") +
+          "$",
+      );
+      if (pattern.test(origin)) return true;
+    }
+    return false;
+  }
+
+  // Trust decision: when the sender is same-origin-visible (event.origin is a
+  // real origin like https://www.perplexity.ai) we trust event.origin directly.
+  // When event.origin is "null" (opaque broker srcdoc), we fall back to the
+  // broker's stamped `parentOrigin` to identify the top window. The fallback
+  // is claim-only — we rely on the browser's native `targetOrigin` enforcement
+  // on the response path (see postToTrustedTop) to ensure replies can't be
+  // delivered to anyone but the actual top window of that claimed origin.
+  function getTrustedParentOrigin(event) {
+    const forwardedParentOrigin =
+      typeof event.data.parentOrigin === "string" ? event.data.parentOrigin : null;
+    const parentOrigin = event.origin === "null" ? forwardedParentOrigin : event.origin;
+    return matchesAllowedOrigin(parentOrigin) ? parentOrigin : null;
+  }
+
+  // All responses go to window.top with targetOrigin = the allowlisted origin.
+  // An attacker that iframes us inside their own null-origin broker can claim
+  // any parentOrigin they like, but the browser will drop the reply whenever
+  // the real top's origin doesn't match — so the screenshot never leaves.
+  function postToTrustedTop(message) {
+    if (!trustedTopOrigin) return;
+    try {
+      window.top.postMessage(message, trustedTopOrigin);
+    } catch (_error) {}
+  }
+
+  function inlineAll(original, clone) {
+    if (original.nodeType !== 1 || clone.nodeType !== 1) return;
+
+    try {
+      const computedStyle = getComputedStyle(original);
+      // cssText on a computed style is the serialized declaration in modern
+      // Chromium/Safari — a single read beats enumerating ~400 longhand
+      // properties. Firefox returns "" here, so we fall back on empty.
+      const serialized = computedStyle.cssText;
+      if (serialized) {
+        clone.style.cssText = serialized;
+      } else {
+        const parts = new Array(computedStyle.length);
+        for (let index = 0; index < computedStyle.length; index += 1) {
+          const property = computedStyle[index];
+          parts[index] = `${property}:${computedStyle.getPropertyValue(property)};`;
+        }
+        clone.style.cssText = parts.join("");
+      }
+    } catch (_error) {}
+
+    const originalChildren = original.children;
+    const clonedChildren = clone.children;
+    for (
+      let index = 0;
+      index < originalChildren.length && index < clonedChildren.length;
+      index += 1
+    ) {
+      inlineAll(originalChildren[index], clonedChildren[index]);
+    }
+  }
+
+  function extractFontUrl(srcValue) {
+    const matches = [
+      ...srcValue.matchAll(
+        /url\(["']?([^"')]+)["']?\)(?:\s*format\(["']?([^"')]+)["']?\))?/gi,
+      ),
+    ];
+    if (matches.length === 0) return null;
+    const woff2 = matches.find((m) => m[2] && m[2].toLowerCase().includes("woff2"));
+    if (woff2) return woff2[1];
+    const woff = matches.find((m) => m[2] && m[2].toLowerCase().includes("woff"));
+    if (woff) return woff[1];
+    return matches[0][1];
+  }
+
+  // Cache resolved font URL -> data URI across captures. Fonts on a page
+  // essentially never change, and a batch run emits multiple captures back to
+  // back — without this we'd refetch + re-base64 every time.
+  const fontDataUriCache = new Map();
+  const SRC_DECLARATION_RE = /src\s*:\s*[^;}]+/i;
+
+  async function fetchAsDataUri(url) {
+    if (fontDataUriCache.has(url)) return fontDataUriCache.get(url);
+    let dataUri = null;
+    try {
+      const response = await fetch(url, { mode: "cors", credentials: "omit" });
+      if (response.ok) {
+        const blob = await response.blob();
+        if (blob.size <= MAX_FONT_BYTES) {
+          dataUri = await new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () =>
+              resolve(typeof reader.result === "string" ? reader.result : null);
+            reader.onerror = () => resolve(null);
+            reader.readAsDataURL(blob);
+          });
+        }
+      }
+    } catch (_error) {
+      dataUri = null;
+    }
+    fontDataUriCache.set(url, dataUri);
+    return dataUri;
+  }
+
+  function collectFontFaceRuleTexts() {
+    const rules = [];
+    for (const sheet of document.styleSheets) {
+      let cssRules;
+      try {
+        cssRules = sheet.cssRules;
+      } catch (_error) {
+        continue;
+      }
+      if (!cssRules) continue;
+      for (const rule of cssRules) {
+        const cssText = rule.cssText || "";
+        if (cssText.startsWith("@font-face")) rules.push(cssText);
+      }
+    }
+    return rules;
+  }
+
+  async function buildInlinedFontCss() {
+    const ruleTexts = collectFontFaceRuleTexts();
+    if (ruleTexts.length === 0) return null;
+
+    const resolved = ruleTexts.map((cssText) => {
+      if (!SRC_DECLARATION_RE.test(cssText)) return null;
+      const srcMatch = cssText.match(/src\s*:\s*([^;}]+)[;}]/i);
+      if (!srcMatch) return null;
+      const url = extractFontUrl(srcMatch[1]);
+      if (!url) return null;
+      try {
+        return { cssText, url: new URL(url, document.baseURI).href };
+      } catch (_error) {
+        return null;
+      }
+    });
+
+    const dataUris = await Promise.all(
+      resolved.map((entry) => (entry ? fetchAsDataUri(entry.url) : Promise.resolve(null))),
+    );
+
+    const inlined = [];
+    let totalBytes = 0;
+    for (let index = 0; index < resolved.length; index += 1) {
+      const entry = resolved[index];
+      const dataUri = dataUris[index];
+      if (!entry || !dataUri) continue;
+      const approxBytes = dataUri.length * 0.75;
+      if (totalBytes + approxBytes > MAX_TOTAL_FONT_BYTES) break;
+      totalBytes += approxBytes;
+      inlined.push(entry.cssText.replace(SRC_DECLARATION_RE, `src: url("${dataUri}")`));
+    }
+    return inlined.length > 0 ? inlined.join("\n") : null;
+  }
+
+  function stripExternal(clone) {
+    const images = clone.querySelectorAll("img");
+    for (let index = 0; index < images.length; index += 1) {
+      const src = images[index].getAttribute("src");
+      if (src && !src.startsWith("data:")) images[index].removeAttribute("src");
+    }
+
+    const elements = clone.querySelectorAll("*");
+    for (let index = 0; index < elements.length; index += 1) {
+      const style = elements[index].style.cssText;
+      if (style && style.includes("url(")) {
+        elements[index].style.cssText = style.replace(
+          /url\(["']?(?!data:)[^)"']*["']?\)/gi,
+          "none",
+        );
+      }
+    }
+  }
+
+  function emitScroll() {
+    scrollRaf = 0;
+    if (!scrollForwarding) return;
+    postToTrustedTop({
+      type: "INLINE_EDIT_SCROLL",
+      scrollX: window.scrollX,
+      scrollY: window.scrollY,
+    });
+  }
+
+  window.addEventListener(
+    "scroll",
+    function () {
+      if (!scrollForwarding || scrollRaf) return;
+      scrollRaf = requestAnimationFrame(emitScroll);
+    },
+    { passive: true, capture: true },
+  );
+
+  async function handleCaptureRequest(event) {
+    const requestId = event.data.requestId;
+    const scrollX = window.scrollX;
+    const scrollY = window.scrollY;
+    const width = window.innerWidth;
+    const height = window.innerHeight;
+
+    function postResult(dataUrl) {
+      postToTrustedTop({
+        type: "INLINE_EDIT_SCREENSHOT_RESULT",
+        requestId,
+        dataUrl,
+        scrollX,
+        scrollY,
+      });
+    }
+
+    try {
+      // Wait for any pending web fonts to resolve so both inline metrics and
+      // the @font-face inlining below see the same loaded faces.
+      if (document.fonts && document.fonts.ready) {
+        try {
+          await document.fonts.ready;
+        } catch (_error) {}
+      }
+
+      const clone = document.documentElement.cloneNode(true);
+      inlineAll(document.documentElement, clone);
+
+      const removedNodes = clone.querySelectorAll("script,link[rel=\"stylesheet\"],style");
+      for (let index = 0; index < removedNodes.length; index += 1) {
+        removedNodes[index].remove();
+      }
+
+      stripExternal(clone);
+
+      // Re-embed web fonts as data-URI @font-face rules so the SVG rasterizer
+      // can resolve them — external font URLs aren't fetched during
+      // foreignObject rendering, which would otherwise force a fallback face
+      // and change text metrics.
+      const inlinedFontCss = await buildInlinedFontCss();
+      if (inlinedFontCss) {
+        const styleEl = document.createElement("style");
+        styleEl.textContent = inlinedFontCss;
+        const head = clone.querySelector("head");
+        if (head) head.appendChild(styleEl);
+        else clone.insertBefore(styleEl, clone.firstChild);
+      }
+
+      const html = new XMLSerializer().serializeToString(clone);
+      const svg =
+        `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">` +
+        '<foreignObject width="100%" height="100%">' +
+        `<div xmlns="http://www.w3.org/1999/xhtml" style="width:${width}px;height:${height}px;overflow:hidden">` +
+        `<div style="position:relative;left:-${scrollX}px;top:-${scrollY}px">` +
+        html +
+        "</div></div></foreignObject></svg>";
+      const svgUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+      const image = new Image();
+      image.onload = function () {
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        canvas.getContext("2d").drawImage(image, 0, 0);
+        postResult(canvas.toDataURL("image/png"));
+      };
+      image.onerror = function () {
+        postResult(null);
+      };
+      image.src = svgUrl;
+    } catch (_error) {
+      postResult(null);
+    }
+  }
+
+  window.addEventListener("message", function (event) {
+    if (!event.data) return;
+    // Only accept messages from the direct parent frame. Blocks sibling /
+    // unrelated-window postMessage senders that could otherwise reach us.
+    if (event.source !== window.parent) return;
+
+    const trustedParentOrigin = getTrustedParentOrigin(event);
+    if (!trustedParentOrigin) return;
+    trustedTopOrigin = trustedParentOrigin;
+
+    if (event.data.type === "INLINE_EDIT_SCROLL_START") {
+      scrollForwarding = true;
+      emitScroll();
+      return;
+    }
+
+    if (event.data.type === "INLINE_EDIT_SCROLL_STOP") {
+      scrollForwarding = false;
+      if (scrollRaf) cancelAnimationFrame(scrollRaf);
+      scrollRaf = 0;
+      return;
+    }
+
+    if (event.data.type !== "INLINE_EDIT_CAPTURE_REQUEST") return;
+
+    handleCaptureRequest(event);
+  });
+})();
+
+
+</script></body>
+</html>
