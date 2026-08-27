@@ -1,0 +1,18 @@
+{
+  "manifest_version": 3,
+  "name": "VARISPEED — Cookies do YouTube",
+  "version": "1.0.0",
+  "description": "Exporta localmente apenas cookies de youtube.com para uso opcional no VARISPEED.",
+  "minimum_chrome_version": "102",
+  "incognito": "split",
+  "permissions": [
+    "cookies"
+  ],
+  "optional_host_permissions": [
+    "https://*.youtube.com/*"
+  ],
+  "action": {
+    "default_title": "Exportar cookies do YouTube",
+    "default_popup": "popup.html"
+  }
+}

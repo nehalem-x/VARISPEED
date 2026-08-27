@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Cookies do YouTube</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <main>
+    <span class="eyebrow">VARISPEED · LOCAL</span>
+    <h1>Cookies do YouTube</h1>
+    <p>Exporta somente cookies de <strong>youtube.com</strong> para um arquivo Netscape compatível com o yt-dlp.</p>
+
+    <section class="notice" aria-label="Proteções">
+      <span aria-hidden="true"></span>
+      <p>Sem rede, telemetria ou armazenamento interno. O arquivo é criado apenas após seu clique.</p>
+    </section>
+
+    <button id="export" type="button">Autorizar e exportar</button>
+    <p class="status" id="status" role="status" aria-live="polite">Abra esta extensão na sessão do YouTube que deseja exportar.</p>
+    <p class="warning">O arquivo permite autenticação na sua conta. Não compartilhe nem sincronize em nuvem.</p>
+  </main>
+  <script src="cookie-exporter-core.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

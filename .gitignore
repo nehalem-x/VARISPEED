@@ -8,3 +8,5 @@ __pycache__/
 .DS_Store
 logs/*.log
 logs/*.pid
+youtube-cookies.txt
+*cookies*.txt
