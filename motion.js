@@ -52,6 +52,64 @@ window.Motion = (() => {
 
   const tokens = new WeakMap();
   const timers = new WeakMap();
+  const marquees = new WeakMap();
+
+  function unwrapMarquee(host) {
+    const track = host.firstElementChild;
+    if (!track?.classList.contains('marquee__track')) return;
+    const content = track.firstElementChild;
+    if (!content?.classList.contains('marquee__content')) return;
+    host.replaceChildren(...content.childNodes);
+  }
+
+  function applyMarquee(host) {
+    const state = marquees.get(host);
+    if (!state) return;
+
+    unwrapMarquee(host);
+    host.classList.remove('is-marquee');
+    host.style.removeProperty('--marquee-distance');
+    host.style.removeProperty('--marquee-duration');
+
+    const available = host.clientWidth;
+    const contentWidth = host.scrollWidth;
+    if (reduced() || available <= 0 || contentWidth <= available + 2) return;
+
+    const speed = Math.max(18, Number(state.options.speed) || 28);
+    const track = document.createElement('span');
+    const content = document.createElement('span');
+    track.className = 'marquee__track';
+    content.className = 'marquee__content';
+    while (host.firstChild) content.appendChild(host.firstChild);
+
+    track.appendChild(content);
+    host.appendChild(track);
+
+    const distance = content.scrollWidth - available;
+    const duration = Math.max(7, Math.min(20, 4 + distance / speed));
+    host.style.setProperty('--marquee-distance', `${distance}px`);
+    host.style.setProperty('--marquee-duration', `${duration.toFixed(2)}s`);
+    host.classList.add('is-marquee');
+  }
+
+  function marquee(host, options = {}) {
+    if (!host) return;
+    let state = marquees.get(host);
+    if (!state) {
+      state = { frame: 0, options: {} };
+      state.observer = new ResizeObserver(() => {
+        cancelAnimationFrame(state.frame);
+        state.frame = requestAnimationFrame(() => {
+          state.frame = 0;
+          applyMarquee(host);
+        });
+      });
+      state.observer.observe(host);
+      marquees.set(host, state);
+    }
+    state.options = { ...options };
+    applyMarquee(host);
+  }
 
   function cancel(host) {
     tokens.set(host, (tokens.get(host) || 0) + 1);
@@ -97,6 +155,8 @@ window.Motion = (() => {
     const s = S();
     o.speed *= s; o.jitter *= s; o.charDur *= s;
 
+    unwrapMarquee(host);
+    host.classList.remove('is-marquee');
     cancel(host);
     const token = tokens.get(host) || 0;
 
@@ -191,6 +251,7 @@ window.Motion = (() => {
       caret: false,
       persist: false,
       lead: '',
+      wrapWords: false,
       onDone: null,
     }, opts);
 
@@ -215,10 +276,25 @@ window.Motion = (() => {
 
     const k = reduced() ? 0 : o.intensity;
     const chars = [];
-    for (const c of text) {
-      const s = makeEphChar(c, k);
-      chars.push(s);
-      phrase.appendChild(s);
+    const appendChars = (parent, value) => {
+      for (const c of value) {
+        const char = makeEphChar(c, k);
+        chars.push(char);
+        parent.appendChild(char);
+      }
+    };
+    if (o.wrapWords) {
+      // Mantém a primitiva e a cadência originais, agrupando apenas o fluxo
+      // tipográfico para que o navegador nunca divida uma palavra ao meio.
+      const groups = text.match(/\S+\s*|\s+/gu) || [];
+      groups.forEach((value) => {
+        const word = document.createElement('span');
+        word.className = 'eph-word';
+        appendChars(word, value);
+        phrase.appendChild(word);
+      });
+    } else {
+      appendChars(phrase, text);
     }
     let caret = null;
     if (o.caret && !reduced()) {
@@ -262,7 +338,7 @@ window.Motion = (() => {
       schedule(host, () => {
         if (!alive()) return;
         s.classList.add('eph--in');
-        if (caret) phrase.insertBefore(caret, s.nextSibling);
+        if (caret) s.after(caret);
       }, t);
       t += Math.max(6, letterDelay(text[i], o.speed) + rand(-o.jitter, o.jitter));
     });
@@ -391,5 +467,5 @@ window.Motion = (() => {
     }, 100);
   }
 
-  return { typeOut, ephemeral, status: statusFx, digitTick, swapLabel, cancel, reduced, configure, T };
+  return { typeOut, ephemeral, status: statusFx, digitTick, swapLabel, marquee, cancel, reduced, configure, T };
 })();

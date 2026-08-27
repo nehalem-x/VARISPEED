@@ -27,11 +27,25 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="styles.css" />
+<link rel="stylesheet" href="styles.css?v=20260828-scope-preview" />
 <link rel="icon" type="image/x-icon" href="assets/varispeed.ico" />
 <link rel="icon" type="image/png" href="assets/favicon.png" />
 </head>
 <body>
+<svg class="ui-icon-sprite" aria-hidden="true">
+  <symbol id="ui-icon-close" viewBox="0 0 16 16">
+    <path d="M3.5 3.5l9 9M12.5 3.5l-9 9" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="square"/>
+  </symbol>
+  <symbol id="ui-icon-category-add" viewBox="0 0 16 16">
+    <path d="M2.5 4.5h4L7.8 6h5.7v7.5h-11zM2.5 6h11M8 8v3M6.5 9.5h3" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="square" stroke-linejoin="miter"/>
+  </symbol>
+  <symbol id="ui-icon-edit" viewBox="0 0 16 16">
+    <path d="m3 11.8.5-2.7 6.9-6.9 2.4 2.4-6.9 6.9-2.9.3ZM9.4 3.2l2.4 2.4M2.5 13.5h11" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="square" stroke-linejoin="miter"/>
+  </symbol>
+  <symbol id="ui-icon-trash" viewBox="0 0 16 16">
+    <path d="M3 4.5h10M6 4.5V2.8h4v1.7M4.2 4.5l.7 9h6.2l.7-9M6.8 7v4M9.2 7v4" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="square" stroke-linejoin="miter"/>
+  </symbol>
+</svg>
 <div class="app">
 
   <!-- ─── HEADER ─────────────────────────────────────────── -->
@@ -42,21 +56,36 @@
     </div>
 
     <div class="hdr__file" id="hdrFile">
-      <div class="hdr__scope-tools" aria-label="Osciloscópio">
-        <button class="btn btn--ghost btn--icon hdr__scope-pop" id="btnPop" type="button" aria-pressed="false" title="Osciloscópio em janela separada" aria-label="Osciloscópio em janela separada">
+      <div class="hdr__scope-tools" aria-label="Visualização de áudio">
+        <button class="btn btn--ghost btn--icon hdr__scope-pop" id="btnPop" type="button" aria-pressed="false" title="Visualizador em janela separada" aria-label="Visualizador em janela separada">
           <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M7 2.5H2.5v11h11V9" stroke="currentColor" stroke-width="1.4" stroke-linecap="square"/><path d="M9.5 2.5h4v4M13.5 2.5 7.8 8.2" stroke="currentColor" stroke-width="1.4" stroke-linecap="square"/></svg>
         </button>
-        <button class="scope-wrap" id="scopeWrap" data-state="idle" type="button" title="Ampliar osciloscópio" aria-label="Ampliar osciloscópio">
+        <button class="scope-wrap" id="scopeWrap" data-state="idle" type="button" title="Ampliar visualizador de áudio" aria-label="Ampliar visualizador de áudio">
           <canvas id="scope" class="scope"></canvas>
         </button>
       </div>
       <span class="hdr__filename" id="fileName">nenhum arquivo</span>
-      <span class="hdr__filemeta mono" id="fileMeta">—</span>
+      <div class="hdr-player" id="libraryTransport" aria-label="Transporte da música carregada" hidden>
+        <div class="transport__group hdr-player__controls">
+          <span class="ui-slot" id="libraryPlaySlot"></span>
+          <span class="ui-slot" id="libraryStopSlot"></span>
+          <span class="ui-slot" id="libraryLoopSlot"></span>
+        </div>
+        <span class="ui-slot" id="libraryScrubSlot"></span>
+      </div>
+      <span class="hdr__filemeta mono" id="fileMeta" hidden aria-hidden="true">—</span>
     </div>
 
     <div class="hdr__actions">
+      <button class="btn btn--ghost hdr__library" id="btnLibrary" type="button" aria-pressed="false">
+        <svg width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m11 3-5 5 5 5" stroke="currentColor" stroke-width="1.4" stroke-linecap="square"/></svg>
+        Biblioteca
+      </button>
+      <button class="btn btn--ghost btn--icon btn--progress hdr__library-add" id="btnLibraryAdd" type="button" title="Adicionar a música atual à Biblioteca" aria-label="Adicionar a música atual à Biblioteca" hidden>
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 2.5h8.5a1.5 1.5 0 0 1 1.5 1.5v9.5H4.5A1.5 1.5 0 0 1 3 12V2.5Z" stroke="currentColor" stroke-width="1.3"/><path d="M3 11.5c0-.83.67-1.5 1.5-1.5H13M8 4.5v4M6 6.5h4" stroke="currentColor" stroke-width="1.3"/></svg>
+      </button>
       <div class="import-menu-wrap">
-        <button class="btn" id="btnImport" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="importMenu">
+        <button class="btn btn--import-primary" id="btnImport" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="importMenu">
           <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 11V2M8 11L4.5 7.5M8 11l3.5-3.5M2 13.5h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="square"/></svg>
           Importar
           <svg class="import-menu__chev" width="10" height="10" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="m3 4.5 3 3 3-3" stroke="currentColor" stroke-width="1.3" stroke-linecap="square"/></svg>
@@ -86,7 +115,7 @@
              placeholder="cole um link compatível com yt-dlp" maxlength="8192" aria-describedby="urlMsg" />
       <button class="btn linkbar__analyze" id="btnUrlGo" type="button">Analisar</button>
       <button class="btn btn--ghost btn--icon linkbar__close" id="btnUrlClose" type="button" title="Fechar" aria-label="Fechar importação por link">
-        <svg width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3.5 3.5l9 9M12.5 3.5l-9 9" stroke="currentColor" stroke-width="1.4" stroke-linecap="square"/></svg>
+        <svg width="12" height="12" aria-hidden="true"><use href="#ui-icon-close"/></svg>
       </button>
     </div>
 
@@ -110,10 +139,197 @@
       <span class="linkbar__track" id="urlTrack" data-mode="indet" role="progressbar" aria-label="Progresso da importação" aria-valuemin="0" aria-valuemax="100"><span class="linkbar__fill" id="urlFill"></span></span>
     </div>
     <p class="linkbar__msg" id="urlMsg" role="status" aria-live="polite" aria-atomic="true" hidden></p>
+    <div class="linkbar__auth" id="urlAuthWrap" hidden>
+      <button class="btn linkbar__auth-button" id="btnUrlAuth" type="button">Usar cookies do navegador</button>
+      <span class="linkbar__auth-hint" id="urlAuthHint">O VARISPEED verificará os navegadores instalados sem exportar seus cookies.</span>
+    </div>
   </div>
 
+  <!-- ─── BIBLIOTECA VISUAL ─────────────────────────────── -->
+  <section class="library" id="libraryView" aria-label="Biblioteca de músicas" hidden>
+    <header class="library__bar">
+      <div class="library__heading">
+        <h1 class="library__title">Biblioteca</h1>
+      </div>
+      <button class="btn btn--ghost library__category-create" id="libraryCategoryCreate" type="button" title="Criar categoria">
+        <svg width="14" height="14" aria-hidden="true"><use href="#ui-icon-category-add"/></svg>
+        <span>Nova categoria</span>
+      </button>
+      <label class="library__search-wrap">
+        <span class="sr-only">Buscar músicas e categorias</span>
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="7" cy="7" r="4.5" stroke="currentColor" stroke-width="1.3"/><path d="m10.5 10.5 3 3" stroke="currentColor" stroke-width="1.3"/></svg>
+        <input class="library__search" id="librarySearch" type="search" placeholder="Buscar música ou categoria" autocomplete="off" />
+      </label>
+      <button class="btn btn--ghost library__close" id="libraryClose" type="button">
+        Voltar ao editor
+        <svg width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m5 3 5 5-5 5" stroke="currentColor" stroke-width="1.4" stroke-linecap="square"/></svg>
+      </button>
+    </header>
+
+    <div class="library__workspace">
+      <div class="library__graph graph-engine-host" id="libraryGraph" aria-label="Mapa das músicas importadas"></div>
+      <div class="library__empty" id="libraryEmpty" hidden>
+        <strong id="libraryEmptyTitle">Biblioteca vazia</strong>
+        <span class="mono" id="libraryEmptyHint">IMPORTE UMA MÚSICA E ADICIONE À BIBLIOTECA</span>
+      </div>
+      <aside class="library__details" id="libraryDetails" data-graph-viewport-block="auto" aria-live="polite" hidden>
+        <header class="library__detail-bar">
+          <div class="library__detail-heading">
+            <span class="library__detail-source mono" id="libraryDetailSource">—</span>
+            <strong class="library__detail-title" id="libraryDetailTitle">—</strong>
+          </div>
+          <button class="btn btn--ghost btn--icon library__detail-close" id="libraryDetailClose" type="button" title="Fechar detalhes" aria-label="Fechar detalhes">
+            <svg width="14" height="14" aria-hidden="true"><use href="#ui-icon-close"/></svg>
+          </button>
+        </header>
+        <div class="library__detail-body">
+          <figure class="library__detail-artwork" id="libraryDetailArtwork" hidden>
+            <img id="libraryDetailArtworkImage" alt="" draggable="false" />
+            <span class="library__detail-artwork-fallback" aria-hidden="true">
+              <svg width="32" height="32" viewBox="0 0 32 32" fill="none"><path d="M4 17h2m2-5v10m4-15v18m4-13v10m4-17v22m4-14v8m4-5v2" stroke="currentColor" stroke-width="1.5" stroke-linecap="square"/></svg>
+            </span>
+          </figure>
+          <dl class="library__detail-rows" id="libraryDetailRows">
+            <div class="library__detail-row"><dt>Duração</dt><dd class="mono" id="libraryDetailDuration">—</dd></div>
+            <div class="library__detail-row"><dt>Velocidade</dt><dd class="mono" id="libraryDetailRate">—</dd></div>
+            <div class="library__detail-row"><dt>Canais</dt><dd class="mono" id="libraryDetailChannels">—</dd></div>
+            <div class="library__detail-row"><dt>Origem</dt><dd id="libraryDetailOrigin">—</dd></div>
+            <div class="library__detail-row" id="libraryDetailBylineRow" hidden><dt>Crédito</dt><dd id="libraryDetailByline">—</dd></div>
+          </dl>
+          <section class="library__organization" id="libraryOrganization">
+            <div class="library__organization-head">
+              <span class="mono">Organização</span>
+              <button class="btn btn--ghost btn--icon" id="libraryCategoryCreateInline" type="button" title="Criar categoria" aria-label="Criar categoria">
+                <svg width="13" height="13" aria-hidden="true"><use href="#ui-icon-category-add"/></svg>
+              </button>
+            </div>
+            <label class="library__category-field" for="libraryCategorySelect">
+              <span>Categoria</span>
+              <select class="sel" id="libraryCategorySelect"></select>
+            </label>
+            <p class="library__organization-hint">A música orbita a categoria escolhida no grafo.</p>
+          </section>
+          <section class="library__category-summary" id="libraryCategorySummary" hidden>
+            <span class="library__category-kicker mono" id="libraryCategoryKind">Categoria</span>
+            <strong id="libraryCategoryCount">0 músicas</strong>
+            <p id="libraryCategoryDescription">As músicas vinculadas formam um agrupamento ao redor desta categoria.</p>
+          </section>
+        </div>
+        <footer class="library__detail-actions" id="libraryMusicActions">
+          <button class="btn btn--primary btn--progress" id="libraryOpen" type="button">
+            <span id="libraryOpenLabel">Abrir música</span>
+          </button>
+          <button class="btn btn--ghost btn--icon library__favorite" id="libraryFavorite" type="button" aria-pressed="false" title="Adicionar às Favoritas" aria-label="Adicionar às Favoritas">
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m8 1.8 1.86 3.77 4.16.6-3.01 2.94.71 4.14L8 11.3l-3.72 1.95.71-4.14-3.01-2.94 4.16-.6L8 1.8Z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="miter"/></svg>
+          </button>
+          <button class="btn btn--ghost library__remove" id="libraryRemove" type="button">Remover</button>
+        </footer>
+        <footer class="library__category-actions" id="libraryCategoryActions" hidden>
+          <button class="btn btn--primary" id="libraryCategoryRename" type="button">
+            <svg width="13" height="13" aria-hidden="true"><use href="#ui-icon-edit"/></svg>
+            Renomear categoria
+          </button>
+          <button class="btn btn--ghost library__category-remove" id="libraryCategoryRemove" type="button">
+            <svg width="13" height="13" aria-hidden="true"><use href="#ui-icon-trash"/></svg>
+            Excluir categoria
+          </button>
+        </footer>
+      </aside>
+      <div class="library__category-dialog-layer" id="libraryCategoryDialogLayer" hidden>
+        <form class="library__category-dialog" id="libraryCategoryDialog" role="dialog" aria-modal="true" aria-labelledby="libraryCategoryDialogTitle" aria-describedby="libraryCategoryDialogHint" novalidate>
+          <header>
+            <div>
+              <span class="mono">Organização</span>
+              <strong id="libraryCategoryDialogTitle">Nova categoria</strong>
+            </div>
+            <button class="btn btn--ghost btn--icon" id="libraryCategoryDialogClose" type="button" title="Fechar" aria-label="Fechar">
+              <svg width="13" height="13" aria-hidden="true"><use href="#ui-icon-close"/></svg>
+            </button>
+          </header>
+          <div class="library__category-dialog-body">
+            <label for="libraryCategoryName">Nome da categoria</label>
+            <input class="txt" id="libraryCategoryName" type="text" maxlength="40" autocomplete="off" />
+            <p id="libraryCategoryDialogHint">Use um nome curto que represente este grupo de músicas.</p>
+            <p class="library__category-error" id="libraryCategoryError" role="alert" hidden></p>
+          </div>
+          <footer>
+            <button class="btn btn--ghost library__category-cancel" id="libraryCategoryCancel" type="button">Cancelar</button>
+            <button class="btn btn--primary library__category-save" type="submit">Salvar</button>
+          </footer>
+        </form>
+      </div>
+    </div>
+    <div class="library-tutorial" id="libraryTutorial" role="dialog" aria-modal="true" aria-labelledby="libraryTutorialTitle" aria-describedby="libraryTutorialBody" data-step="0" hidden>
+      <svg class="library-tutorial__network" viewBox="0 0 720 420" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+        <defs>
+          <radialGradient id="tutorial-node-halo">
+            <stop offset="0" stop-color="currentColor" stop-opacity=".22"/>
+            <stop offset="1" stop-color="currentColor" stop-opacity="0"/>
+          </radialGradient>
+        </defs>
+        <g class="library-tutorial__camera">
+          <g class="library-tutorial__stage library-tutorial__stage--core">
+            <circle class="library-tutorial__halo" cx="360" cy="210" r="76"/>
+            <circle class="library-tutorial__pulse" cx="360" cy="210" r="24"/>
+            <circle class="library-tutorial__node library-tutorial__node--root" cx="360" cy="210" r="13"/>
+            <text class="library-tutorial__node-label" x="360" y="246" text-anchor="middle">BIBLIOTECA</text>
+          </g>
+          <g class="library-tutorial__stage library-tutorial__stage--music">
+            <path d="M360 210 305 116M360 210 444 136M360 210 282 282M360 210 438 310"/>
+            <circle cx="305" cy="116" r="6"/><circle cx="444" cy="136" r="6"/>
+            <circle cx="282" cy="282" r="6"/><circle cx="438" cy="310" r="6"/>
+            <text class="library-tutorial__node-label" x="305" y="96" text-anchor="middle">MÚSICA</text>
+          </g>
+          <g class="library-tutorial__stage library-tutorial__stage--categories">
+            <path d="M360 210 174 176M360 210 548 244"/>
+            <circle class="library-tutorial__halo" cx="174" cy="176" r="54"/>
+            <circle class="library-tutorial__halo" cx="548" cy="244" r="54"/>
+            <circle class="library-tutorial__pulse" cx="174" cy="176" r="20"/>
+            <circle class="library-tutorial__pulse" cx="548" cy="244" r="20"/>
+            <circle class="library-tutorial__node library-tutorial__node--category" cx="174" cy="176" r="10"/>
+            <circle class="library-tutorial__node library-tutorial__node--category" cx="548" cy="244" r="10"/>
+            <text class="library-tutorial__node-label" x="174" y="208" text-anchor="middle">CATEGORIA</text>
+            <text class="library-tutorial__node-label" x="548" y="276" text-anchor="middle">CATEGORIA</text>
+          </g>
+          <g class="library-tutorial__stage library-tutorial__stage--growth">
+            <path d="M174 176 92 96M174 176 82 190M174 176 132 300M174 176 242 82M548 244 618 108M548 244 654 206M548 244 622 334M548 244 492 354M305 116 242 82M438 310 492 354M444 136 618 108M282 282 132 300"/>
+            <circle cx="92" cy="96" r="5"/><circle cx="82" cy="190" r="5"/><circle cx="132" cy="300" r="5"/><circle cx="242" cy="82" r="5"/>
+            <circle cx="618" cy="108" r="5"/><circle cx="654" cy="206" r="5"/><circle cx="622" cy="334" r="5"/><circle cx="492" cy="354" r="5"/>
+            <text class="library-tutorial__node-label library-tutorial__node-label--story" x="618" y="82" text-anchor="middle">SUA HISTÓRIA</text>
+          </g>
+        </g>
+      </svg>
+      <div class="library-tutorial__frame">
+        <header class="library-tutorial__head">
+          <span class="library-tutorial__brand mono">VARISPEED · BIBLIOTECA VIVA</span>
+          <button class="btn btn--ghost library-tutorial__skip" id="libraryTutorialSkip" type="button">Pular tutorial</button>
+        </header>
+        <article class="library-tutorial__content" id="libraryTutorialContent" aria-live="polite">
+          <span class="library-tutorial__kicker mono" id="libraryTutorialKicker">A memória da sua escuta</span>
+          <h2 id="libraryTutorialTitle">Sua biblioteca deixa rastros.</h2>
+          <p id="libraryTutorialBody">Isto não é apenas uma lista. Cada música adicionada ocupa um lugar em um mapa que pertence somente a você.</p>
+          <span class="library-tutorial__signal mono" id="libraryTutorialSignal">UM ARQUIVO · UM PRIMEIRO PONTO</span>
+        </article>
+        <footer class="library-tutorial__foot">
+          <button class="btn btn--ghost library-tutorial__back" id="libraryTutorialBack" type="button">
+            <svg width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m10.5 3-5 5 5 5" stroke="currentColor" stroke-width="1.4" stroke-linecap="square"/></svg>
+            Voltar
+          </button>
+          <span class="library-tutorial__progress" id="libraryTutorialProgress" aria-label="Etapa 1 de 4">
+            <span class="library-tutorial__progress-count mono" id="libraryTutorialProgressCount">01 / 04</span>
+            <span class="library-tutorial__progress-rail" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+          </span>
+          <button class="btn btn--primary library-tutorial__next" id="libraryTutorialNext" type="button">
+            <span id="libraryTutorialNextLabel">Continuar</span>
+            <svg width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m5.5 3 5 5-5 5" stroke="currentColor" stroke-width="1.4" stroke-linecap="square"/></svg>
+          </button>
+        </footer>
+      </div>
+    </div>
+  </section>
+
   <!-- ─── BODY ───────────────────────────────────────────── -->
-  <main class="main" aria-label="Editor de áudio">
+  <main class="main" id="editorMain" aria-label="Editor de áudio">
 
     <!-- STAGE -->
     <section class="stage" id="stage">
@@ -149,7 +365,7 @@
 
       <div class="transport">
         <div class="transport__group">
-          <button class="btn btn--icon" id="btnPlay" type="button" title="Reproduzir (Espaço)" aria-label="Reproduzir" disabled>
+          <button class="btn btn--icon btn--play-primary" id="btnPlay" type="button" title="Reproduzir (Espaço)" aria-label="Reproduzir" disabled>
             <svg class="ico-play" width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 2.5v11l9-5.5-9-5.5Z" fill="currentColor"/></svg>
             <svg class="ico-pause" width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 2.5h3v11H4zM9 2.5h3v11H9z" fill="currentColor"/></svg>
           </button>
@@ -179,7 +395,7 @@
     <!-- INSPECTOR -->
     <aside class="insp" aria-label="Controles e informações do áudio">
 
-      <section class="panel">
+      <section class="panel panel--rate">
         <h2 class="panel__title">Velocidade</h2>
         <div class="rate">
           <div class="rate__read">
@@ -212,7 +428,7 @@
 
       <div class="hr" aria-hidden="true"></div>
 
-      <section class="panel">
+      <section class="panel panel--result">
         <h2 class="panel__title">Resultado</h2>
         <dl class="rows">
           <div class="row"><dt>Pitch</dt><dd class="mono" id="rPitch">0.00 st</dd></div>
@@ -224,8 +440,12 @@
 
       <div class="hr" aria-hidden="true"></div>
 
-      <section class="panel">
+      <section class="panel panel--source">
         <h2 class="panel__title">Fonte</h2>
+        <figure class="library__detail-artwork panel-source__artwork" id="sourceArtwork" hidden>
+          <img id="sourceArtworkImage" alt="" draggable="false" referrerpolicy="no-referrer" />
+          <span class="library__detail-artwork-fallback mono" aria-hidden="true">AUDIO</span>
+        </figure>
         <dl class="rows">
           <div class="row"><dt>Arquivo</dt><dd class="mono ell" id="sName">—</dd></div>
           <div class="row"><dt>Duração</dt><dd class="mono" id="sDur">—</dd></div>
@@ -260,20 +480,27 @@
     <header class="cfg__bar">
       <h2 class="cfg__title">Configurações</h2>
       <button class="btn btn--ghost btn--icon" id="cfgClose" type="button" title="Fechar (Esc)" aria-label="Fechar configurações">
-        <svg width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3.5 3.5l9 9M12.5 3.5l-9 9" stroke="currentColor" stroke-width="1.4" stroke-linecap="square"/></svg>
+        <svg width="12" height="12" aria-hidden="true"><use href="#ui-icon-close"/></svg>
       </button>
     </header>
     <div class="cfg__body" id="cfgBody"></div>
     <footer class="cfg__foot">
-      <button class="btn btn--ghost" id="cfgReset" type="button" title="Restaurar todos os ajustes">Restaurar</button>
-      <span class="cfg__foot-spacer"></span>
-      <button class="btn btn--ghost" id="cfgLoad" type="button" title="Carregar preset JSON">Carregar</button>
-      <button class="btn btn--ghost" id="cfgSave" type="button" title="Salvar preset JSON">Salvar</button>
+      <div class="cfg__foot-status">
+        <span id="cfgStatus" role="status" aria-live="polite" aria-atomic="true">Alterações salvas automaticamente</span>
+        <button class="cfg__undo" id="cfgUndo" type="button" hidden>Desfazer</button>
+      </div>
+      <div class="cfg__foot-actions">
+        <button class="btn btn--ghost cfg__reset" id="cfgReset" type="button" title="Restaurar todos os ajustes">Restaurar</button>
+        <span class="cfg__foot-spacer"></span>
+        <span class="cfg__preset-label mono">Preset</span>
+        <button class="btn btn--ghost" id="cfgLoad" type="button" title="Carregar preset JSON">Carregar</button>
+        <button class="btn btn--ghost" id="cfgSave" type="button" title="Salvar preset JSON">Salvar</button>
+      </div>
     </footer>
   </aside>
 
   <!-- ─── FOCUS MODE ─────────────────────────────────────── -->
-  <div class="focus" id="focus" role="dialog" aria-modal="true" aria-label="Modo foco do osciloscópio" hidden>
+  <div class="focus" id="focus" role="dialog" aria-modal="true" aria-label="Modo foco da visualização de áudio" hidden>
     <div class="focus__stage">
       <canvas class="focus__scope" id="scopeFocus"></canvas>
     </div>
@@ -282,12 +509,12 @@
       <input class="scrub scrub--focus" id="fScrub" disabled type="range" min="0" max="1000" value="0" step="1" aria-label="Posição" />
       <span class="mono focus__t" id="fTot">0:00.00</span>
       <span class="focus__sep" aria-hidden="true"></span>
-      <button class="btn btn--step" id="fRateDown" type="button" title="Reduzir velocidade" aria-label="Reduzir velocidade">−</button>
+      <span class="ui-slot" id="fRateDownSlot"></span>
       <span class="mono focus__rate" id="fRate">100.0%</span>
-      <button class="btn btn--step" id="fRateUp" type="button" title="Aumentar velocidade" aria-label="Aumentar velocidade">+</button>
+      <span class="ui-slot" id="fRateUpSlot"></span>
     </div>
     <button class="btn btn--ghost btn--icon focus__exit" id="fExit" type="button" title="Sair (Esc)" aria-label="Sair do modo foco">
-      <svg width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3.5 3.5l9 9M12.5 3.5l-9 9" stroke="currentColor" stroke-width="1.4" stroke-linecap="square"/></svg>
+      <svg width="12" height="12" aria-hidden="true"><use href="#ui-icon-close"/></svg>
     </button>
   </div>
 
@@ -296,341 +523,16 @@
 
 <input type="file" id="file" accept="audio/*" hidden />
 <input type="file" id="cfgFile" accept="application/json,.json" hidden />
+<input type="file" id="libraryRelink" accept="audio/*" hidden />
 <!-- core.js: lógica pura testável (formatação, velocidade, geometria,
      nome de arquivo). Precisa vir antes de app.js, que aborta sem ele. -->
-<script src="core.js"></script>
-<script src="motion.js"></script>
-<script src="scope-view.js"></script>
-<script src="remote-import.js"></script>
-<script src="settings.js"></script>
-<script src="app.js"></script>
-<script data-pplx-inline-edit>
-(function () {
-  if (window === window.top) return;
-
-  const allowedParentOrigins = ["https://www.perplexity.ai","https://perplexity.ai","https://testing.perplexity.ai","https://staging.perplexity.ai","https://*.preview.i.perplexity.ai","http://perplexity.localhost","http://localhost:1420","http://127.0.0.1:1420","http://localhost:3000","http://127.0.0.1:3000","http://localhost:5173","http://127.0.0.1:5173"];
-  const MAX_FONT_BYTES = 500 * 1024;
-  const MAX_TOTAL_FONT_BYTES = 2 * 1024 * 1024;
-  let scrollForwarding = false;
-  let scrollRaf = 0;
-  let trustedTopOrigin = null;
-
-  // Allow entries like "https://*.preview.i.perplexity.ai" — the wildcard
-  // matches a single DNS label (no dots), so "https://*.foo" cannot stretch
-  // across multiple labels.
-  function matchesAllowedOrigin(origin) {
-    if (!origin) return false;
-    for (const entry of allowedParentOrigins) {
-      if (!entry.includes("*")) {
-        if (entry === origin) return true;
-        continue;
-      }
-      const pattern = new RegExp(
-        "^" +
-          entry.replace(/[.+?^${}()|[\]\\]/g, "\\$&").replace(/\*/g, "[^.]+") +
-          "$",
-      );
-      if (pattern.test(origin)) return true;
-    }
-    return false;
-  }
-
-  // Trust decision: when the sender is same-origin-visible (event.origin is a
-  // real origin like https://www.perplexity.ai) we trust event.origin directly.
-  // When event.origin is "null" (opaque broker srcdoc), we fall back to the
-  // broker's stamped `parentOrigin` to identify the top window. The fallback
-  // is claim-only — we rely on the browser's native `targetOrigin` enforcement
-  // on the response path (see postToTrustedTop) to ensure replies can't be
-  // delivered to anyone but the actual top window of that claimed origin.
-  function getTrustedParentOrigin(event) {
-    const forwardedParentOrigin =
-      typeof event.data.parentOrigin === "string" ? event.data.parentOrigin : null;
-    const parentOrigin = event.origin === "null" ? forwardedParentOrigin : event.origin;
-    return matchesAllowedOrigin(parentOrigin) ? parentOrigin : null;
-  }
-
-  // All responses go to window.top with targetOrigin = the allowlisted origin.
-  // An attacker that iframes us inside their own null-origin broker can claim
-  // any parentOrigin they like, but the browser will drop the reply whenever
-  // the real top's origin doesn't match — so the screenshot never leaves.
-  function postToTrustedTop(message) {
-    if (!trustedTopOrigin) return;
-    try {
-      window.top.postMessage(message, trustedTopOrigin);
-    } catch (_error) {}
-  }
-
-  function inlineAll(original, clone) {
-    if (original.nodeType !== 1 || clone.nodeType !== 1) return;
-
-    try {
-      const computedStyle = getComputedStyle(original);
-      // cssText on a computed style is the serialized declaration in modern
-      // Chromium/Safari — a single read beats enumerating ~400 longhand
-      // properties. Firefox returns "" here, so we fall back on empty.
-      const serialized = computedStyle.cssText;
-      if (serialized) {
-        clone.style.cssText = serialized;
-      } else {
-        const parts = new Array(computedStyle.length);
-        for (let index = 0; index < computedStyle.length; index += 1) {
-          const property = computedStyle[index];
-          parts[index] = `${property}:${computedStyle.getPropertyValue(property)};`;
-        }
-        clone.style.cssText = parts.join("");
-      }
-    } catch (_error) {}
-
-    const originalChildren = original.children;
-    const clonedChildren = clone.children;
-    for (
-      let index = 0;
-      index < originalChildren.length && index < clonedChildren.length;
-      index += 1
-    ) {
-      inlineAll(originalChildren[index], clonedChildren[index]);
-    }
-  }
-
-  function extractFontUrl(srcValue) {
-    const matches = [
-      ...srcValue.matchAll(
-        /url\(["']?([^"')]+)["']?\)(?:\s*format\(["']?([^"')]+)["']?\))?/gi,
-      ),
-    ];
-    if (matches.length === 0) return null;
-    const woff2 = matches.find((m) => m[2] && m[2].toLowerCase().includes("woff2"));
-    if (woff2) return woff2[1];
-    const woff = matches.find((m) => m[2] && m[2].toLowerCase().includes("woff"));
-    if (woff) return woff[1];
-    return matches[0][1];
-  }
-
-  // Cache resolved font URL -> data URI across captures. Fonts on a page
-  // essentially never change, and a batch run emits multiple captures back to
-  // back — without this we'd refetch + re-base64 every time.
-  const fontDataUriCache = new Map();
-  const SRC_DECLARATION_RE = /src\s*:\s*[^;}]+/i;
-
-  async function fetchAsDataUri(url) {
-    if (fontDataUriCache.has(url)) return fontDataUriCache.get(url);
-    let dataUri = null;
-    try {
-      const response = await fetch(url, { mode: "cors", credentials: "omit" });
-      if (response.ok) {
-        const blob = await response.blob();
-        if (blob.size <= MAX_FONT_BYTES) {
-          dataUri = await new Promise((resolve) => {
-            const reader = new FileReader();
-            reader.onloadend = () =>
-              resolve(typeof reader.result === "string" ? reader.result : null);
-            reader.onerror = () => resolve(null);
-            reader.readAsDataURL(blob);
-          });
-        }
-      }
-    } catch (_error) {
-      dataUri = null;
-    }
-    fontDataUriCache.set(url, dataUri);
-    return dataUri;
-  }
-
-  function collectFontFaceRuleTexts() {
-    const rules = [];
-    for (const sheet of document.styleSheets) {
-      let cssRules;
-      try {
-        cssRules = sheet.cssRules;
-      } catch (_error) {
-        continue;
-      }
-      if (!cssRules) continue;
-      for (const rule of cssRules) {
-        const cssText = rule.cssText || "";
-        if (cssText.startsWith("@font-face")) rules.push(cssText);
-      }
-    }
-    return rules;
-  }
-
-  async function buildInlinedFontCss() {
-    const ruleTexts = collectFontFaceRuleTexts();
-    if (ruleTexts.length === 0) return null;
-
-    const resolved = ruleTexts.map((cssText) => {
-      if (!SRC_DECLARATION_RE.test(cssText)) return null;
-      const srcMatch = cssText.match(/src\s*:\s*([^;}]+)[;}]/i);
-      if (!srcMatch) return null;
-      const url = extractFontUrl(srcMatch[1]);
-      if (!url) return null;
-      try {
-        return { cssText, url: new URL(url, document.baseURI).href };
-      } catch (_error) {
-        return null;
-      }
-    });
-
-    const dataUris = await Promise.all(
-      resolved.map((entry) => (entry ? fetchAsDataUri(entry.url) : Promise.resolve(null))),
-    );
-
-    const inlined = [];
-    let totalBytes = 0;
-    for (let index = 0; index < resolved.length; index += 1) {
-      const entry = resolved[index];
-      const dataUri = dataUris[index];
-      if (!entry || !dataUri) continue;
-      const approxBytes = dataUri.length * 0.75;
-      if (totalBytes + approxBytes > MAX_TOTAL_FONT_BYTES) break;
-      totalBytes += approxBytes;
-      inlined.push(entry.cssText.replace(SRC_DECLARATION_RE, `src: url("${dataUri}")`));
-    }
-    return inlined.length > 0 ? inlined.join("\n") : null;
-  }
-
-  function stripExternal(clone) {
-    const images = clone.querySelectorAll("img");
-    for (let index = 0; index < images.length; index += 1) {
-      const src = images[index].getAttribute("src");
-      if (src && !src.startsWith("data:")) images[index].removeAttribute("src");
-    }
-
-    const elements = clone.querySelectorAll("*");
-    for (let index = 0; index < elements.length; index += 1) {
-      const style = elements[index].style.cssText;
-      if (style && style.includes("url(")) {
-        elements[index].style.cssText = style.replace(
-          /url\(["']?(?!data:)[^)"']*["']?\)/gi,
-          "none",
-        );
-      }
-    }
-  }
-
-  function emitScroll() {
-    scrollRaf = 0;
-    if (!scrollForwarding) return;
-    postToTrustedTop({
-      type: "INLINE_EDIT_SCROLL",
-      scrollX: window.scrollX,
-      scrollY: window.scrollY,
-    });
-  }
-
-  window.addEventListener(
-    "scroll",
-    function () {
-      if (!scrollForwarding || scrollRaf) return;
-      scrollRaf = requestAnimationFrame(emitScroll);
-    },
-    { passive: true, capture: true },
-  );
-
-  async function handleCaptureRequest(event) {
-    const requestId = event.data.requestId;
-    const scrollX = window.scrollX;
-    const scrollY = window.scrollY;
-    const width = window.innerWidth;
-    const height = window.innerHeight;
-
-    function postResult(dataUrl) {
-      postToTrustedTop({
-        type: "INLINE_EDIT_SCREENSHOT_RESULT",
-        requestId,
-        dataUrl,
-        scrollX,
-        scrollY,
-      });
-    }
-
-    try {
-      // Wait for any pending web fonts to resolve so both inline metrics and
-      // the @font-face inlining below see the same loaded faces.
-      if (document.fonts && document.fonts.ready) {
-        try {
-          await document.fonts.ready;
-        } catch (_error) {}
-      }
-
-      const clone = document.documentElement.cloneNode(true);
-      inlineAll(document.documentElement, clone);
-
-      const removedNodes = clone.querySelectorAll("script,link[rel=\"stylesheet\"],style");
-      for (let index = 0; index < removedNodes.length; index += 1) {
-        removedNodes[index].remove();
-      }
-
-      stripExternal(clone);
-
-      // Re-embed web fonts as data-URI @font-face rules so the SVG rasterizer
-      // can resolve them — external font URLs aren't fetched during
-      // foreignObject rendering, which would otherwise force a fallback face
-      // and change text metrics.
-      const inlinedFontCss = await buildInlinedFontCss();
-      if (inlinedFontCss) {
-        const styleEl = document.createElement("style");
-        styleEl.textContent = inlinedFontCss;
-        const head = clone.querySelector("head");
-        if (head) head.appendChild(styleEl);
-        else clone.insertBefore(styleEl, clone.firstChild);
-      }
-
-      const html = new XMLSerializer().serializeToString(clone);
-      const svg =
-        `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">` +
-        '<foreignObject width="100%" height="100%">' +
-        `<div xmlns="http://www.w3.org/1999/xhtml" style="width:${width}px;height:${height}px;overflow:hidden">` +
-        `<div style="position:relative;left:-${scrollX}px;top:-${scrollY}px">` +
-        html +
-        "</div></div></foreignObject></svg>";
-      const svgUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
-      const image = new Image();
-      image.onload = function () {
-        const canvas = document.createElement("canvas");
-        canvas.width = width;
-        canvas.height = height;
-        canvas.getContext("2d").drawImage(image, 0, 0);
-        postResult(canvas.toDataURL("image/png"));
-      };
-      image.onerror = function () {
-        postResult(null);
-      };
-      image.src = svgUrl;
-    } catch (_error) {
-      postResult(null);
-    }
-  }
-
-  window.addEventListener("message", function (event) {
-    if (!event.data) return;
-    // Only accept messages from the direct parent frame. Blocks sibling /
-    // unrelated-window postMessage senders that could otherwise reach us.
-    if (event.source !== window.parent) return;
-
-    const trustedParentOrigin = getTrustedParentOrigin(event);
-    if (!trustedParentOrigin) return;
-    trustedTopOrigin = trustedParentOrigin;
-
-    if (event.data.type === "INLINE_EDIT_SCROLL_START") {
-      scrollForwarding = true;
-      emitScroll();
-      return;
-    }
-
-    if (event.data.type === "INLINE_EDIT_SCROLL_STOP") {
-      scrollForwarding = false;
-      if (scrollRaf) cancelAnimationFrame(scrollRaf);
-      scrollRaf = 0;
-      return;
-    }
-
-    if (event.data.type !== "INLINE_EDIT_CAPTURE_REQUEST") return;
-
-    handleCaptureRequest(event);
-  });
-})();
-
-
-</script></body>
+<script src="core.js?v=20260828-vectorscope"></script>
+<script src="motion.js?v=20260827-word-wrap"></script>
+<script src="scope-view.js?v=20260828-vector-horizontal"></script>
+<script src="remote-import.js?v=20260828-browser-auth"></script>
+<script src="settings.js?v=20260828-vector-theme"></script>
+<script src="graph-engine.js?v=20260826-organic-recovery"></script>
+<script src="library.js?v=20260827-tutorial-title-motion"></script>
+<script src="app.js?v=20260828-vector-horizontal-all"></script>
+</body>
 </html>
