@@ -243,9 +243,11 @@ def _deps_ok() -> tuple[bool, str]:
     if not VENV_PY.exists():
         return False, ""
     code = (
-        "import fastapi,uvicorn,yt_dlp; "
+        "import fastapi,uvicorn,yt_dlp; from importlib.metadata import version; "
         "v=tuple(map(int,yt_dlp.version.__version__.split('.')[:3])); "
-        "assert v >= (2026,7,4); print(yt_dlp.version.__version__)"
+        "assert v >= (2026,7,4); "
+        "assert version('yt-dlp-ejs'); assert version('yt-dlp-getpot-wpc'); "
+        "print(yt_dlp.version.__version__)"
     )
     result = _run([str(VENV_PY), "-c", code])
     if result.returncode != 0:

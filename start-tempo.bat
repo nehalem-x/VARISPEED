@@ -43,7 +43,7 @@ if errorlevel 1 goto :venv_error
 if not exist "%VENV_PY%" goto :venv_error
 
 :venv_ready
-"%VENV_PY%" -c "import fastapi, uvicorn, yt_dlp; v=tuple(map(int, yt_dlp.version.__version__.split('.')[:3])); raise SystemExit(0 if v >= (2026,7,4) else 1)" >nul 2>&1
+"%VENV_PY%" -c "import fastapi, uvicorn, yt_dlp; from importlib.metadata import version; v=tuple(map(int, yt_dlp.version.__version__.split('.')[:3])); raise SystemExit(0 if v >= (2026,7,4) and version('yt-dlp-ejs') and version('yt-dlp-getpot-wpc') else 1)" >nul 2>&1
 if not errorlevel 1 goto :deps_ready
 
 echo [VARISPEED] Instalando dependencias...
