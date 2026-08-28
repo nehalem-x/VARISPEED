@@ -9,14 +9,20 @@
   'use strict';
 
   const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+  const Core = window.VarispeedCore;
 
-  function createScopeView(canvas) {
+  function createScopeView(canvas, viewOptions = {}) {
     const ctx = canvas.getContext('2d');
     const doc = canvas.ownerDocument;
     const root = doc.documentElement;
     let w = 0, h = 0, cssW = 0, cssH = 0, dpr = 1;
     let top = null, bot = null;
     let frozen = false;
+    let activeVisualizer = 'waveform';
+    let vectorLeft = null, vectorRight = null;
+    let vectorNeedsRedraw = false;
+    let vectorStyleKey = '';
+    let mediaKey = '';
 
     /* cores lidas do próprio documento — cada alvo respeita o seu tema */
     let cc = null;
@@ -27,6 +33,16 @@
       t2: css('--text-2'),
       t3: css('--text-3'),
     }));
+
+    function resetVisualState() {
+      if (top) top.fill(0);
+      if (bot) bot.fill(0);
+      frozen = false;
+      vectorLeft = null;
+      vectorRight = null;
+      vectorNeedsRedraw = false;
+      if (w && h) ctx.clearRect(0, 0, w, h);
+    }
 
     function resize(force = false) {
       const r = canvas.getBoundingClientRect();
@@ -79,13 +95,135 @@
           bot[x] = at(oldBot, fx);
         }
       }
+      vectorNeedsRedraw = !!(vectorLeft && vectorRight);
       return true;
+    }
+
+    function drawVector(left, right, opts, alpha = 1) {
+      if (!left || !right || !Core) return;
+      const N = Math.min(left.length, right.length);
+      if (N < 2) return;
+      const stride = Core.stereoVectorStride(N, w, h, opts.vectorDensity);
+      const radius = clamp(Number(opts.vectorSize) || 1.15, 0.5, 3) * clamp(Math.min(w, h) / 250, 0.7, 1.75);
+      const cx = w * 0.5;
+      const cy = h * 0.5;
+      const color = colors().text;
+
+      const position = viewOptions.compactHorizontal
+        ? (p) => ({
+          x: cx + p.y * w * 0.47,
+          y: cy + p.x * h * 0.43,
+        })
+        : (p) => {
+          const amp = Math.max(2, Math.min(w, h) * 0.455);
+          return { x: cx + p.x * amp, y: cy - p.y * amp };
+        };
+
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.fillStyle = color;
+
+      /* Halo difuso em uma única passagem; evita shadowBlur por partícula. */
+      ctx.globalAlpha = 0.12 * alpha;
+      ctx.beginPath();
+      for (let i = 0; i < N; i += stride) {
+        const p = Core.stereoVectorPoint(left[i], right[i], opts.gain);
+        const { x, y } = position(p);
+        ctx.moveTo(x + radius * 2.4, y);
+        ctx.arc(x, y, radius * 2.4, 0, Math.PI * 2);
+      }
+      ctx.fill();
+
+      ctx.globalAlpha = 0.72 * alpha;
+      ctx.beginPath();
+      for (let i = 0; i < N; i += stride) {
+        const p = Core.stereoVectorPoint(left[i], right[i], opts.gain);
+        const { x, y } = position(p);
+        ctx.moveTo(x + radius, y);
+        ctx.arc(x, y, radius, 0, Math.PI * 2);
+      }
+      ctx.fill();
+      ctx.restore();
+    }
+
+    function renderVectorscope(frame, opts) {
+      const st = frame.state;
+      const styleKey = [opts.gain, opts.vectorSize, opts.vectorDensity].join('|');
+      if (styleKey !== vectorStyleKey) {
+        vectorStyleKey = styleKey;
+        vectorNeedsRedraw = true;
+      }
+      if (st === 'busy') {
+        ctx.clearRect(0, 0, w, h);
+        const p = (((frame.ts || 0) - (frame.t0 || 0)) % 1000) / 1000;
+        const radius = Math.max(1, Math.min(w, h) * 0.035);
+        ctx.fillStyle = colors().t2;
+        ctx.beginPath();
+        ctx.arc(w * 0.5 + Math.cos(p * Math.PI * 2) * Math.min(w, h) * 0.22,
+          h * 0.5 + Math.sin(p * Math.PI * 2) * Math.min(w, h) * 0.22,
+          radius, 0, Math.PI * 2);
+        ctx.fill();
+        return;
+      }
+
+      const stereo = frame.stereo;
+      if (st === 'live' && stereo && stereo.left && stereo.right) {
+        /* Apaga apenas uma fração do quadro anterior. A persistência nasce do
+           próprio canvas, sem manter milhares de partículas em JavaScript. */
+        ctx.save();
+        ctx.globalCompositeOperation = 'destination-out';
+        ctx.fillStyle = `rgba(0,0,0,${clamp(1 - opts.vectorTrail, 0.035, 0.5)})`;
+        ctx.fillRect(0, 0, w, h);
+        ctx.restore();
+        drawVector(stereo.left, stereo.right, opts);
+        vectorLeft = stereo.left;
+        vectorRight = stereo.right;
+        vectorNeedsRedraw = false;
+        frozen = true;
+        return;
+      }
+
+      if (st === 'ready' && stereo && stereo.left && stereo.right && (!vectorLeft || !vectorRight)) {
+        vectorLeft = stereo.left;
+        vectorRight = stereo.right;
+        vectorNeedsRedraw = true;
+      }
+      if (st === 'ready' && vectorLeft && vectorRight) {
+        if (vectorNeedsRedraw) {
+          ctx.clearRect(0, 0, w, h);
+          drawVector(vectorLeft, vectorRight, opts, 0.55);
+          vectorNeedsRedraw = false;
+        }
+        return;
+      }
+
+      if (st === 'idle') {
+        ctx.clearRect(0, 0, w, h);
+        vectorLeft = null;
+        vectorRight = null;
+        vectorNeedsRedraw = false;
+        frozen = false;
+      }
     }
 
     /* frame: { state, samples, ts, t0 }
        opts:  { gain, mode, smooth }                                */
     function render(frame, opts) {
       if (!w || !h) return;
+      if (frame.mediaKey !== undefined && String(frame.mediaKey) !== mediaKey) {
+        mediaKey = String(frame.mediaKey);
+        resetVisualState();
+      }
+      const visualizer = opts.visualizer === 'vectorscope' ? 'vectorscope' : 'waveform';
+      if (visualizer !== activeVisualizer) {
+        activeVisualizer = visualizer;
+        ctx.clearRect(0, 0, w, h);
+        vectorNeedsRedraw = true;
+      }
+      if (visualizer === 'vectorscope') {
+        renderVectorscope(frame, opts);
+        return;
+      }
       const c = colors();
       const mid = Math.round(h / 2) + 0.5;
       const st = frame.state;
@@ -185,7 +323,8 @@
       canvas,
       resize,
       render,
-      invalidateColors() { cc = null; },
+      reset: resetVisualState,
+      invalidateColors() { cc = null; vectorNeedsRedraw = true; },
       get width() { return w; },
       get live() { return !!w; },
     };

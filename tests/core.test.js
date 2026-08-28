@@ -28,6 +28,20 @@ const L = require('./legacy-snapshot.js');
 const UNITS = ['pct', 'mult', 'st'];
 const FORMATS = ['mmss', 'sec', 'samples'];
 
+test('vectorscope mantém mono no eixo vertical e fase oposta no horizontal', () => {
+  assert.deepEqual(Core.stereoVectorPoint(0.5, 0.5), { x: 0, y: Math.SQRT1_2 });
+  assert.deepEqual(Core.stereoVectorPoint(0.5, -0.5), { x: Math.SQRT1_2, y: 0 });
+  assert.deepEqual(Core.stereoVectorPoint(NaN, Infinity), { x: 0, y: 0 });
+});
+
+test('orçamento do vectorscope cresce com a área e permanece limitado', () => {
+  const inline = Core.stereoVectorStride(2048, 72, 16, 1);
+  const focus = Core.stereoVectorStride(2048, 1920, 1080, 1);
+  assert.ok(inline > focus);
+  assert.equal(Core.stereoVectorStride(0, 1920, 1080, 1), 1);
+  assert.ok(Core.stereoVectorStride(100000, 100000, 100000, 2) >= Math.ceil(100000 / 1800));
+});
+
 const TIMES = [
   0, 0.001, 0.005, 0.01, 0.5, 0.999, 1, 1.005, 9.994, 9.996,
   59.99, 59.994, 59.995, 59.999, 60, 60.001, 61.5, 119.999,
