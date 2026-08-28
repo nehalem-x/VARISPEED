@@ -18,12 +18,42 @@
   if (!Core) throw new Error('VARISPEED: core.js não carregou antes de app.js');
 
   const $ = (id) => document.getElementById(id);
+  /* Controles apresentados em mais de uma área nascem sempre do componente
+     oficial. Assim marcação, classes, SVGs e atributos não são mantidos em
+     cópias manuais que podem divergir. */
+  function cloneControl(source, slotId, cloneId) {
+    if (!source) throw new Error(`VARISPEED: fonte ausente para ${cloneId}`);
+    const clone = source.cloneNode(true);
+    clone.id = cloneId;
+    $(slotId).replaceChildren(clone);
+    return clone;
+  }
+
+  const libraryPlay = cloneControl($('btnPlay'), 'libraryPlaySlot', 'libraryPlay');
+  const libraryStop = cloneControl($('btnStop'), 'libraryStopSlot', 'libraryStop');
+  const libraryLoop = cloneControl($('btnLoop'), 'libraryLoopSlot', 'libraryLoop');
+  const libraryScrubGroup = document.querySelector('.transport > .transport__scrub').cloneNode(true);
+  libraryScrubGroup.classList.add('hdr-player__scrub');
+  const libraryCurrent = libraryScrubGroup.querySelector('#tCur');
+  const libraryScrub = libraryScrubGroup.querySelector('#scrub');
+  const libraryTotal = libraryScrubGroup.querySelector('#tTot');
+  libraryCurrent.id = 'libraryCurrent';
+  libraryScrub.id = 'libraryScrub';
+  libraryScrub.setAttribute('aria-label', 'Posição da música na Biblioteca');
+  libraryTotal.id = 'libraryTotal';
+  $('libraryScrubSlot').replaceChildren(libraryScrubGroup);
+  const focusRateDown = cloneControl($('rateDown'), 'fRateDownSlot', 'fRateDown');
+  const focusRateUp = cloneControl($('rateUp'), 'fRateUpSlot', 'fRateUp');
   const el = {
     root: document.documentElement, themeColor: $('themeColor'),
     file: $('file'), btnImport: $('btnImport'),
     importMenu: $('importMenu'), importFile: $('importFile'), importLink: $('importLink'),
     importMenuWrap: document.querySelector('.import-menu-wrap'),
+    btnLibraryAdd: $('btnLibraryAdd'),
     fileName: $('fileName'), fileMeta: $('fileMeta'),
+    libraryTransport: $('libraryTransport'), libraryPlay, libraryStop,
+    libraryLoop, libraryScrub,
+    libraryCurrent, libraryTotal,
     scopeWrap: $('scopeWrap'), scope: $('scope'), rateGhost: $('rateGhost'),
     ruler: $('ruler'), wave: $('wave'), waveHost: $('waveHost'),
     canvasWrap: $('canvasWrap'), playhead: $('playhead'),
@@ -38,6 +68,7 @@
     presets: Array.from(document.querySelectorAll('.btn--preset')),
     rPitch: $('rPitch'), rFreq: $('rFreq'), rDur: $('rDur'), rDelta: $('rDelta'),
     sName: $('sName'), sDur: $('sDur'), sRate: $('sRate'), sCh: $('sCh'), sSize: $('sSize'),
+    sourceArtwork: $('sourceArtwork'), sourceArtworkImage: $('sourceArtworkImage'),
     btnExport: $('btnExport'), exportLabel: $('exportLabel'),
     statusMsg: $('statusMsg'), drop: $('drop'),
     rateUnit: document.querySelector('.rate__unit'),
@@ -47,13 +78,14 @@
     /* apresentações do osciloscópio */
     focus: $('focus'), scopeFocus: $('scopeFocus'),
     fCur: $('fCur'), fTot: $('fTot'), fScrub: $('fScrub'), fRate: $('fRate'),
-    fRateUp: $('fRateUp'), fRateDown: $('fRateDown'), fExit: $('fExit'),
+    fRateUp: focusRateUp, fRateDown: focusRateDown, fExit: $('fExit'),
     btnPop: $('btnPop'),
     /* importação por link */
     linkbar: $('linkbar'), url: $('url'),
     urlGo: $('btnUrlGo'), urlClose: $('btnUrlClose'),
     urlProg: $('urlProg'), urlStage: $('urlStage'), urlPct: $('urlPct'),
     urlTrack: $('urlTrack'), urlFill: $('urlFill'), urlMsg: $('urlMsg'),
+    urlAuthWrap: $('urlAuthWrap'), urlAuth: $('btnUrlAuth'), urlAuthHint: $('urlAuthHint'),
     urlPreview: $('urlPreview'), urlThumbWrap: $('urlThumbWrap'), urlThumb: $('urlThumb'),
     urlSource: $('urlSource'), urlTitle: $('urlTitle'), urlByline: $('urlByline'),
     urlDuration: $('urlDuration'), urlImport: $('btnUrlImport'),
@@ -72,6 +104,9 @@
   const writeLastRate = (v) => {
     try { window[['local', 'Storage'].join('')].setItem(RATE_KEY, String(v)); } catch (e) { /* sem persistência */ }
   };
+  const clearLastRate = () => {
+    try { window[['local', 'Storage'].join('')].removeItem(RATE_KEY); } catch (e) { /* sem persistência */ }
+  };
 
   const state = {
     audio: new Audio(),
@@ -87,7 +122,7 @@
     exporting: false,
     focus: false,
     fScrubbing: false,
-    meta: { name: '', size: 0, sampleRate: 0, channels: 0, duration: 0 },
+    meta: { name: '', size: 0, sampleRate: 0, channels: 0, duration: 0, thumbnail: '' },
   };
 
   state.audio.preload = 'auto';
@@ -100,6 +135,7 @@
   document.addEventListener('varispeed:shutdown', () => {
     try { state.audio.pause(); } catch (_) {}
     state.playing = false;
+    window.MediaLibrary?.setPlaybackState(false);
     try { if (scope && scope.ac && scope.ac.state !== 'closed') scope.ac.close(); } catch (_) {}
   });
 
@@ -158,7 +194,136 @@
       caret: cfg('motion.caret'),
     }, opts));
   };
+  const motionSweep = () => cfg('motion.sweep') && !window.Motion.reduced();
   const dot = (s) => { el.scopeWrap.dataset.state = s; };
+
+  /* REV 2 · uma faixa carregada no editor não é necessariamente uma faixa da
+     Biblioteca. Este rascunho conserva sua origem e seu Blob até que o usuário
+     decida salvá-la (ou a preferência de inclusão automática faça isso). */
+  let libraryDraft = null;
+  let libraryAddBusy = false;
+  let libraryViewOpen = false;
+  let libraryTransportScrubbing = false;
+
+  function syncScrubPosition(input, current, duration, locked = false) {
+    if (locked) return;
+    const progress = duration > 0 ? clamp(current / duration, 0, 1) : 0;
+    input.value = String(Math.round(progress * 1000));
+  }
+
+  function updateLibraryTransportPosition(current = state.audio.currentTime || 0) {
+    if (!el.libraryScrub || libraryTransportScrubbing) return;
+    const duration = state.meta.duration || 0;
+    const progress = duration > 0 ? clamp(current / duration, 0, 1) : 0;
+    syncScrubPosition(el.libraryScrub, current, duration);
+    el.libraryScrub.style.setProperty('--seek-progress', `${(progress * 100).toFixed(3)}%`);
+    el.libraryScrub.setAttribute('aria-valuetext', `${fmtTime(current)} de ${fmtTime(duration)}`);
+    const rate = state.rate / 100;
+    el.libraryCurrent.textContent = fmtTime(current / rate);
+    el.libraryTotal.textContent = fmtTime(duration / rate);
+  }
+
+  function syncLibraryTransport() {
+    if (!el.libraryTransport) return;
+    const visible = state.loaded && libraryViewOpen;
+    el.libraryTransport.hidden = !visible;
+    el.libraryPlay.disabled = !state.loaded;
+    el.libraryStop.disabled = !state.loaded;
+    el.libraryLoop.disabled = !state.loaded;
+    el.libraryScrub.disabled = !state.loaded;
+
+    const looping = state.audio.loop;
+    el.libraryLoop.setAttribute('aria-pressed', String(looping));
+    el.libraryLoop.setAttribute('aria-label', looping ? 'Desativar repetição' : 'Ativar repetição');
+    if (visible) updateLibraryTransportPosition();
+  }
+
+  function syncPlayControl(button, playing) {
+    button.classList.toggle('is-playing', playing);
+    button.setAttribute('aria-label', playing ? 'Pausar' : 'Reproduzir');
+    button.title = playing ? 'Pausar (Espaço)' : 'Reproduzir (Espaço)';
+  }
+
+  const syncPlayback = () => {
+    const playing = state.loaded && state.playing;
+    [el.btnPlay, el.libraryPlay].forEach((button) => syncPlayControl(button, playing));
+    window.MediaLibrary?.setPlaybackState(state.playing);
+    syncLibraryTransport();
+  };
+
+  function libraryEntryNow() {
+    if (!libraryDraft) return null;
+    return {
+      ...libraryDraft.entry,
+      size: state.meta.size,
+      duration: state.meta.duration,
+      sampleRate: state.meta.sampleRate,
+      channels: state.meta.channels,
+      rate: state.rate,
+      position: state.audio.currentTime || 0,
+    };
+  }
+
+  function libraryMatch() {
+    const entry = libraryEntryNow();
+    return entry ? window.MediaLibrary?.find(entry) : null;
+  }
+
+  function syncLibraryAdd() {
+    if (!el.btnLibraryAdd) return;
+    const stored = libraryMatch();
+    const canAdd = state.loaded && libraryDraft && !stored && !libraryViewOpen;
+    el.btnLibraryAdd.hidden = !canAdd;
+    el.btnLibraryAdd.disabled = libraryAddBusy;
+    el.btnLibraryAdd.classList.toggle('is-busy', libraryAddBusy && motionSweep());
+    if (libraryAddBusy) el.btnLibraryAdd.setAttribute('aria-busy', 'true');
+    else el.btnLibraryAdd.removeAttribute('aria-busy');
+    const label = libraryAddBusy ? 'Adicionando à Biblioteca' : 'Adicionar a música atual à Biblioteca';
+    el.btnLibraryAdd.setAttribute('aria-label', label);
+    el.btnLibraryAdd.title = label;
+  }
+
+  function setLibraryDraft(entry, blob) {
+    libraryDraft = entry && blob instanceof Blob ? { entry: { ...entry }, blob } : null;
+    const stored = libraryMatch();
+    window.MediaLibrary?.setActive(stored ? stored.id : '');
+    syncLibraryAdd();
+  }
+
+  function handleLibraryChange(currentItems = []) {
+    if (libraryDraft?.entry?.id && !currentItems.some((item) => item.id === libraryDraft.entry.id)) {
+      const { id, createdAt, lastOpenedAt, ...reAddable } = libraryDraft.entry;
+      libraryDraft.entry = reAddable;
+    }
+    syncLibraryAdd();
+  }
+
+  async function addCurrentToLibrary({ automatic = false } = {}) {
+    if (!libraryDraft || libraryAddBusy) return null;
+    const existing = libraryMatch();
+    if (existing) {
+      window.MediaLibrary?.setActive(existing.id);
+      syncLibraryAdd();
+      return existing;
+    }
+
+    libraryAddBusy = true;
+    syncLibraryAdd();
+    try {
+      const item = await window.MediaLibrary?.record(libraryEntryNow(), libraryDraft.blob);
+      if (item) {
+        libraryDraft.entry = { ...item };
+        window.MediaLibrary?.setActive(item.id);
+        if (!automatic) flash(`Adicionada à Biblioteca · ${item.title}`);
+      }
+      return item || null;
+    } finally {
+      libraryAddBusy = false;
+      syncLibraryAdd();
+    }
+  }
+
+  if (el.btnLibraryAdd) el.btnLibraryAdd.addEventListener('click', () => addCurrentToLibrary());
 
   /* ── tema ───────────────────────────────────────────── */
   let themeTimer = 0, themeFadeTimer = 0;
@@ -187,6 +352,7 @@
   }
   /* o tema é um ajuste persistido e é alterado exclusivamente em Configurações. */
   const sysLight = window.matchMedia('(prefers-color-scheme: light)');
+  const sysReduced = window.matchMedia('(prefers-reduced-motion: reduce)');
   const resolveTheme = () => {
     const t = cfg('ui.theme');
     return t === 'system' ? (sysLight.matches ? 'light' : 'dark') : t;
@@ -194,6 +360,9 @@
   setTheme(resolveTheme());
   sysLight.addEventListener('change', () => {
     if (cfg('ui.theme') === 'system') setTheme(resolveTheme(), true);
+  });
+  sysReduced.addEventListener('change', () => {
+    if (cfg('motion.level') === 'system') applyAll();
   });
 
   /* ── canvas / hidpi ─────────────────────────────────── */
@@ -313,17 +482,25 @@
      independente. Nenhuma delas duplica áudio ou análise —
      todas recebem o mesmo quadro e apenas o desenham na
      própria escala.                                        */
-  const scope = { ac: null, an: null, buf: null, t0: 0, last: 0 };
+  const scope = {
+    ac: null, an: null, buf: null,
+    splitter: null, leftAn: null, rightAn: null,
+    leftBuf: null, rightBuf: null, lastStereo: null,
+    t0: 0, last: 0,
+  };
   const views = {
-    inline: window.ScopeView.create(el.scope),
-    focus: window.ScopeView.create(el.scopeFocus),
+    inline: window.ScopeView.create(el.scope, { compactHorizontal: true }),
+    focus: window.ScopeView.create(el.scopeFocus, { compactHorizontal: true }),
   };
   const pop = { win: null, want: false };
 
   const scopeWin = () => clamp(cfg('scope.window'), 64, (scope.buf ? scope.buf.length : 2048) - 2);
   const scopeState = () => el.scopeWrap.dataset.state || 'idle';
   const scopeOpts = () => ({
+    visualizer: cfg('scope.visualizer'),
     gain: cfg('scope.gain'), mode: cfg('scope.mode'), smooth: cfg('scope.smooth'),
+    vectorTrail: cfg('scope.vectorTrail'), vectorSize: cfg('scope.vectorSize'),
+    vectorDensity: cfg('scope.vectorDensity'),
   });
 
   function scopeResize() {
@@ -339,11 +516,22 @@
       const ac = new AC();
       const src = ac.createMediaElementSource(state.audio);
       const an = ac.createAnalyser();
+      const splitter = ac.createChannelSplitter(2);
+      const leftAn = ac.createAnalyser();
+      const rightAn = ac.createAnalyser();
       an.fftSize = 2048;
+      leftAn.fftSize = 2048;
+      rightAn.fftSize = 2048;
       src.connect(an);
       an.connect(ac.destination);
+      src.connect(splitter);
+      splitter.connect(leftAn, 0);
+      splitter.connect(rightAn, 1);
       scope.ac = ac; scope.an = an;
       scope.buf = new Float32Array(an.fftSize);
+      scope.splitter = splitter; scope.leftAn = leftAn; scope.rightAn = rightAn;
+      scope.leftBuf = new Float32Array(leftAn.fftSize);
+      scope.rightBuf = new Float32Array(rightAn.fftSize);
       return true;
     } catch (e) { return false; }
   }
@@ -351,6 +539,18 @@
   /* recorte da janela visível, alinhado por cruzamento de zero */
   function analyse() {
     if (!scope.an) return null;
+    if (cfg('scope.visualizer') === 'vectorscope' && scope.leftAn && scope.rightAn) {
+      scope.leftAn.getFloatTimeDomainData(scope.leftBuf);
+      scope.rightAn.getFloatTimeDomainData(scope.rightBuf);
+      const win = scopeWin();
+      const start = Math.max(0, Math.floor((scope.leftBuf.length - win) / 2));
+      const stereo = {
+        left: scope.leftBuf.subarray(start, start + win),
+        right: scope.rightBuf.subarray(start, start + win),
+      };
+      scope.lastStereo = stereo;
+      return { samples: null, stereo };
+    }
     const buf = scope.buf;
     scope.an.getFloatTimeDomainData(buf);
     const N = buf.length;
@@ -363,15 +563,18 @@
       }
     }
     trig = clamp(trig, 0, limit);
-    return buf.subarray(trig, trig + win);
+    return { samples: buf.subarray(trig, trig + win), stereo: null };
   }
 
   /* um quadro, três destinos */
   function pumpScope(ts) {
     const st = scopeState();
     const on = cfg('scope.on');
-    const samples = (on && st === 'live') ? analyse() : null;
-    const frame = { state: st, samples, ts, t0: scope.t0 };
+    const analysed = (on && st === 'live') ? analyse() : null;
+    const samples = analysed ? analysed.samples : null;
+    const stereo = analysed ? analysed.stereo
+      : (cfg('scope.visualizer') === 'vectorscope' ? scope.lastStereo : null);
+    const frame = { state: st, samples, stereo, ts, t0: scope.t0, mediaKey: state.url || '' };
     const o = scopeOpts();
     if (on && !el.scopeWrap.hidden) views.inline.render(frame, o);
     if (state.focus) views.focus.render(frame, o);
@@ -382,8 +585,16 @@
           type: 'tempo:frame',
           state: st,
           samples: samples ? new Float32Array(samples) : null,
+          stereo: stereo ? {
+            left: new Float32Array(stereo.left),
+            right: new Float32Array(stereo.right),
+          } : null,
+          mediaKey: state.url || '',
           ts, t0: scope.t0,
           gain: o.gain, mode: o.mode, smooth: o.smooth,
+          visualizer: o.visualizer,
+          vectorTrail: o.vectorTrail, vectorSize: o.vectorSize,
+          vectorDensity: o.vectorDensity,
           theme: el.root.dataset.theme,
           title: state.meta.name || '',
         }, '*');
@@ -553,6 +764,7 @@
     el.fTot.textContent = fmtTime(out);
     el.fCur.textContent = fmtTime((state.audio.currentTime || 0) / r);
     el.presets.forEach((b) => b.classList.toggle('is-on', Math.abs(+b.dataset.rate - state.rate) < 0.001));
+    syncLibraryTransport();
   }
 
   /* contador de quadros — exposto no diagnóstico do painel */
@@ -577,9 +789,8 @@
       const cur = state.audio.currentTime || 0;
       el.posTime.textContent = fmtTime(cur / r);
       el.tCur.textContent = fmtTime(cur / r);
-      if (!state.scrubbing) {
-        el.scrub.value = String(Math.round((cur / (state.meta.duration || 1)) * 1000));
-      }
+      syncScrubPosition(el.scrub, cur, state.meta.duration, state.scrubbing);
+      if (libraryViewOpen) updateLibraryTransportPosition(cur);
       if (state.playing && state.zoom > 1) {
         const x = srcToX(cur);
         if (x > W * 0.82 || x < W * 0.12) { centerOn(cur); draw(); }
@@ -597,7 +808,7 @@
     const val = clamp(Math.round(v * 10) / 10, rateMin(), rateMax());
     const prev = state.rate;
     state.rate = val;
-    writeLastRate(val);
+    if (cfg('load.rememberRate')) writeLastRate(val);
     state.audio.preservesPitch = false;
     state.audio.mozPreservesPitch = false;
     state.audio.webkitPreservesPitch = false;
@@ -640,8 +851,14 @@
     if (e.key === 'ArrowUp') { e.preventDefault(); setRate(state.rate + rateStep(e.shiftKey)); }
     if (e.key === 'ArrowDown') { e.preventDefault(); setRate(state.rate - rateStep(e.shiftKey)); }
   });
-  el.rateUp.addEventListener('click', () => setRate(state.rate + rateStep(false), { step: true }));
-  el.rateDown.addEventListener('click', () => setRate(state.rate - rateStep(false), { step: true }));
+  function bindRateStep(button, direction) {
+    button.addEventListener('click', () => setRate(
+      state.rate + direction * rateStep(false),
+      { step: true },
+    ));
+  }
+  [[el.rateUp, 1], [el.rateDown, -1], [el.fRateUp, 1], [el.fRateDown, -1]]
+    .forEach(([button, direction]) => bindRateStep(button, direction));
 
   /* limites, marcas e presets vêm da configuração — reconstruídos ao mudar */
   const presetLabel = (v) => Core.presetLabel(v, cfg('rate.unit'));
@@ -694,9 +911,7 @@
     if (scope.ac && scope.ac.state === 'suspended') scope.ac.resume();
     state.audio.play().then(() => {
       state.playing = true;
-      el.btnPlay.classList.add('is-playing');
-      el.btnPlay.title = 'Pausar (Espaço)';
-      el.btnPlay.setAttribute('aria-label', 'Pausar');
+      syncPlayback();
       dot('live');
       flash('Reproduzindo');
     }).catch(() => status('Falha na reprodução'));
@@ -704,9 +919,7 @@
   function pause() {
     state.audio.pause();
     state.playing = false;
-    el.btnPlay.classList.remove('is-playing');
-    el.btnPlay.title = 'Reproduzir (Espaço)';
-    el.btnPlay.setAttribute('aria-label', 'Reproduzir');
+    syncPlayback();
     dot('ready');
     flash('Pausado');
     drawWave();
@@ -714,21 +927,25 @@
   }
   const toggle = () => (state.playing ? pause() : play());
 
-  el.btnPlay.addEventListener('click', toggle);
-  el.btnStop.addEventListener('click', () => {
+  [el.btnPlay, el.libraryPlay].forEach((button) => button.addEventListener('click', toggle));
+  const stop = () => {
     pause();
     state.audio.currentTime = 0;
     state.view = 0;
     draw(); movePlayhead(); renderReadouts();
     flash('Parado');
-  });
-  el.btnLoop.addEventListener('click', () => {
-    const on = el.btnLoop.getAttribute('aria-pressed') === 'true';
-    el.btnLoop.setAttribute('aria-pressed', String(!on));
-    el.btnLoop.setAttribute('aria-label', !on ? 'Desativar repetição' : 'Ativar repetição');
+  };
+  [el.btnStop, el.libraryStop].forEach((button) => button.addEventListener('click', stop));
+  const toggleLoop = () => {
+    const on = state.audio.loop;
+    [el.btnLoop, el.libraryLoop].forEach((button) => {
+      button.setAttribute('aria-pressed', String(!on));
+      button.setAttribute('aria-label', !on ? 'Desativar repetição' : 'Ativar repetição');
+    });
     state.audio.loop = !on;
     flash(!on ? 'Repetição ativa' : 'Repetição inativa');
-  });
+  };
+  [el.btnLoop, el.libraryLoop].forEach((button) => button.addEventListener('click', toggleLoop));
   state.audio.addEventListener('ended', () => { if (!state.audio.loop) pause(); });
 
   /* ── scrub ──────────────────────────────────────────── */
@@ -737,11 +954,36 @@
     if (state.zoom > 1) centerOn(state.audio.currentTime);
     draw(); movePlayhead(); renderReadouts();
   };
-  const scrubEnd = () => { state.scrubbing = false; };
-  el.scrub.addEventListener('pointerdown', () => { state.scrubbing = true; });
-  ['pointerup', 'pointercancel', 'lostpointercapture', 'change', 'blur']
-    .forEach((type) => el.scrub.addEventListener(type, scrubEnd));
-  el.scrub.addEventListener('input', () => seek((+el.scrub.value / 1000) * state.meta.duration));
+  function bindScrub(input, { onStart, onEnd, onInput }) {
+    if (onStart) input.addEventListener('pointerdown', onStart);
+    if (onEnd) {
+      ['pointerup', 'pointercancel', 'lostpointercapture', 'change', 'blur']
+        .forEach((type) => input.addEventListener(type, onEnd));
+    }
+    input.addEventListener('input', () => onInput(+input.value / 1000));
+  }
+  bindScrub(el.scrub, {
+    onStart: () => { state.scrubbing = true; },
+    onEnd: () => { state.scrubbing = false; },
+    onInput: (progress) => seek(progress * state.meta.duration),
+  });
+  bindScrub(el.libraryScrub, {
+    onStart: () => { libraryTransportScrubbing = true; },
+    onEnd: () => {
+      libraryTransportScrubbing = false;
+      updateLibraryTransportPosition();
+    },
+    onInput: (rawProgress) => {
+      const progress = clamp(rawProgress, 0, 1);
+      el.libraryScrub.style.setProperty('--seek-progress', `${(progress * 100).toFixed(3)}%`);
+      seek(progress * state.meta.duration);
+    },
+  });
+  bindScrub(el.fScrub, {
+    onStart: () => { state.fScrubbing = true; },
+    onEnd: () => { state.fScrubbing = false; },
+    onInput: (progress) => { if (state.loaded) seek(progress * state.meta.duration); },
+  });
 
   /* ── clique / arraste na waveform ─────────────────────
      Mouse continua imediato. Em touch/pen, um toque curto busca a posição;
@@ -893,7 +1135,36 @@
   let activeDecodeIntent = 0;
   const nextMediaIntent = () => ++mediaIntent;
 
-  async function load(file) {
+  function syncSourceArtwork(thumbnail = '', title = '') {
+    const src = String(thumbnail || '').trim();
+    el.sourceArtwork.hidden = !src;
+    el.sourceArtwork.classList.remove('has-image');
+
+    if (!src) {
+      el.sourceArtworkImage.alt = '';
+      el.sourceArtworkImage.dataset.src = '';
+      el.sourceArtworkImage.removeAttribute('src');
+      return;
+    }
+
+    el.sourceArtworkImage.alt = `Capa de ${title || 'música'}`;
+    if (el.sourceArtworkImage.dataset.src !== src) {
+      el.sourceArtworkImage.dataset.src = src;
+      el.sourceArtworkImage.src = src;
+    } else if (el.sourceArtworkImage.complete && el.sourceArtworkImage.naturalWidth > 0) {
+      el.sourceArtwork.classList.add('has-image');
+    }
+  }
+
+  el.sourceArtworkImage.addEventListener('load', () => {
+    el.sourceArtwork.classList.add('has-image');
+  });
+  el.sourceArtworkImage.addEventListener('error', () => {
+    el.sourceArtwork.classList.remove('has-image');
+    el.sourceArtwork.hidden = true;
+  });
+
+  async function load(file, libraryEntry = null) {
     if (!/^audio\//.test(file.type) && !/\.(wav|mp3|flac|ogg|m4a|aac|opus|webm)$/i.test(file.name)) {
       status('Formato não suportado'); return false;
     }
@@ -907,18 +1178,35 @@
          volta a poder ser importada. */
       linkUI.importedUrl = null;
       linkSyncImportButton();
+      const entry = {
+        ...(libraryEntry || {}),
+        title: libraryEntry?.title || file.name.replace(/\.[^.]+$/, ''),
+        fileName: file.name,
+        sourceType: 'local',
+        sourceLabel: 'ARQUIVO LOCAL',
+        size: state.meta.size,
+        lastModified: file.lastModified,
+        duration: state.meta.duration,
+        sampleRate: state.meta.sampleRate,
+        channels: state.meta.channels,
+        rate: state.rate,
+        position: state.audio.currentTime || 0,
+      };
+      setLibraryDraft(entry, file);
+      if (cfg('library.autoAdd')) await addCurrentToLibrary({ automatic: true });
     }
     return done;
   }
 
-  async function ingest(blob, srcName, srcSize, intent = nextMediaIntent()) {
+  async function ingest(blob, srcName, srcSize, intent = nextMediaIntent(), uiOpts = {}) {
     const file = { name: srcName, size: srcSize || blob.size };
     const hadLoaded = state.loaded;
     activeDecodeIntent = intent;
+    syncStatusPriority();
     el.loading.hidden = false;
     scope.t0 = performance.now();
     dot('busy');
-    status(`Decodificando ${file.name}`);
+    if (!uiOpts.silentBusy) status(`Decodificando ${file.name}`);
     if (!hadLoaded) el.empty.hidden = true;
 
     let ac = null;
@@ -940,9 +1228,7 @@
          antes da troca evita botão Play/estado live presos na faixa antiga. */
       state.audio.pause();
       state.playing = false;
-      el.btnPlay.classList.remove('is-playing');
-      el.btnPlay.title = 'Reproduzir (Espaço)';
-      el.btnPlay.setAttribute('aria-label', 'Reproduzir');
+      syncPlayback();
 
       if (state.url) URL.revokeObjectURL(state.url);
       state.url = nextUrl;
@@ -955,9 +1241,15 @@
         name: file.name, size: file.size,
         sampleRate: buf.sampleRate, channels: buf.numberOfChannels,
         duration: buf.duration,
+        thumbnail: String(uiOpts.thumbnail || '').trim(),
       };
       state.loaded = true;
-      if (!cfg('load.keepZoom')) { state.zoom = 1; state.view = 0; } else { clampView(); }
+      el.root.dataset.media = 'loaded';
+      if (!cfg('load.keepZoom')) state.zoom = 1;
+      /* “Manter zoom” preserva a escala, não a posição temporal da mídia
+         anterior. Toda nova faixa começa no início da própria timeline. */
+      state.view = 0;
+      clampView();
 
       setRate(cfg('load.resetRate') ? 100 : state.rate);
       state.audio.volume = +el.vol.value / 100;
@@ -973,14 +1265,17 @@
         speed: window.Motion.T.charState,
         jitter: window.Motion.T.charStateJitter,
         charDur: 130, dy: 1, blur: 0,
+        onDone: () => window.Motion.marquee(el.fileName),
       });
       el.fileMeta.textContent = `${(buf.sampleRate / 1000).toFixed(1)} kHz · ${buf.numberOfChannels === 1 ? 'mono' : 'estéreo'} · ${fmtTime(buf.duration)}`;
       el.sName.textContent = file.name;
       el.sName.title = file.name;
+      window.Motion.marquee(el.sName, { speed: 24 });
       el.sDur.textContent = fmtTime(buf.duration);
       el.sRate.textContent = `${buf.sampleRate} Hz`;
       el.sCh.textContent = String(buf.numberOfChannels);
       el.sSize.textContent = fmtBytes(file.size);
+      syncSourceArtwork(state.meta.thumbnail, file.name);
 
       resize();
       renderReadouts();
@@ -1010,6 +1305,7 @@
     } finally {
       if (activeDecodeIntent === intent) {
         activeDecodeIntent = 0;
+        syncStatusPriority();
         el.loading.hidden = true;
       }
     }
@@ -1137,8 +1433,9 @@
   el.btnExport.addEventListener('click', async () => {
     if (!state.buffer || state.exporting) return;
     state.exporting = true;
+    syncStatusPriority();
     el.btnExport.disabled = true;
-    if (cfg('motion.sweep')) {
+    if (motionSweep()) {
       el.btnExport.classList.add('is-busy');
       el.btnExport.setAttribute('aria-busy', 'true');
       el.exportLabel.classList.add('is-working');
@@ -1181,6 +1478,7 @@
       status('Falha ao renderizar a saída');
     } finally {
       state.exporting = false;
+      syncStatusPriority();
       el.btnExport.disabled = false;
       el.btnExport.classList.remove('is-busy');
       el.btnExport.removeAttribute('aria-busy');
@@ -1221,9 +1519,7 @@
 
   function syncFocus(cur, r) {
     el.fCur.textContent = fmtTime(cur / r);
-    if (!state.fScrubbing) {
-      el.fScrub.value = String(Math.round((cur / (state.meta.duration || 1)) * 1000));
-    }
+    syncScrubPosition(el.fScrub, cur, state.meta.duration, state.fScrubbing);
   }
 
   function focusOn() {
@@ -1261,13 +1557,6 @@
 
   el.scopeWrap.addEventListener('click', () => (state.focus ? focusOff() : focusOn()));
   el.fExit.addEventListener('click', focusOff);
-  el.fScrub.addEventListener('pointerdown', () => { state.fScrubbing = true; });
-  el.fScrub.addEventListener('pointerup', () => { state.fScrubbing = false; });
-  el.fScrub.addEventListener('input', () => {
-    if (state.loaded) seek((+el.fScrub.value / 1000) * state.meta.duration);
-  });
-  el.fRateUp.addEventListener('click', () => setRate(state.rate + rateStep(false), { step: true }));
-  el.fRateDown.addEventListener('click', () => setRate(state.rate - rateStep(false), { step: true }));
   let focusResizeRaf = 0;
   new ResizeObserver(() => {
     if (!state.focus || focusResizeRaf) return;
@@ -1283,7 +1572,8 @@
      controles e sem segunda fonte de áudio. A janela pede um
      quadro por ciclo de vídeo e recebe o quadro corrente.   */
   const popState = (on) => {
-    const label = on ? 'Fechar a janela do osciloscópio' : 'Osciloscópio em janela separada';
+    const name = cfg('scope.visualizer') === 'vectorscope' ? 'Vectorscope de partículas' : 'Osciloscópio';
+    const label = on ? `Fechar a janela do ${name.toLowerCase()}` : `${name} em janela separada`;
     el.btnPop.setAttribute('aria-pressed', String(on));
     el.btnPop.title = label;
     el.btnPop.setAttribute('aria-label', label);
@@ -1299,7 +1589,7 @@
     let w = null;
     try { w = window.open('scope.html', 'tempo-scope', 'width=760,height=280'); } catch (e) { w = null; }
     if (!w) {
-      status('A janela do osciloscópio foi bloqueada pelo navegador — libere janelas para este endereço');
+      status('A janela do visualizador foi bloqueada pelo navegador — libere janelas para este endereço');
       return;
     }
     pop.win = w;
@@ -1319,6 +1609,10 @@
     if (pop.win && pop.win.closed) { pop.win = null; pop.want = false; popState(false); }
   }, 1500);
   window.addEventListener('beforeunload', () => {
+    window.MediaLibrary?.updateActive({
+      rate: state.rate,
+      position: state.audio.currentTime || 0,
+    });
     if (pop.win && !pop.win.closed) {
       try { pop.win.postMessage({ type: 'tempo:bye' }, '*'); } catch (e) { /* noop */ }
     }
@@ -1341,7 +1635,44 @@
     pastePending: false,
     op: 0,
     phase: 'idle',
+    authSyncToken: 0,
+    authErrorCode: '',
   };
+
+  async function syncRemoteAuth({ notify = false } = {}) {
+    const token = ++linkUI.authSyncToken;
+    const browser = cfg('remote.authBrowser');
+    try {
+      const result = await window.RemoteImport.configureAuth(browser);
+      if (token !== linkUI.authSyncToken) return false;
+      if (notify) {
+        const names = { chrome: 'Chrome', edge: 'Edge', firefox: 'Firefox', brave: 'Brave', vivaldi: 'Vivaldi' };
+        const message = result.mode === 'auto'
+          ? (result.auto?.active
+            ? `Sessão validada do ${result.auto.active.browser_label}`
+            : 'Detecção automática ativada · a sessão será validada no próximo link restrito')
+          : result.mode === 'dedicated'
+          ? (result.dedicated?.connected
+            ? 'Sessão dedicada do YouTube ativada'
+            : 'Sessão dedicada selecionada · conecte a conta nas Configurações')
+          : (result.mode === 'browser'
+            ? `Sessão do ${names[browser] || browser} ativada somente para conteúdo restrito`
+            : 'Autenticação por navegador desativada');
+        window.Settings.feedback?.(message, { hold: 4200 });
+      }
+      return true;
+    } catch (error) {
+      if (token !== linkUI.authSyncToken) return false;
+      window.Settings.feedback?.(netFail(error), { kind: 'err', hold: 5200 });
+      return false;
+    }
+  }
+
+  function syncStatusPriority() {
+    const on = state.exporting || activeDecodeIntent !== 0 || linkUI.busy;
+    if (on) el.root.dataset.statusPriority = '1';
+    else delete el.root.dataset.statusPriority;
+  }
 
   function linkSyncImportButton() {
     const currentUrl = linkUI.meta && linkUI.meta.requestUrl ? linkUI.meta.requestUrl : '';
@@ -1361,11 +1692,15 @@
   function linkSetBusy(on, phase = 'idle') {
     linkUI.busy = Boolean(on);
     linkUI.phase = on ? phase : 'idle';
+    if (on) el.linkbar.dataset.phase = phase;
+    else el.linkbar.removeAttribute('data-phase');
     el.linkbar.setAttribute('aria-busy', String(linkUI.busy));
     el.url.disabled = linkUI.busy;
     el.urlGo.disabled = linkUI.busy;
     el.urlGo.setAttribute('aria-busy', String(linkUI.busy && phase === 'analyze'));
+    if (el.urlAuth) el.urlAuth.disabled = linkUI.busy;
     linkSyncImportButton();
+    syncStatusPriority();
   }
 
   function linkBegin(phase) {
@@ -1373,6 +1708,9 @@
     const ctrl = new AbortController();
     linkUI.ctrl = ctrl;
     linkSetBusy(true, phase);
+    clearTimeout(tempTimer);
+    window.Motion.cancel(el.statusMsg);
+    el.statusMsg.textContent = '';
     return { op, ctrl };
   }
 
@@ -1402,6 +1740,39 @@
     if (kind) el.urlMsg.dataset.kind = kind; else el.urlMsg.removeAttribute('data-kind');
   }
 
+  const AUTH_ACTION_CODES = new Set([
+    'authentication_required',
+    'youtube_playback_verification_required',
+    'youtube_po_token_unavailable',
+    'youtube_po_token_failed',
+    'browser_locked',
+    'browser_not_found',
+    'youtube_session_not_found',
+  ]);
+
+  function linkAuthAction(error = null) {
+    if (!el.urlAuthWrap || !el.urlAuth) return;
+    const visible = Boolean(error && AUTH_ACTION_CODES.has(error.code));
+    linkUI.authErrorCode = visible ? error.code : '';
+    el.urlAuthWrap.hidden = !visible;
+    if (!visible) return;
+    const poTokenError = error.code === 'youtube_playback_verification_required'
+      || error.code === 'youtube_po_token_unavailable'
+      || error.code === 'youtube_po_token_failed';
+    el.urlAuth.textContent = error.code === 'browser_locked'
+      ? 'Abrir sessão dedicada'
+      : poTokenError
+      ? 'Tentar novamente'
+      : 'Usar cookies do navegador';
+    if (el.urlAuthHint) {
+      el.urlAuthHint.textContent = error.code === 'browser_locked'
+        ? 'O navegador principal está em uso. Feche-o por completo ou use a Sessão dedicada nas Configurações.'
+        : poTokenError
+        ? 'O VARISPEED tentará novamente com o provedor local de PO Token; uma janela auxiliar minimizada pode aparecer por alguns segundos.'
+        : 'O VARISPEED verificará os perfis instalados e só usará uma sessão que consiga abrir este link.';
+    }
+  }
+
   function linkStage(label, mode) {
     el.urlProg.hidden = false;
     el.urlProg.removeAttribute('data-out');
@@ -1420,7 +1791,6 @@
     } else {
       el.urlStage.textContent = label;
     }
-    status(label);
   }
 
   function linkPct(p) {
@@ -1458,6 +1828,7 @@
 
   function linkResetPreview() {
     linkUI.meta = null;
+    linkAuthAction();
     el.urlPreview.hidden = true;
     linkSyncImportButton();
     el.urlTitle.textContent = '—';
@@ -1569,7 +1940,50 @@
     } catch (err) {
       if (!linkIsCurrent(op)) return false;
       linkFail(netFail(err), false, op);
+      linkAuthAction(err);
       return false;
+    }
+  }
+
+  async function useBrowserSession() {
+    if (linkUI.busy) return;
+    if (linkUI.authErrorCode === 'browser_locked') {
+      window.Settings.set('remote.authBrowser', 'dedicated');
+      window.Settings.open();
+      return;
+    }
+    if (linkUI.authErrorCode === 'youtube_playback_verification_required'
+      || linkUI.authErrorCode === 'youtube_po_token_unavailable'
+      || linkUI.authErrorCode === 'youtube_po_token_failed') {
+      linkAuthAction();
+      await analyzeUrl(el.url.value);
+      return;
+    }
+    const parsed = window.RemoteImport.parse(el.url.value);
+    if (!parsed.ok) {
+      linkFail(parsed.error, false);
+      return;
+    }
+    linkAuthAction();
+    linkMsg('');
+    const { op, ctrl } = linkBegin('auth');
+    if (!state.loaded) dot('busy');
+    linkStage('Procurando sessão válida', 'indet');
+    try {
+      const result = await window.RemoteImport.useBrowserCookies(parsed.url, ctrl.signal);
+      if (!linkIsCurrent(op)) return;
+      window.Settings.set('remote.authBrowser', 'auto');
+      const meta = { ...(result.media || {}), requestUrl: parsed.url };
+      linkShowPreview(meta);
+      linkMsg(`Sessão validada · ${result.source?.browser_label || 'navegador'}`);
+      linkClear();
+      linkIdle(op);
+      status('Sessão do YouTube validada — confirme para importar');
+      if (!state.loaded) dot('idle');
+    } catch (error) {
+      if (!linkIsCurrent(op)) return;
+      linkFail(netFail(error), false, op);
+      linkAuthAction(error);
     }
   }
 
@@ -1600,6 +2014,7 @@
     try {
       const result = await window.RemoteImport.audio(requestUrl, {
         signal: ctrl.signal,
+        authenticated: Boolean(linkUI.meta?.auth_required),
         onStart: ({ total }) => { if (linkIsCurrent(op)) linkStage('Baixando áudio', total > 0 ? 'det' : 'indet'); },
         onProgress: ({ received, total }) => {
           if (linkIsCurrent(op) && total > 0) linkPct((received / total) * 100);
@@ -1614,7 +2029,10 @@
       const meta = linkUI.meta || {};
       const fallback = `${meta.title || 'audio'}.${(result.filename.split('.').pop() || 'audio')}`;
       const name = result.filename || fallback;
-      const done = await ingest(result.blob, name, result.size, mediaToken);
+      const done = await ingest(result.blob, name, result.size, mediaToken, {
+        silentBusy: true,
+        thumbnail: meta.thumbnail || '',
+      });
       if (!linkIsCurrent(op)) return;
       if (done === null) {
         linkIdle(op);
@@ -1623,6 +2041,25 @@
       }
       if (!done) throw new Error('O áudio foi obtido, mas o navegador não conseguiu decodificar esse formato.');
 
+      const entry = {
+        title: meta.title || name.replace(/\.[^.]+$/, ''),
+        fileName: name,
+        sourceType: 'remote',
+        sourceUrl: requestUrl,
+        sourceLabel: meta.extractor || meta.extractorKey || 'LINK',
+        sourceAuthRequired: Boolean(meta.auth_required),
+        byline: meta.uploader || meta.channel || meta.artist || '',
+        thumbnail: meta.thumbnail || '',
+        size: state.meta.size,
+        duration: state.meta.duration,
+        sampleRate: state.meta.sampleRate,
+        channels: state.meta.channels,
+        rate: state.rate,
+        position: 0,
+      };
+      setLibraryDraft(entry, result.blob);
+      if (cfg('library.autoAdd')) await addCurrentToLibrary({ automatic: true });
+
       linkUI.importedUrl = requestUrl;
       linkIdle(op);
       linkMsg('');
@@ -1630,6 +2067,67 @@
     } catch (err) {
       if (!linkIsCurrent(op)) return;
       linkFail(netFail(err), true, op);
+      linkAuthAction(err);
+    }
+  }
+
+  /* Reabertura a partir da biblioteca. Arquivos mantidos na sessão reutilizam
+     o Blob; links são obtidos novamente pelo mesmo cliente remoto. A física e
+     a apresentação do grafo não participam do motor de áudio. */
+  async function openLibraryMedia({ item, blob }) {
+    if (!item) return false;
+    if (linkUI.busy) linkAbort();
+
+    const intent = nextMediaIntent();
+    let mediaBlob = blob;
+    let fileName = blob && blob.name ? blob.name : item.fileName;
+    let fileSize = blob ? blob.size : item.size;
+
+    try {
+      if (!mediaBlob && item.sourceType === 'remote' && item.sourceUrl) {
+        status(`Baixando · ${item.title}`);
+        const result = await window.RemoteImport.audio(item.sourceUrl, {
+          authenticated: Boolean(item.sourceAuthRequired),
+        });
+        if (intent !== mediaIntent) return false;
+        mediaBlob = result.blob;
+        fileName = result.filename || fileName;
+        fileSize = result.size;
+      }
+
+      if (!mediaBlob) {
+        status('Localize o arquivo para abrir esta música');
+        return false;
+      }
+
+      const done = await ingest(mediaBlob, fileName || item.title, fileSize, intent, {
+        thumbnail: item.thumbnail || '',
+      });
+      if (done !== true) return false;
+
+      setRate(Number.isFinite(item.rate) ? item.rate : state.rate);
+      const restorePosition = clamp(Number(item.position) || 0, 0, state.meta.duration);
+      if (restorePosition > 0) requestAnimationFrame(() => seek(restorePosition));
+
+      const storedItem = await window.MediaLibrary.record({
+        ...item,
+        fileName: fileName || item.fileName,
+        size: state.meta.size,
+        duration: state.meta.duration,
+        sampleRate: state.meta.sampleRate,
+        channels: state.meta.channels,
+        rate: state.rate,
+        position: restorePosition,
+      }, mediaBlob);
+      setLibraryDraft(storedItem || item, mediaBlob);
+
+      linkUI.importedUrl = item.sourceType === 'remote' ? item.sourceUrl : null;
+      linkSyncImportButton();
+      status(`Aberto da biblioteca · ${item.title}`);
+      return true;
+    } catch (err) {
+      status(err && err.message ? err.message : 'Não foi possível abrir esta música');
+      return false;
     }
   }
 
@@ -1674,11 +2172,13 @@
   });
   el.importFile.addEventListener('click', () => {
     importMenuOpen(false);
+    window.MediaLibrary?.hide();
     if (!el.linkbar.hidden) linkOpen(false);
     el.file.click();
   });
   el.importLink.addEventListener('click', () => {
     importMenuOpen(false);
+    window.MediaLibrary?.hide();
     linkOpen(true);
   });
   el.importMenu.addEventListener('keydown', (e) => {
@@ -1702,6 +2202,7 @@
   el.urlThumb.addEventListener('error', () => el.urlThumbWrap.classList.remove('has-image'));
   el.urlClose.addEventListener('click', () => linkOpen(false));
   el.urlGo.addEventListener('click', () => analyzeUrl(el.url.value));
+  el.urlAuth?.addEventListener('click', useBrowserSession);
   el.urlImport.addEventListener('click', importRemoteAudio);
   el.url.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') {
@@ -1737,21 +2238,33 @@
   });
 
   /* ── atalhos ────────────────────────────────────────── */
+  document.addEventListener('click', (e) => {
+    /* Clique de ponteiro não deve deixar um botão armado para o próximo Espaço.
+       `detail === 0` identifica ativações de teclado/programáticas: nelas o foco
+       permanece, preservando a navegação acessível e o comportamento nativo. */
+    if (e.detail === 0 || !(e.target instanceof Element)) return;
+    const control = e.target.closest('button, [role="button"]');
+    if (control && document.activeElement === control) control.blur();
+  });
+
   document.addEventListener('keydown', (e) => {
-    const tag = document.activeElement && document.activeElement.tagName;
-    const typing = tag === 'INPUT' && document.activeElement.type === 'text';
+    const target = e.target instanceof Element ? e.target : document.activeElement;
     if (e.key === 'Escape') {
       if (!el.importMenu.hidden) { importMenuOpen(false); el.btnImport.focus(); return; }
       if (window.Settings.isOpen()) { window.Settings.close(); return; }
       if (state.focus) { focusOff(); return; }
       if (!el.linkbar.hidden) { linkOpen(false); return; }
     }
-    if (typing) return;
-    const sk = () => Math.max(0.1, cfg('tl.seek')) * (state.rate / 100);
+    if (e.defaultPrevented) return;
+    const interactive = target?.closest?.(
+      'input, textarea, select, button, a[href], [contenteditable="true"], [role="button"], [role="slider"]'
+    );
+    if (interactive) return;
+    const sk = (seconds = cfg('tl.seek')) => Math.max(0.1, seconds) * (state.rate / 100);
     switch (e.key) {
-      case ' ': e.preventDefault(); if (state.loaded) toggle(); break;
-      case 'ArrowLeft': if (state.loaded) { e.preventDefault(); seek(state.audio.currentTime - (e.shiftKey ? sk() / 5 : sk())); } break;
-      case 'ArrowRight': if (state.loaded) { e.preventDefault(); seek(state.audio.currentTime + (e.shiftKey ? sk() / 5 : sk())); } break;
+      case ' ': e.preventDefault(); if (!e.repeat && state.loaded) toggle(); break;
+      case 'ArrowLeft': if (state.loaded) { e.preventDefault(); seek(state.audio.currentTime - sk(e.shiftKey ? 1 : undefined)); } break;
+      case 'ArrowRight': if (state.loaded) { e.preventDefault(); seek(state.audio.currentTime + sk(e.shiftKey ? 1 : undefined)); } break;
       case '[': setRate(state.rate - rateStep(e.shiftKey), { step: true }); break;
       case ']': setRate(state.rate + rateStep(e.shiftKey), { step: true }); break;
       case '0': setRate(100, { step: true }); break;
@@ -1770,7 +2283,12 @@
       scale: cfg('motion.scale'),
       intensity: cfg('motion.intensity') / 100,
     });
+    el.root.dataset.motion = window.Motion.reduced() ? 'reduced' : 'full';
     el.scopeWrap.hidden = !cfg('scope.on');
+    const scopeName = cfg('scope.visualizer') === 'vectorscope' ? 'vectorscope de partículas' : 'osciloscópio';
+    el.scopeWrap.title = `Ampliar ${scopeName}`;
+    el.scopeWrap.setAttribute('aria-label', `Ampliar ${scopeName}`);
+    popState(!!(pop.win && !pop.win.closed));
     if (!cfg('scope.on') && state.focus) focusOff();
     el.fScrub.disabled = !state.loaded;
     applyRateBounds();
@@ -1817,18 +2335,55 @@
 
   /* ── init ───────────────────────────────────────────── */
   el.waveHost.classList.add('is-empty');
+  el.root.dataset.media = 'empty';
   const remembered = readLastRate();
   if (Number.isFinite(remembered) && cfg('load.rememberRate')) state.rate = remembered;
   applyAll();
   window.Settings.mount({
-    diagnostics: () => ({
-      ctxRate: scope.ac ? `${(scope.ac.sampleRate / 1000).toFixed(1)} kHz` : '—',
-      latency: scope.ac && scope.ac.baseLatency ? `${(scope.ac.baseLatency * 1000).toFixed(1)} ms` : '—',
-      fftSize: scope.an ? String(scope.an.fftSize) : '—',
-      fps: perf.fps ? `${perf.fps}/s` : '—',
-      motion: window.Motion.reduced() ? 'reduzido' : cfg('motion.level') === 'discreet' ? 'discreto' : 'completo',
-    }),
+    diagnostics: () => {
+      const graphPerf = window.MediaLibrary?.performance;
+      return {
+        ctxRate: scope.ac ? `${(scope.ac.sampleRate / 1000).toFixed(1)} kHz` : '—',
+        latency: scope.ac && scope.ac.baseLatency ? `${(scope.ac.baseLatency * 1000).toFixed(1)} ms` : '—',
+        fftSize: scope.an ? String(scope.an.fftSize) : '—',
+        fps: perf.fps ? `${perf.fps}/s` : '—',
+        graphFps: graphPerf?.fps ? `${graphPerf.fps}/s` : '—',
+        graphPhysics: graphPerf ? `${graphPerf.physicsMs.toFixed(2)} ms` : '—',
+        graphRender: graphPerf ? `${graphPerf.renderMs.toFixed(2)} ms` : '—',
+        motion: window.Motion.reduced() ? 'reduzido' : cfg('motion.level') === 'discreet' ? 'discreto' : 'completo',
+      };
+    },
   });
-  window.Settings.on(applyAll);
+  syncRemoteAuth();
+  window.MediaLibrary?.mount({
+    captureState: () => ({
+      rate: state.rate,
+      position: state.audio.currentTime || 0,
+    }),
+    onViewChange: (open) => {
+      libraryViewOpen = open;
+      if (open) {
+        if (!el.linkbar.hidden) linkOpen(false);
+        importMenuOpen(false);
+        window.Settings.close();
+        el.root.dataset.view = 'library';
+      } else {
+        delete el.root.dataset.view;
+      }
+      syncLibraryAdd();
+      syncLibraryTransport();
+    },
+    onChange: handleLibraryChange,
+    onOpen: openLibraryMedia,
+  });
+  window.Settings.on((keys = []) => {
+    if (keys.includes('load.rememberRate')) {
+      if (cfg('load.rememberRate')) writeLastRate(state.rate);
+      else clearLastRate();
+    }
+    if (keys.includes('remote.authBrowser')) syncRemoteAuth({ notify: true });
+    applyAll();
+    syncLibraryAdd();
+  });
   status('Pronto — importe um arquivo de áudio');
 })();
