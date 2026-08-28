@@ -264,6 +264,31 @@
   const xToSrc = (x, view, viewDur, W) => view + (x / W) * viewDur;
   const clampView = (view, duration, viewDur) => clamp(view, 0, Math.max(0, (duration || 0) - viewDur));
 
+  /* ── vectorscope estéreo ───────────────────────────────
+     Rotação ortonormal de L/R para Side/Mid. Mono permanece
+     vertical; diferenças de fase abrem a figura no eixo X. */
+  function stereoVectorPoint(left, right, gain = 1) {
+    const l = Number.isFinite(left) ? clamp(left, -1, 1) : 0;
+    const r = Number.isFinite(right) ? clamp(right, -1, 1) : 0;
+    const g = Number.isFinite(gain) ? Math.max(0, gain) : 1;
+    const k = Math.SQRT1_2 * g;
+    return {
+      x: clamp((l - r) * k, -1, 1),
+      y: clamp((l + r) * k, -1, 1),
+    };
+  }
+
+  /* Orçamento visual proporcional à área, limitado para que
+     Focus Mode e popout não elevem o custo sem necessidade. */
+  function stereoVectorStride(length, width, height, density = 1) {
+    const n = Math.max(0, Math.floor(Number(length) || 0));
+    if (!n) return 1;
+    const area = Math.max(1, (Number(width) || 1) * (Number(height) || 1));
+    const d = clamp(Number(density) || 1, 0.25, 2);
+    const budget = clamp(Math.round(Math.sqrt(area) * 2 * d), 48, 1800);
+    return Math.max(1, Math.ceil(n / budget));
+  }
+
   return {
     MINUS, TIMES, DASH,
     clamp,
@@ -276,5 +301,6 @@
     dprClamp, sizeChanged, dprChanged, backingSize, canvasScale, snapToDevice,
     pointerToLogical,
     viewDuration, srcToX, xToSrc, clampView,
+    stereoVectorPoint, stereoVectorStride,
   };
 });

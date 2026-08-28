@@ -9,11 +9,14 @@
 
   const canvas = document.getElementById('scopeWin');
   const note = document.getElementById('winNote');
-  const view = window.ScopeView.create(canvas);
+  const view = window.ScopeView.create(canvas, { compactHorizontal: true });
 
   const host = window.opener;
-  let frame = { state: 'idle', samples: null, ts: 0, t0: 0 };
-  let opts = { gain: 1, mode: 'columns', smooth: 0.5 };
+  let frame = { state: 'idle', samples: null, stereo: null, ts: 0, t0: 0, mediaKey: '' };
+  let opts = {
+    visualizer: 'waveform', gain: 1, mode: 'columns', smooth: 0.5,
+    vectorTrail: 0.86, vectorSize: 1.15, vectorDensity: 1,
+  };
   let lastMsg = 0;
 
   const post = (msg) => {
@@ -25,8 +28,12 @@
     if (!d || typeof d !== 'object') return;
     if (d.type === 'tempo:frame') {
       lastMsg = performance.now();
-      frame = { state: d.state, samples: d.samples, ts: d.ts, t0: d.t0 };
-      opts = { gain: d.gain, mode: d.mode, smooth: d.smooth };
+      frame = { state: d.state, samples: d.samples, stereo: d.stereo, ts: d.ts, t0: d.t0, mediaKey: d.mediaKey };
+      opts = {
+        visualizer: d.visualizer, gain: d.gain, mode: d.mode, smooth: d.smooth,
+        vectorTrail: d.vectorTrail, vectorSize: d.vectorSize,
+        vectorDensity: d.vectorDensity,
+      };
       if (d.theme && document.documentElement.dataset.theme !== d.theme) {
         document.documentElement.dataset.theme = d.theme;
         view.invalidateColors();
@@ -36,7 +43,7 @@
     } else if (d.type === 'tempo:bye') {
       note.textContent = 'A sessão do VARISPEED foi encerrada.';
       note.hidden = false;
-      frame = { state: 'idle', samples: null, ts: 0, t0: 0 };
+      frame = { state: 'idle', samples: null, stereo: null, ts: 0, t0: 0, mediaKey: '' };
     }
   });
 
@@ -88,7 +95,7 @@
      janela — mantém baixa latência sem inundar o canal */
   function loop(ts) {
     post({ type: 'tempo:need' });
-    view.render({ state: frame.state, samples: frame.samples, ts, t0: frame.t0 }, opts);
+    view.render({ state: frame.state, samples: frame.samples, stereo: frame.stereo, ts, t0: frame.t0, mediaKey: frame.mediaKey }, opts);
     if (host && host.closed) {
       note.textContent = 'A sessão do VARISPEED foi encerrada.';
       note.hidden = false;
@@ -101,7 +108,7 @@
   requestAnimationFrame(loop);
 
   if (!host) {
-    note.textContent = 'Abra esta janela pelo botão de osciloscópio na sessão do VARISPEED.';
+    note.textContent = 'Abra esta janela pelo botão de visualização de áudio na sessão do VARISPEED.';
     note.hidden = false;
   } else {
     post({ type: 'tempo:hello' });
