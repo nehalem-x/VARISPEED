@@ -8,7 +8,7 @@ if [ ! -x "$PY" ]; then
   python3 -m venv .venv
 fi
 
-if ! "$PY" -c 'import fastapi,uvicorn,yt_dlp; v=tuple(map(int,yt_dlp.version.__version__.split(".")[:3])); assert v >= (2026,7,4)' >/dev/null 2>&1; then
+if ! "$PY" -c 'import fastapi,uvicorn,yt_dlp; from importlib.metadata import version; v=tuple(map(int,yt_dlp.version.__version__.split(".")[:3])); assert v >= (2026,7,4); assert version("yt-dlp-ejs"); assert version("yt-dlp-getpot-wpc")' >/dev/null 2>&1; then
   echo "[VARISPEED] Instalando dependencias..."
   "$PY" -m pip install -r server/requirements.txt
 fi

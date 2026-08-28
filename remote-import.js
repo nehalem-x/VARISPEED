@@ -23,13 +23,18 @@
 
   async function apiError(res) {
     let msg = `O backend respondeu ${res.status}.`;
+    let errCode = '';
     try {
       const data = await res.json();
       if (data && typeof data.detail === 'string') msg = data.detail;
-      else if (data && data.detail && typeof data.detail.message === 'string') msg = data.detail.message;
+      else if (data && data.detail && typeof data.detail.message === 'string') {
+        msg = data.detail.message;
+        if (typeof data.detail.code === 'string') errCode = data.detail.code;
+      }
     } catch (e) { /* resposta não JSON */ }
     const err = new Error(msg);
     err.status = res.status;
+    if (errCode) err.code = errCode;
     throw err;
   }
 
@@ -39,6 +44,45 @@
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ url }),
       signal,
+    });
+    if (!res.ok) await apiError(res);
+    return res.json();
+  }
+
+  async function configureAuth(browser) {
+    const res = await fetch('/api/auth/browser', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ browser: String(browser || 'off') }),
+    });
+    if (!res.ok) await apiError(res);
+    return res.json();
+  }
+
+  async function authStatus() {
+    const res = await fetch('/api/auth/status', { cache: 'no-store' });
+    if (!res.ok) await apiError(res);
+    return res.json();
+  }
+
+  async function useBrowserCookies(url, signal) {
+    const res = await fetch('/api/auth/browser/auto', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url }),
+      cache: 'no-store',
+      signal,
+    });
+    if (!res.ok) await apiError(res);
+    return res.json();
+  }
+
+  async function dedicatedAuthAction(action) {
+    const allowed = new Set(['start', 'finish', 'disconnect', 'cancel']);
+    if (!allowed.has(action)) throw new Error('Ação de autenticação inválida.');
+    const res = await fetch(`/api/auth/dedicated/${action}`, {
+      method: 'POST',
+      cache: 'no-store',
     });
     if (!res.ok) await apiError(res);
     return res.json();
@@ -58,7 +102,7 @@
     const res = await fetch('/api/media/audio', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url }),
+      body: JSON.stringify({ url, authenticated: Boolean(opts.authenticated) }),
       signal: opts.signal,
     });
     if (!res.ok) await apiError(res);
@@ -90,5 +134,11 @@
     return { blob, filename, type, size: blob.size };
   }
 
-  window.RemoteImport = { parse, info, audio };
+  window.RemoteImport = {
+    parse, info, audio, configureAuth, authStatus, useBrowserCookies,
+    startDedicatedAuth: () => dedicatedAuthAction('start'),
+    finishDedicatedAuth: () => dedicatedAuthAction('finish'),
+    cancelDedicatedAuth: () => dedicatedAuthAction('cancel'),
+    disconnectDedicatedAuth: () => dedicatedAuthAction('disconnect'),
+  };
 })();
