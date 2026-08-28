@@ -160,16 +160,20 @@ O final de `Configurações` agora possui um bloco de créditos, montado por `se
 Conteúdo atual e intencional:
 
 ```text
-VARISPEED 1.0
-CRIAÇÃO E DESENVOLVIMENTO — Gaspar
-WEB AUDIO / OSCILOSCÓPIO
+CRIADOR DO VARISPEED
+Gaspar
+Design e desenvolvimento
+WEB AUDIO · VISUALIZAÇÃO DE ÁUDIO · [LOGO YT_DLP]
 ```
+
+O logo isolado é renderizado na própria linha tecnológica como link externo (`target="_blank"` com `rel="noopener noreferrer"`). Não há URL textual abaixo do crédito.
 
 Assets:
 
 ```text
 assets/creator-light.png
 assets/creator-dark.png
+assets/yt-dlp-logo.png
 ```
 
 ## Invariantes do retrato
@@ -276,7 +280,7 @@ Não adicionar dezenas de breakpoints específicos por dispositivo. Prefira os b
 
 A REV 2 foi executada sobre a estrutura responsiva anterior. Mudanças vigentes:
 
-- `.hdr__filemeta` agora possui largura máxima + ellipsis e é ocultado em `<=900px`, dando prioridade ao nome da mídia;
+- `.hdr__filemeta` permanece no DOM apenas como destino interno de atualização, mas fica sempre oculto; sample rate, canais e duração são exibidos somente nos painéis de informação, dando prioridade total ao nome da mídia no header;
 - duração da prévia remota recebeu coluna de `72px` para suportar horas sem colidir com o CTA;
 - duração desconhecida usa `—` visualmente e `title="Duração desconhecida"`;
 - `urlTitle`, `urlByline` e `urlSource` recebem `title` com o conteúdo completo;
@@ -587,6 +591,18 @@ Não remover esse watcher confiando somente em `window.resize`: mover uma janela
 
 A janela popout possui watcher próprio de DPR porque vive em outro `Window`/monitor potencialmente diferente.
 
+### Vectorscope de partículas
+
+- `scope.visualizer='vectorscope'` é o modo inicial; `waveform` preserva o osciloscópio anterior;
+- a fonte de áudio continua única. `ChannelSplitterNode` alimenta analisadores L/R apenas para leitura visual;
+- `Core.stereoVectorPoint()` faz a rotação ortonormal L/R → Side/Mid: mono fica vertical e diferenças de fase abrem o eixo horizontal;
+- `ScopeView` usa `lighter` para as partículas e `destination-out` para persistência, sem manter uma simulação de milhares de objetos;
+- `Core.stereoVectorStride()` limita adaptativamente os pontos por quadro conforme a área do canvas;
+- o último par de buffers permanece congelado ao pausar e é redesenhado após resize;
+- `scope.vectorTrail`, `scope.vectorSize` e `scope.vectorDensity` são controles visuais; nenhum altera o áudio. A cor não possui configuração paralela: reutiliza `--text` do tema.
+- header, Focus Mode e popout usam `compactHorizontal`: a projeção é girada para que o eixo principal ocupe a largura em todas as apresentações. O osciloscópio clássico não passa por essa transformação.
+- a miniatura desktop do header mede até `136 × 28 CSS px`; notebook e mobile reduzem por breakpoint. Ela é `flex:none`, possui `max-width` e `overflow:hidden`, enquanto `.hdr__filename` mantém `min-width:0`, impedindo overflow mesmo com títulos longos.
+
 ### Configurações e texto
 
 - `settings.js` não arredonda mais `visualViewport.height/offsetTop`; escreve até 3 casas em `--cfg-vvh`/`--cfg-vvtop`;
@@ -643,18 +659,45 @@ Presets antigos podem conter essas chaves. `settings.js` ignora campos que não 
 
 ### Organização visível atual
 
-1. **Animações** — mantém internamente o id/chaves `motion.*` para compatibilidade, mas o título `Motion` não é mais exibido.
-2. **Osciloscópio** — parâmetros reais do analisador/visualizador.
-3. **Exportação** — inclui agora `Avisar ao sair durante exportação` (chave legada `load.confirmExit`).
-4. **Velocidade** — inclui agora `Lembrar última velocidade` (chave legada `load.rememberRate`).
-5. **Timeline**.
-6. **Interface**.
-7. **Ao importar** — ficou restrito a comportamento de entrada: autoplay, reset de rate e preservação de zoom.
-8. **Atalhos**.
-9. **Diagnóstico** — rótulo `Animações efetivas`, mas o id de diagnóstico continua `motion`.
-10. Créditos do criador no rodapé.
+1. **Interface**.
+2. **Velocidade** — inclui `Lembrar última velocidade` (chave legada `load.rememberRate`).
+3. **Exportação** — inclui `Avisar ao sair durante exportação` (chave legada `load.confirmExit`).
+4. **Timeline**.
+5. **Visualização de áudio** — vectorscope de partículas e osciloscópio, usando o mesmo analisador/reprodutor.
+6. **Animações** — mantém internamente o id/chaves `motion.*` para compatibilidade, mas o título `Motion` não é mais exibido.
+7. **Ao importar** — restrito a comportamento de entrada: autoplay, reset de rate e preservação de zoom.
+8. **Avançado** — disclosure nativo, fechado por padrão, contendo:
+   - **Sistema**;
+   - **Atalhos**;
+   - **Diagnóstico** — rótulo `Animações efetivas`, mas o id de diagnóstico continua `motion`.
+9. Créditos do criador no rodapé, fora do disclosure avançado.
+
+A ordem é controlada por `GROUP_ORDER` em `settings.js`; `ADVANCED_GROUPS` define os grupos recolhidos. Alterar a apresentação não deve renomear chaves persistidas nem mudar `tempo.cfg.v1`.
+
+### Edição assistida e feedback local
+
+- `#cfgStatus` é o canal de feedback dentro do drawer; ações iniciadas em Configurações não devem depender apenas da status bar global, que fica encoberta no mobile;
+- as 44 preferências possuem o mesmo botão `.cfg__help-toggle`; textos comuns ficam em `FIELD_HELP` e um campo pode sobrescrevê-los declarativamente com `help`;
+- `#cfgUndo` restaura o snapshot anterior por alguns segundos depois de `Restaurar`;
+- `rate.presets` possui editor de chips, mas continua persistido/exportado como string CSV compatível;
+- `export.name` possui botões de token que inserem no cursor sem alterar a sintaxe do template;
+- campos técnicos podem declarar `help` e `bounds` no mesmo schema declarativo;
+- o rodapé informa que a persistência é automática e agrupa `Carregar`/`Salvar` como ações de preset;
+- `Desligar VARISPEED` permanece dentro de Sistema, isolado por `.cfg__system-danger`.
 
 Rótulos de animação foram ajustados ao estado atual: `motion.status` aparece como **Animação padrão de status** e `Microtick da velocidade` como **Microanimação numérica**. A antiga opção `motion.exportName` foi removida do schema porque a animação de exportação passou a ser o padrão global, não uma exceção.
+
+### Auditoria funcional de agosto de 2026
+
+- todo campo presente em `GROUPS` deve manter ao menos um consumidor real fora da construção do painel;
+- `load.rememberRate=false` não pode escrever `tempo.lastRate` e deve apagar uma memória anterior;
+- `load.keepZoom` preserva `state.zoom`, mas uma nova faixa sempre começa em `state.view = 0`;
+- `tl.seek` vale para as setas sem modificador; `Shift + seta` desloca exatamente 1 segundo;
+- `scope.smooth` só se aplica a `columns`; o slider usa direção visual invertida porque o valor mostrado é `1 - smooth`;
+- o estado efetivo de movimento fica em `html[data-motion]`, permitindo que `motion.level=off` e `prefers-reduced-motion` governem CSS e JavaScript conjuntamente;
+- `motion.sweep` é a chave única da varredura usada por exportação, abertura e inclusão na Biblioteca;
+- Testar Osciloscópio/Animações e campos subordinados precisam ficar indisponíveis quando a função principal correspondente está desligada;
+- o diagnóstico de preferências deve dizer `localStorage` ou `memória temporária`; mídia da Biblioteca continua sendo responsabilidade separada do IndexedDB.
 
 ### Mascote / favicon
 
@@ -686,12 +729,75 @@ Regras:
 
 Outras áreas podem emitir `varispeed:status` para pedir feedback na status bar sem conhecer sua implementação. `settings.js` usa esse evento ao copiar o endereço LAN e ao iniciar o desligamento.
 
+## 2.10 Estabilidade da Biblioteca e do grafo
+
+### Tutorial da primeira entrada
+
+- `#libraryTutorial` é um modal em quatro etapas, sobreposto à Biblioteca inteira; sua rede SVG é exclusivamente ilustrativa e não passa por `GraphEngine`, `items`, `categories`, IndexedDB ou `graphData()`;
+- `.library-tutorial__camera` reenquadra progressivamente a ilustração, enquanto os grupos `core`, `music`, `categories` e `growth` acumulam a topologia. Rótulos SVG, pulsos e a trilha segmentada são apresentação; não substituir por nós reais nem conectar essa cena à física;
+- `library.alwaysShowGuide` pertence ao schema central de `settings.js`. Quando ativo, `tutorialWasSeen()` ignora tanto a marca persistida quanto a dispensa da sessão e o guia reaparece em toda entrada na Biblioteca; desligado, permanece sendo uma experiência única;
+- a conclusão é separada dos dados em `varispeed.library.tutorial.v1`; avançar até o fim, `Pular tutorial` ou `Escape` marca como visto. Um fechamento externo da Biblioteca chama `closeTutorial({ remember: false })`;
+- texto e estado ficam em `TUTORIAL_STEPS`; não duplicar a narrativa no HTML. O HTML contém apenas o conteúdo inicial para acessibilidade e primeiro paint;
+- `Motion.reduced()` alimenta `data-reduced`, complementando `prefers-reduced-motion`; nenhuma animação estrutural roda nesses modos;
+- enquanto o tutorial está aberto, `Tab` fica contido nos seus botões e `ArrowLeft`/`ArrowRight` navegam entre etapas;
+
+A física de `graph-engine.js` continua usando os parâmetros da engine de origem. A estabilização atual pertence à camada de interação e deve ser preservada:
+
+- o SVG raiz, que não é reconstruído por `setData()`, mantém a captura do ponteiro durante pan e arraste de nós;
+- se `library.js` atualizar nós ou ligações durante um gesto, `setData()` adia a troca até o encerramento da interação;
+- `lostpointercapture`, `pointercancel`, desfoque da janela e ocultação da página liberam nós fixados e limpam o estado do gesto;
+- operações enfileiradas de foco, fit e resize são canceladas ao ocultar ou reabrir a Biblioteca, e nunca assumem prioridade sobre um arraste ativo;
+- a engine é pausada fora da Biblioteca e retomada ao entrar, evitando simulação invisível e callbacks antigos;
+- o `ResizeObserver` interno nunca deve substituir `W/H` válidos por zero quando o host estiver oculto. Na reabertura, `library.js` chama `resize()` antes de retomar a simulação e reconstruir os dados;
+- posições antigas só são reaproveitadas quando `x/y` são finitos; nós sem viewport aguardam uma medição visível, e a câmera possui uma última barreira contra `NaN`;
+- títulos longos não devem voltar a ser truncados: `Motion.marquee()` cuida do cabeçalho, detalhe da Biblioteca e `#sName` em Fonte por overflow real; `GraphEngine` usa `nodeLabelMaxWidth` + clip SVG para o texto móvel do nó;
+- o marquee não participa da geometria da física. O título animado permanece clicável, nomes curtos não recebem animação e `reduceMotion` desativa o movimento;
+- o handler global de teclado de `app.js` ignora controles interativos. Em especial, Espaço deve continuar digitável em `#librarySearch` e não pode reproduzir áudio ao acionar um nó ou botão.
+- `#libraryTransport` é apenas uma segunda interface para o áudio já carregado: aparece somente na Biblioteca, compartilha play/pause, stop, loop, posição e duração com o editor e nunca cria nem reinicia uma fonte de áudio. Play, Stop, Loop e o grupo de scrub são clonados diretamente dos controles oficiais para os respectivos `.ui-slot`; não manter cópias manuais de marcação ou SVGs.
+- `bindScrub()` é o binder único dos scrubs do editor, Biblioteca e modo foco; `syncScrubPosition()` é a rotina única de progresso. Os passos de velocidade do modo foco são clones de `#rateDown` e `#rateUp` e usam `bindRateStep()`.
+- o detalhe da Biblioteca usa `item.thumbnail` diretamente, sem novo cache, e `byline` aparece como Crédito. O painel não exibe mensagem redundante de disponibilidade. Em `<=520px` ou altura `<=680px`, a capa é ocultada para priorizar os controles.
+- `Fonte` reutiliza o mesmo padrão visual `.library__detail-artwork` e o mesmo `thumbnail` mantido em `state.meta`; não criar download ou cache paralelo. Sem URL ou em erro de imagem, `#sourceArtwork` fica oculto e não reserva espaço.
+- o atalho global de `Espaço` distingue foco originado por ponteiro de foco por `Tab`: após clique em um botão, Play/Pause prevalece e o clique nativo por Space é cancelado; na navegação por teclado, o botão focado mantém sua ativação acessível. Não aplicar essa exceção a inputs, selects, sliders, menus abertos ou Configurações.
+
+### Contrato de desempenho do GraphEngine
+
+- a colisão possui uma grade espacial cujo tamanho deriva do maior raio físico mais o espaçamento original de `44 px`; apenas células vizinhas geram candidatos e `_collisionCandidateIndices()` restaura a ordem crescente `i/j` antes de aplicar a fórmula original;
+- a grade é somente um filtro de candidatos: não autoriza mudar constantes, impulso, posição, velocidade ou estado físico e possui teste explícito contra falsos negativos, duplicação e reordenação;
+- não alterar equações, constantes de força, `restingAlpha`, `floatForce`, `floatSpeed`, colisão ou decay como forma de otimização;
+- `_dataSignature` permite que `setData()` ignore reconstruções idênticas, mas o fluxo vigente de `resetLayout()` e reaquecimento permanece preservado;
+- `_initializeNodePositions()` usa a topologia já indexada: `root` fica no centro, cada categoria nasce na distância física de sua ligação e músicas são distribuídas ao redor do `root/category` ao qual estão diretamente ligadas. Grupos com mais de `initialRingCapacity` usam anéis adicionais via `nodeRingGap`; nenhuma posição é fixada;
+- `library.js` persiste categorias pessoais em `varispeed.library.categories.v1`; IDs usam o prefixo `category:custom:` e músicas guardam um único `categoryId` organizacional em seu registro legado, sem alterar o formato do IndexedDB;
+- toda categoria (`Favoritas` ou pessoal) possui uma ligação estrutural de mesma distância com `Biblioteca`; músicas usam uma mola de pertencimento com a categoria principal. Se uma música categorizada também for favorita, uma ligação `kind: affinity` preserva somente a relação visual: `layout: false` a exclui do spawn e `physics: false` a exclui tanto das molas quanto do grau físico do nó;
+- `_graphDragRecovery` é estritamente transitório e nasce em `_releaseDraggedNode()` somente para categorias. Ele reduz o pico de `alpha` e mistura gradualmente a reação das músicas no hub entre `24%` e `100%`; não injeta velocidade mínima, não impõe limite rígido e não zera o componente radial. O estado desaparece após estabilidade ou timeout e nunca é persistido;
+- o perfil inspirado no Obsidian é adaptado à escala desta engine: músicas usam `198/0,44` para distância/força, categorias usam `520/0,52`, cargas são `420/250/175` para root/categoria/música e a coesão central continua específica por papel (`0,20`, `0,028–0,030`, `0,010–0,011`);
+- categorias pessoais podem ser excluídas no painel lateral. Antes da remoção há confirmação com a quantidade afetada; as músicas são reatribuídas para `Biblioteca` (`categoryId: ''`) e nunca são apagadas;
+- criação e renomeação reutilizam `#libraryCategoryDialog`; associação usa `#libraryCategorySelect` no painel já existente. `Biblioteca` e `Favoritas` são fixas e não podem ser renomeadas;
+- `_graphPhysics` guarda somente valores invariáveis recalculados em `_reindex()`; qualquer mudança estrutural passa novamente por esse cache;
+- a colisão usa rejeição por eixo antes de `Math.hyp()`: somente pares geometricamente impossíveis de se sobrepor são ignorados; candidatos preservam fórmula, constantes e ordem originais;
+- wheel/trackpad acumula `deltaY` e o próprio ciclo da câmera consome a entrada uma vez por `requestAnimationFrame`; não recriar um segundo loop de roda concorrente nem medir host e painéis para cada evento bruto;
+- `zoomBy()` só consulta `getVisibleViewport()` quando não recebe âncora explícita; o zoom sob o ponteiro não precisa medir insets;
+- a Biblioteca usa `minFitZoom: 0.68`: enquadramento automático não torna rótulos ilegíveis conforme o grafo cresce, mas o limite manual `minZoom` continua menor para permitir uma visão geral sob demanda;
+- seleção de nó espera dois frames para o painel ocupar seu espaço, usa o viewport útil, aplica zoom mínimo de `1.35` e passa `followDuration: Infinity` enquanto a seleção existir; `closeDetails()` remove o painel antes de enfileirar `fitGraph()`, que encerra o follow e restaura a visão geral sem salto. Roda, pan e saída da Biblioteca também cancelam o acompanhamento;
+- `hostOrigin` é atualizado no `resize()` visível e reutilizado pela roda; `getBoundingClientRect()` no frame de wheel é apenas fallback anterior à primeira medição;
+- `applyCamera()` escreve `style.transform` em `.graph-engine-world`, com `transform-box:view-box`, `transform-origin:0 0` e promoção ao compositor; manter uma única escrita de câmera por frame e preservar o cache `_graphCamera`;
+- `wheelResponse` aplica parte do novo alvo imediatamente no frame consolidado; `_startSmoothCamera()` inicia com timestamp real para que o primeiro frame seguinte não seja vazio;
+- `applyCamera()` conserva a última serialização em `world._graphCamera` e não repete `style.transform` quando a transformação é idêntica;
+- `_renderPositions()` arredonda apenas a serialização SVG a centésimos de pixel, sem arredondar `node.x/y/vx/vy`;
+- `_labelWidthCache` evita repetir `getComputedTextLength()` para o mesmo título/largura;
+- existe um único `ResizeObserver`, pertencente à engine; consumidores usam `onResize`;
+- `MediaLibrary.performance` expõe uma cópia do diagnóstico, nunca o objeto interno;
+- os contratos acima possuem testes em `tests/graph-engine.test.js`.
+- ícones com o mesmo significado devem apontar para um único `<symbol>` da sprite semântica (`#ui-icon-close`, por exemplo). Não reutilizar um símbolo em ações de significado diferente.
+
+Não volte a capturar o ponteiro no `<g>` do nó: esses elementos são descartáveis quando os dados do grafo mudam.
+
 # 3. Estrutura atual
 
 ```text
 .
 ├── index.html
 ├── styles.css
+├── core.js
 ├── app.js
 ├── settings.js
 ├── motion.js
@@ -699,6 +805,8 @@ Outras áreas podem emitir `varispeed:status` para pedir feedback na status bar 
 ├── scope-win.js
 ├── scope.html
 ├── remote-import.js
+├── graph-engine.js
+├── library.js
 ├── assets/
 │   ├── cat-brand-light.png
 │   ├── cat-brand-dark.png
@@ -718,6 +826,9 @@ Outras áreas podem emitir `varispeed:status` para pedir feedback na status bar 
 ├── server/
 │   ├── __init__.py
 │   ├── main.py
+│   ├── browser_auth.py
+│   ├── dedicated_auth.py
+│   ├── youtube_pot.py
 │   └── requirements.txt
 ├── README.md
 ├── HANDOFF.md
@@ -775,6 +886,92 @@ Não remover essa proteção sem uma decisão explícita de UX; ela evita clicar
 Camada de bootstrap Windows sem dependências externas. Não misturar esse launcher com o motor de áudio nem mover lógica de yt-dlp para ele; sua responsabilidade é preparar runtime/backend, expor progresso real e redirecionar para a aplicação.
 
 `startup.js` pode exibir estados e uma barra por marcos concluídos, mas não deve inventar percentual de `pip`/download quando essa informação não existir.
+
+## `core.js`
+
+Lógica pura, sem DOM, sem `window`, sem estado. Concentra o que antes
+vivia solto dentro do IIFE de `app.js`:
+
+- formatação: `fmtTime`, `fmtClock`, `fmtBytes`, `niceStep`;
+- velocidade: `rateText`, `rateSuffix`, `rateUnitLabel`, `parseRate`,
+  `presetLabel`, `parsePresets`, `rateMarks`, `markOffset`;
+- nome de arquivo: `stripExt`, `scrub`, `sanitizeStem`, `outNameTokens`,
+  `outName`, `outSampleRate`;
+- geometria: `dprClamp`, `sizeChanged`, `dprChanged`, `backingSize`,
+  `canvasScale`, `snapToDevice`, `pointerToLogical`;
+- janela visível: `viewDuration`, `srcToX`, `xToSrc`, `clampView`.
+
+Regras:
+
+1. **Sem dependência nova e sem módulo ESM.** Usa o mesmo padrão global
+   de `motion.js`/`settings.js` (`globalThis.VarispeedCore`) mais um
+   `module.exports` opcional para os testes. `index.html` continua
+   abrindo por `file://`.
+2. **Toda dependência entra por parâmetro.** `cfg()`, `state` e `W` ficam
+   em `app.js`; `core.js` nunca os lê.
+3. **`app.js` só delega.** As funções correspondentes em `app.js` são
+   invólucros de uma linha que injetam configuração e estado. Não
+   reimplementar a regra nos dois lugares.
+4. **`core.js` precisa vir antes de `app.js`** em `index.html`, e estar
+   em `PUBLIC_FILES` (`server/main.py`) — sem isso o backend devolve 404
+   e `app.js` aborta com erro explícito em vez de falhar em silêncio.
+5. **Comportamentos herdados foram preservados de propósito**, com
+   comentário no código e teste correspondente. Não "corrigir" sem
+   decisão explícita:
+   - `parsePresets` trata vírgula como separador de lista, então `1,5`
+     são dois valores (`1` e `5`), não um e meio;
+   - `presetLabel` em multiplicador remove apenas um zero final
+     (`1.00`→`1.0`, `1.25`→`1.25`);
+   - `sanitizeStem` aplica o saneamento duas vezes; é o segundo passe que
+     transforma nomes como `"..."` em `audio`;
+   - `fmtBytes` devolve travessão para tamanho ausente.
+
+Única divergência deliberada em relação ao código anterior: `fmtClock`
+agora filtra `Infinity` (antes produzia `"Infinity:NaN:NaN"`). Nenhum
+valor finito mudou de resultado.
+
+## `tests/`
+
+Não embarca no app e não entra em `PUBLIC_FILES`. Sem framework externo:
+`node:test` no JavaScript e `unittest` no Python.
+
+```bash
+node --test tests/                      # 34 testes de core.js
+python3 -m unittest discover -s tests -t .   # 14 testes de _validate_url
+```
+
+- `tests/legacy-snapshot.js` — cópia **literal** das implementações que
+  viviam em `app.js`, com `cfg()`/`state`/`W` injetados por um objeto
+  `CTX`. Serve só de referência de equivalência. Ao mudar `core.js` de
+  propósito, a divergência aparece aqui primeiro; aí se atualiza o
+  snapshot e se registra a decisão, em vez de descobrir a mudança em
+  produção.
+- `tests/core.test.js` — dois blocos. Os testes de **equivalência**
+  comparam `core.js` contra o snapshot sobre uma malha de entradas
+  (três unidades, três formatos de tempo, DPR de 0.5 a 3 com larguras CSS
+  fracionárias, mais de mil combinações de nome/template/velocidade). Os
+  testes de **contrato** afirmam as regras do produto e continuam
+  valendo quando o snapshot for descartado: ida e volta da velocidade
+  entre texto e número, `100%` exatamente neutro nas três unidades, sinal
+  U+2212 em semitons, `xToSrc`/`srcToX` inversos, janela nunca além do
+  fim da mídia, erro do backing store ≤ meio device pixel, nome exportado
+  sempre válido no Windows (sem caractere ilegal, sem ponto/espaço final,
+  sem nome de dispositivo reservado, sem partir caractere multibyte no
+  corte de 176 code points), e `NaN`/`Infinity`/negativo nunca vazando
+  para a interface.
+- `tests/test_validate_url.py` — cobre a barreira SSRF do backend:
+  esquemas recusados, nomes locais, IP literal privado (incluindo
+  `169.254.169.254` e CGNAT), domínio público que resolve para endereço
+  privado, múltiplos registros DNS com um privado no meio, falha de
+  resolução e porta default por esquema. `socket.getaddrinfo` é
+  substituído em todos os casos — os testes não tocam a rede. Dois
+  testes registram limitações conhecidas em vez de esconder:
+  a janela de DNS rebinding (a função devolve o nome, não o IP
+  aprovado, e o yt-dlp resolve de novo) e porta fora de 0–65535, que
+  hoje sobe como erro não tratado em vez de `400`.
+
+Os testes de Python precisam do `.venv` do projeto (usam `fastapi` para
+`HTTPException`); `yt_dlp` é dispensado com um módulo vazio.
 
 ## `index.html`
 
@@ -1290,6 +1487,96 @@ Não enviar cookies ao frontend.
 
 Não salvar credenciais em `settings.js`/localStorage.
 
+Fluxo preferencial integrado:
+
+- `remote.authBrowser` guarda somente `off|auto|dedicated|chrome|edge|firefox|brave|vivaldi`;
+- `app.js` sincroniza a escolha com `POST /api/auth/browser`;
+- configuração/status de autenticação aceitam somente clientes loopback e o
+  POST também valida a origem local;
+- `_extract_info_sync()` tenta primeiro sem a sessão e repete com
+  `cookiesfrombrowser` apenas diante de erro explícito de autenticação;
+- `auth_required` acompanha o preview para o download seguinte, sem transportar
+  cookies ou qualquer segredo;
+- dispositivos acessando pela LAN nunca recebem `_AUTH_BROWSER` em opções do
+  yt-dlp;
+- a seleção persiste no frontend, mas a autorização ativa do backend existe
+  apenas em memória e é refeita a cada inicialização.
+
+O modo `auto` vive em `server/browser_auth.py` e é acionado por
+`POST /api/auth/browser/auto` ou no retry de um link restrito:
+
+- descobre perfis Chromium/Firefox que realmente possuem banco de cookies;
+- testa cada perfil no próprio link e só ativa um candidato que conclua a extração;
+- mantém o caminho do perfil somente em memória no backend;
+- nunca exporta cookies nem devolve caminhos/valores ao frontend;
+- diferencia `browser_locked`, `browser_not_found`, `youtube_session_not_found`
+  `youtube_playback_verification_required`, `youtube_po_token_unavailable` e
+  `youtube_po_token_failed`;
+- se Edge/Chrome estiver aberto, não tenta contornar o lock do Windows: orienta
+  usar a sessão dedicada, que é o fallback seguro.
+
+O modo `dedicated` é a opção recomendada e vive em `server/dedicated_auth.py`:
+
+- abre somente o Edge instalado, usando um `--user-data-dir` temporário;
+- a porta DevTools é aleatória e aceita conexão apenas em `127.0.0.1`;
+- o backend coleta cookies pela instância isolada em execução, evitando ler o
+  banco bloqueado do navegador principal;
+- `_safe_cookie_text()` descarta qualquer domínio que não seja `youtube.com` e
+  rejeita quebras de linha/tabulações antes de gerar Netscape;
+- após a confirmação, a janela fecha e o diretório `login-*` é removido;
+- somente `youtube.cookies.txt` permanece em
+  `%LOCALAPPDATA%/VARISPEED/youtube-auth`, nunca no repositório/localStorage;
+- o yt-dlp recebe uma cópia em memória, não permissão para regravar o arquivo;
+- `status()` carrega o arquivo com `YoutubeDLCookieJar`; tamanho/existência não
+  são mais aceitos como prova de conexão;
+- `session-state.json` guarda apenas o estado não sensível
+  `unverified|verified|playback_verification_required|invalid`;
+- `_auth_mode_for_url()` impede usar a sessão dedicada fora de YouTube/youtu.be;
+- `disconnect` remove esse arquivo; `cancel` fecha apenas uma tentativa pendente;
+- os endpoints `start|finish|cancel|disconnect` exigem loopback e origem local;
+- respostas expõem apenas `available|connected|login_open|validation`, nunca caminho,
+  nome ou valor de cookie.
+
+`ExtractionLogger` retém somente dois booleanos do log do yt-dlp: conta
+reconhecida e exigência de confirmação de idade. Não persistir nem devolver o
+log completo, pois logs verbose podem incluir contexto sensível. Uma sessão
+reconhecida pode continuar incapaz de abrir um vídeo se a conta não tiver idade
+confirmada; esse caso não deve ser reclassificado como “cookie inválido”.
+
+## 11.1 PO Token e desafios EJS
+
+`server/youtube_pot.py` centraliza a compatibilidade para vídeos autenticados
+que exigem verificação adicional de reprodução:
+
+- descobre Chrome/Edge/Brave/Vivaldi e aceita override por
+  `VARISPEED_CHROMIUM_PATH`;
+- descobre Node.js 22+ e aceita override por `VARISPEED_NODE_PATH`;
+- verifica a distribuição `yt-dlp-getpot-wpc` sem importar nem expor caminhos
+  ao frontend;
+- injeta `youtube:player_client=mweb`, o caminho privado de
+  `youtubepot-wpc:browser_path` e `js_runtimes.node` somente quando há uma fonte
+  autenticada;
+- links públicos continuam no cliente padrão e não iniciam o navegador auxiliar;
+- o plugin WPC cria um perfil Chromium próprio, minimizado e sem os cookies da
+  conta; a sessão permanece exclusivamente no cookie jar do yt-dlp;
+- `/api/health` devolve `youtube_po` e `/api/auth/status` devolve `po_token`,
+  ambos apenas com disponibilidade, versões e rótulos públicos;
+- falha estrutural vira `youtube_po_token_unavailable`; falha de geração com a
+  pilha pronta vira `youtube_po_token_failed`, nunca “idade não verificada”.
+
+O launcher e os scripts de inicialização validam `yt-dlp-ejs` e
+`yt-dlp-getpot-wpc`, portanto uma `.venv` antiga recebe as novas dependências no
+próximo início. Não remover `yt-dlp[default]`: é essa variante que acompanha os
+scripts EJS compatíveis com a versão instalada do yt-dlp.
+
+Existe um utilitário opcional e independente em
+`tools/youtube-cookie-exporter/`: extensão Chromium Manifest V3 com
+`permissions: [cookies]`, acesso de host opcional restrito a
+`https://*.youtube.com/*` e `incognito: split`. Ela não possui background,
+content script, rede, telemetria ou storage; o usuário precisa carregá-la
+manualmente e clicar para autorizar/exportar. O backend continua recebendo
+somente o caminho informado por `VARISPEED_COOKIES_FILE`.
+
 ---
 
 # 12. Limite opcional de duração
@@ -1530,6 +1817,7 @@ Runtime local:
 ```text
 Python 3.11+ recomendado
 FFmpeg recomendado
+Node.js 22+ para YouTube com PO Token
 ```
 
 `server/requirements.txt`:
@@ -1537,10 +1825,12 @@ FFmpeg recomendado
 ```text
 fastapi
 uvicorn[standard]
-yt-dlp
+yt-dlp[default]
+yt-dlp-getpot-wpc
 ```
 
-Não existe dependência JavaScript instalada.
+Não existe pacote npm no projeto. O Node é somente o runtime local usado pelos
+scripts EJS distribuídos pelo pacote Python `yt-dlp-ejs`.
 
 Não adicionar npm apenas para uma função pequena sem justificar a mudança arquitetural.
 
