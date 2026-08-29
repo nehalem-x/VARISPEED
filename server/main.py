@@ -30,10 +30,12 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 from starlette.background import BackgroundTask
+from starlette.responses import Response
 
 from server.browser_auth import BrowserAuthError, BrowserSessionResolver
 from server.dedicated_auth import DedicatedAuthError, DedicatedYouTubeSession
-from server.youtube_pot import authenticated_youtube_options, status as youtube_pot_status
+from server.youtube_pot import authenticated_youtube_options
+from server.youtube_pot import status as youtube_pot_status
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -111,6 +113,7 @@ def _shutdown_process(delay: float = 0.45) -> None:
 PUBLIC_FILES = {
     "index.html",
     "styles.css",
+    "theme-boot.js",
     "core.js",
     "motion.js",
     "scope-view.js",
@@ -130,12 +133,48 @@ PUBLIC_FILES = {
     "assets/yt-dlp-logo.png",
 }
 
+SECURITY_HEADERS = {
+    "Content-Security-Policy": (
+        "default-src 'self'; base-uri 'none'; object-src 'none'; frame-ancestors 'none'; "
+        "script-src 'self' blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+        "font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; "
+        "media-src 'self' blob:; worker-src 'self' blob:; "
+        "connect-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com"
+    ),
+    "Permissions-Policy": "camera=(), microphone=(), geolocation=(), payment=()",
+    "Referrer-Policy": "no-referrer",
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+}
+
+
+def _apply_response_headers(path: str, response: Response) -> Response:
+    """Aplica a política HTTP do app sem sobrescrever decisões da rota.
+
+    A interface local é pequena e muda junto com o código, então assets são
+    sempre revalidados. Respostas da API podem conter metadados de mídia ou
+    estado de autenticação e nunca devem ficar no cache do navegador.
+    """
+
+    for name, value in SECURITY_HEADERS.items():
+        if name not in response.headers:
+            response.headers[name] = value
+    if "Cache-Control" not in response.headers:
+        response.headers["Cache-Control"] = "no-store" if path.startswith("/api/") else "no-cache"
+    return response
+
 app = FastAPI(
     title="VARISPEED local backend",
     version="1.0.0",
     docs_url=None,
     redoc_url=None,
 )
+
+
+@app.middleware("http")
+async def response_policy(request: Request, call_next) -> Response:
+    response = await call_next(request)
+    return _apply_response_headers(request.url.path, response)
 
 
 class MediaRequest(BaseModel):
