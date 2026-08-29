@@ -155,7 +155,7 @@ A estrutura atual usa `.hdr__mascot`. Ela não é referenciada por `app.js` para
 
 # 2.7 Créditos do criador nas Configurações
 
-O final de `Configurações` agora possui um bloco de créditos, montado por `settings.js`, com a fotografia à esquerda e o texto centralizado verticalmente à direita.
+O final de `Configurações` possui um bloco de créditos montado por `settings.js`. Com os retratos pessoais disponíveis localmente, a fotografia fica à esquerda e o texto centralizado verticalmente à direita; em clones públicos sem esses arquivos, o bloco passa automaticamente para uma coluna somente de texto.
 
 Conteúdo atual e intencional:
 
@@ -176,6 +176,13 @@ assets/creator-dark.png
 assets/yt-dlp-logo.png
 ```
 
+`creator-light.png` e `creator-dark.png` são pessoais, ficam no `.gitignore` e
+não pertencem ao pacote público. `buildCredits()` começa com as imagens ocultas,
+observa `load/error` e só reserva a coluna visual quando pelo menos uma variante
+carrega. Se ambas faltarem, aplica `.is-text-only`; se apenas uma existir, ela
+serve aos dois temas. Nunca reintroduzir ícone quebrado ou espaço fantasma num
+clone limpo.
+
 ## Invariantes do retrato
 
 - as duas imagens precisam manter **o mesmo canvas, crop, escala e posição**;
@@ -189,7 +196,7 @@ assets/yt-dlp-logo.png
 
 ### Asset Light aprovado
 
-`assets/creator-light.png` foi substituído pelo **retrato aprovado explicitamente pelo criador** nesta etapa. O arquivo original enviado é quadrado e foi somente redimensionado para `640 × 640 px` para corresponder ao canvas do asset Dark. Não houve regeneração, recorte adicional, estilização nem filtro CSS.
+O `assets/creator-light.png` local é o **retrato aprovado explicitamente pelo criador**. O arquivo original enviado é quadrado e foi somente redimensionado para `640 × 640 px` para corresponder ao canvas do asset Dark. Não houve regeneração, recorte adicional, estilização nem filtro CSS.
 
 Não substituir o Light por uma imagem reimaginada/gerada sem pedido explícito. O objetivo é manter a aparência do retrato aprovado. A estabilidade entre temas continua sendo responsabilidade do mesmo container CSS e da alternância exclusiva por `opacity`; não aplicar `transform`, `filter`, `object-position` ou dimensões diferentes por tema.
 
@@ -799,6 +806,7 @@ Não volte a capturar o ponteiro no `<g>` do nó: esses elementos são descartá
 .
 ├── index.html
 ├── styles.css
+├── theme-boot.js
 ├── core.js
 ├── app.js
 ├── settings.js
@@ -831,7 +839,9 @@ Não volte a capturar o ponteiro no `<g>` do nó: esses elementos são descartá
 │   ├── browser_auth.py
 │   ├── dedicated_auth.py
 │   ├── youtube_pot.py
-│   └── requirements.txt
+│   ├── requirements.txt
+│   └── requirements-dev.txt
+├── pyproject.toml
 ├── README.md
 ├── HANDOFF.md
 └── .gitignore
@@ -966,11 +976,13 @@ python -m unittest discover -s tests -p "test_*.py"
   `169.254.169.254` e CGNAT), domínio público que resolve para endereço
   privado, múltiplos registros DNS com um privado no meio, falha de
   resolução e porta default por esquema. `socket.getaddrinfo` é
-  substituído em todos os casos — os testes não tocam a rede. Dois
-  testes registram limitações conhecidas em vez de esconder:
-  a janela de DNS rebinding (a função devolve o nome, não o IP
-  aprovado, e o yt-dlp resolve de novo) e porta fora de 0–65535, que
-  hoje sobe como erro não tratado em vez de `400`.
+  substituído em todos os casos — os testes não tocam a rede. Um teste registra
+  a limitação conhecida de DNS rebinding: a função devolve o
+  nome, não o IP aprovado, e o yt-dlp resolve de novo. Portas inválidas já
+  retornam `400` controlado.
+- `tests/test_response_headers.py` — fixa os contratos de `no-store` da API,
+  revalidação da interface, preservação de políticas específicas de rota e os
+  headers de segurança comuns.
 
 Os testes de Python precisam das dependências de `server/requirements.txt`.
 
@@ -978,16 +990,22 @@ Os testes de Python precisam das dependências de `server/requirements.txt`.
 
 Executa três jobs independentes em `push`, pull request e acionamento manual:
 
-- `Python 3.11` e `Python 3.13` em Windows: instala dependências com cache de
-  pip, compila os módulos, roda `unittest` e valida o ambiente com `pip check`;
-- `JavaScript` em Node.js 24/Linux: verifica a sintaxe dos scripts de produção
-  e executa todos os arquivos `tests/*.test.js`;
+- `Python 3.11` e `Python 3.13` em Windows: instala `requirements-dev.txt` com
+  cache, executa Ruff, compila os módulos, roda `unittest` e valida o ambiente
+  com `pip check`; Python 3.13 também executa `pip-audit`;
+- `JavaScript` em Node.js 24/Linux: verifica a sintaxe dos scripts de produção,
+  executa todos os arquivos `tests/*.test.js` e valida `index.html`,
+  `startup.html` e `scope.html` com html-validate;
 - `Repository hygiene`: falha se segredos usuais, cookies, chaves, ambientes,
   caches, logs, ZIPs ou `GraphEngine.txt` forem rastreados.
 
 As actions de terceiros estão presas ao SHA completo das versões documentadas;
 o workflow declara somente `contents: read` e cancela execuções antigas da
 mesma branch. Não adicionar permissão de escrita sem uma necessidade explícita.
+
+`.github/dependabot.yml` abre no máximo três atualizações mensais para `pip` e
+GitHub Actions. O projeto continua sem dependências npm persistidas;
+html-validate é executado por versão fixa via `npx` apenas na validação.
 
 ## `index.html`
 
@@ -1466,6 +1484,12 @@ APP_PORT      = 8765
 - quando houver header `Origin`, ele deve ser `127.0.0.1:8765` ou `localhost:8765`;
 - clientes acessando por `192.168.x.x:8765` podem usar o editor/importação, mas **não podem desligar o computador host**;
 - manter `_validate_url()` bloqueando destinos locais/privados para impedir que a importação yt-dlp vire proxy/SSRF da LAN;
+- toda rota da API usa `Cache-Control: no-store`; arquivos públicos usam
+  `no-cache` para revalidar a revisão atual sem manter cópia obsoleta;
+- preservar a CSP e os headers `X-Frame-Options`, `nosniff`,
+  `Referrer-Policy` e `Permissions-Policy` em `_apply_response_headers()`;
+- o bootstrap de tema deve permanecer em `theme-boot.js`; não voltar a embutir
+  JavaScript no HTML, pois isso exigiria relaxar `script-src`;
 - não orientar port-forward da porta 8765 para a internet.
 
 Em `settings.js`, o grupo `Sistema` é runtime-only: **não entra em `tempo.cfg.v1` nem nos presets**. Ele mostra servidor, URL LAN e porta; possui `Copiar endereço` e `Desligar VARISPEED`. O desligamento dispara `varispeed:shutdown` antes do POST, para `app.js` pausar o áudio/fechar o AudioContext.
