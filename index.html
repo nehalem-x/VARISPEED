@@ -5,29 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="color-scheme" content="dark light" />
 <meta name="theme-color" id="themeColor" content="#000000" />
-<script>
-  /* Aplica tema/densidade persistidos antes do primeiro paint para evitar flash.
-     A chave legado tempo.cfg.v1 é mantida para não perder preferências existentes. */
-  (() => {
-    try {
-      const saved = JSON.parse(localStorage.getItem('tempo.cfg.v1') || '{}');
-      const theme = saved['ui.theme'];
-      const density = saved['ui.density'];
-      const resolved = theme === 'light' || theme === 'dark'
-        ? theme
-        : (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
-      document.documentElement.dataset.theme = resolved;
-      const themeColor = document.getElementById('themeColor');
-      if (themeColor) themeColor.content = resolved === 'light' ? '#ffffff' : '#000000';
-      if (density === 'comfortable' || density === 'compact') document.documentElement.dataset.density = density;
-    } catch (_) {}
-  })();
-</script>
+<script src="theme-boot.js"></script>
 <title>VARISPEED — Editor de velocidade de áudio</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="styles.css?v=20260828-scope-preview" />
+<link rel="stylesheet" href="styles.css" />
 <link rel="icon" type="image/x-icon" href="assets/varispeed.ico" />
 <link rel="icon" type="image/png" href="assets/favicon.png" />
 </head>
@@ -56,7 +39,7 @@
     </div>
 
     <div class="hdr__file" id="hdrFile">
-      <div class="hdr__scope-tools" aria-label="Visualização de áudio">
+      <div class="hdr__scope-tools" role="group" aria-label="Visualização de áudio">
         <button class="btn btn--ghost btn--icon hdr__scope-pop" id="btnPop" type="button" aria-pressed="false" title="Visualizador em janela separada" aria-label="Visualizador em janela separada">
           <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M7 2.5H2.5v11h11V9" stroke="currentColor" stroke-width="1.4" stroke-linecap="square"/><path d="M9.5 2.5h4v4M13.5 2.5 7.8 8.2" stroke="currentColor" stroke-width="1.4" stroke-linecap="square"/></svg>
         </button>
@@ -65,7 +48,7 @@
         </button>
       </div>
       <span class="hdr__filename" id="fileName">nenhum arquivo</span>
-      <div class="hdr-player" id="libraryTransport" aria-label="Transporte da música carregada" hidden>
+      <div class="hdr-player" id="libraryTransport" role="group" aria-label="Transporte da música carregada" hidden>
         <div class="transport__group hdr-player__controls">
           <span class="ui-slot" id="libraryPlaySlot"></span>
           <span class="ui-slot" id="libraryStopSlot"></span>
@@ -121,7 +104,7 @@
 
     <div class="linkbar__preview" id="urlPreview" hidden>
       <div class="linkbar__thumb" id="urlThumbWrap" aria-hidden="true">
-        <img id="urlThumb" alt="" referrerpolicy="no-referrer" />
+        <img id="urlThumb" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==" alt="" referrerpolicy="no-referrer" />
         <span class="linkbar__thumb-fallback mono">AUDIO</span>
       </div>
       <div class="linkbar__media">
@@ -167,12 +150,12 @@
     </header>
 
     <div class="library__workspace">
-      <div class="library__graph graph-engine-host" id="libraryGraph" aria-label="Mapa das músicas importadas"></div>
+      <div class="library__graph graph-engine-host" id="libraryGraph" role="region" aria-label="Mapa das músicas importadas"></div>
       <div class="library__empty" id="libraryEmpty" hidden>
         <strong id="libraryEmptyTitle">Biblioteca vazia</strong>
         <span class="mono" id="libraryEmptyHint">IMPORTE UMA MÚSICA E ADICIONE À BIBLIOTECA</span>
       </div>
-      <aside class="library__details" id="libraryDetails" data-graph-viewport-block="auto" aria-live="polite" hidden>
+      <aside class="library__details" id="libraryDetails" data-graph-viewport-block="auto" aria-label="Detalhes da seleção" aria-live="polite" hidden>
         <header class="library__detail-bar">
           <div class="library__detail-heading">
             <span class="library__detail-source mono" id="libraryDetailSource">—</span>
@@ -184,7 +167,7 @@
         </header>
         <div class="library__detail-body">
           <figure class="library__detail-artwork" id="libraryDetailArtwork" hidden>
-            <img id="libraryDetailArtworkImage" alt="" draggable="false" />
+            <img id="libraryDetailArtworkImage" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==" alt="" draggable="false" />
             <span class="library__detail-artwork-fallback" aria-hidden="true">
               <svg width="32" height="32" viewBox="0 0 32 32" fill="none"><path d="M4 17h2m2-5v10m4-15v18m4-13v10m4-17v22m4-14v8m4-5v2" stroke="currentColor" stroke-width="1.5" stroke-linecap="square"/></svg>
             </span>
@@ -203,7 +186,7 @@
                 <svg width="13" height="13" aria-hidden="true"><use href="#ui-icon-category-add"/></svg>
               </button>
             </div>
-            <label class="library__category-field" for="libraryCategorySelect">
+            <label class="library__category-field">
               <span>Categoria</span>
               <select class="sel" id="libraryCategorySelect"></select>
             </label>
@@ -315,7 +298,7 @@
             <svg width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m10.5 3-5 5 5 5" stroke="currentColor" stroke-width="1.4" stroke-linecap="square"/></svg>
             Voltar
           </button>
-          <span class="library-tutorial__progress" id="libraryTutorialProgress" aria-label="Etapa 1 de 4">
+          <span class="library-tutorial__progress" id="libraryTutorialProgress" role="group" aria-label="Etapa 1 de 4">
             <span class="library-tutorial__progress-count mono" id="libraryTutorialProgressCount">01 / 04</span>
             <span class="library-tutorial__progress-rail" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
           </span>
@@ -443,7 +426,7 @@
       <section class="panel panel--source">
         <h2 class="panel__title">Fonte</h2>
         <figure class="library__detail-artwork panel-source__artwork" id="sourceArtwork" hidden>
-          <img id="sourceArtworkImage" alt="" draggable="false" referrerpolicy="no-referrer" />
+          <img id="sourceArtworkImage" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==" alt="" draggable="false" referrerpolicy="no-referrer" />
           <span class="library__detail-artwork-fallback mono" aria-hidden="true">AUDIO</span>
         </figure>
         <dl class="rows">
@@ -526,13 +509,13 @@
 <input type="file" id="libraryRelink" accept="audio/*" hidden />
 <!-- core.js: lógica pura testável (formatação, velocidade, geometria,
      nome de arquivo). Precisa vir antes de app.js, que aborta sem ele. -->
-<script src="core.js?v=20260828-vectorscope"></script>
-<script src="motion.js?v=20260827-word-wrap"></script>
-<script src="scope-view.js?v=20260828-vector-horizontal"></script>
-<script src="remote-import.js?v=20260828-browser-auth"></script>
-<script src="settings.js?v=20260828-vector-theme"></script>
-<script src="graph-engine.js?v=20260826-organic-recovery"></script>
-<script src="library.js?v=20260827-tutorial-title-motion"></script>
-<script src="app.js?v=20260828-vector-horizontal-all"></script>
+<script src="core.js"></script>
+<script src="motion.js"></script>
+<script src="scope-view.js"></script>
+<script src="remote-import.js"></script>
+<script src="settings.js"></script>
+<script src="graph-engine.js"></script>
+<script src="library.js"></script>
+<script src="app.js"></script>
 </body>
 </html>
