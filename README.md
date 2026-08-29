@@ -839,10 +839,10 @@ O final da lista de Configurações contém um bloco autoral com a fotografia do
 CRIADOR DO VARISPEED
 Gaspar
 Design e desenvolvimento
-WEB AUDIO · VISUALIZAÇÃO DE ÁUDIO · [LOGO YT_DLP]
+[GITHUB · nehalem-x/VARISPEED] · [LOGO YT_DLP]
 ```
 
-O logo isolado funciona como link externo acessível para o projeto yt-dlp. Ele abre em uma nova aba sem conceder acesso à página de origem; o endereço não é exibido como uma linha adicional.
+O identificador `nehalem-x/VARISPEED` abre o repositório oficial do projeto no GitHub. O logo isolado continua funcionando como link externo acessível para o projeto yt-dlp. Ambos abrem em uma nova aba sem conceder acesso à página de origem.
 
 Os assets são:
 

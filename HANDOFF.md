@@ -163,7 +163,7 @@ Conteúdo atual e intencional:
 CRIADOR DO VARISPEED
 Gaspar
 Design e desenvolvimento
-WEB AUDIO · VISUALIZAÇÃO DE ÁUDIO · [LOGO YT_DLP]
+[GITHUB · nehalem-x/VARISPEED] · [LOGO YT_DLP]
 ```
 
 O logo isolado é renderizado na própria linha tecnológica como link externo (`target="_blank"` com `rel="noopener noreferrer"`). Não há URL textual abaixo do crédito.

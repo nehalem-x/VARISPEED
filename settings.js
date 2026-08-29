@@ -1004,7 +1004,21 @@ window.Settings = (() => {
     copy.appendChild(h('span', 'cfg__credits-line', 'Design e desenvolvimento'));
 
     const tech = h('div', 'cfg__credits-tech');
-    tech.appendChild(h('span', 'mono', 'WEB AUDIO · VISUALIZAÇÃO DE ÁUDIO ·'));
+    const githubLink = h('a', 'cfg__credits-github mono', '');
+    githubLink.href = 'https://github.com/nehalem-x/VARISPEED';
+    githubLink.target = '_blank';
+    githubLink.rel = 'noopener noreferrer';
+    githubLink.setAttribute('aria-label', 'Abrir nehalem-x/VARISPEED no GitHub');
+    const githubIcon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    githubIcon.setAttribute('viewBox', '0 0 24 24');
+    githubIcon.setAttribute('aria-hidden', 'true');
+    const githubPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    githubPath.setAttribute('fill', 'currentColor');
+    githubPath.setAttribute('d', 'M12 .7a11.5 11.5 0 0 0-3.64 22.4c.58.1.79-.25.79-.56v-2.2c-3.22.7-3.9-1.36-3.9-1.36-.53-1.34-1.29-1.7-1.29-1.7-1.05-.72.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.04 1.77 2.71 1.26 3.37.96.1-.75.4-1.26.74-1.55-2.57-.29-5.27-1.28-5.27-5.69 0-1.26.45-2.28 1.19-3.09-.12-.29-.52-1.47.11-3.05 0 0 .97-.31 3.16 1.18a10.96 10.96 0 0 1 5.76 0c2.2-1.49 3.16-1.18 3.16-1.18.63 1.58.23 2.76.11 3.05.74.81 1.19 1.83 1.19 3.09 0 4.42-2.71 5.39-5.29 5.68.42.36.79 1.06.79 2.14v3.18c0 .31.21.67.8.56A11.5 11.5 0 0 0 12 .7Z');
+    githubIcon.appendChild(githubPath);
+    githubLink.append(githubIcon, document.createTextNode('nehalem-x/VARISPEED'));
+    tech.appendChild(githubLink);
+    tech.appendChild(h('span', 'cfg__credits-separator', '·'));
     const ytDlpLink = h('a', 'cfg__credits-ytdlp', '');
     ytDlpLink.href = 'https://github.com/yt-dlp/yt-dlp';
     ytDlpLink.target = '_blank';

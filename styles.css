@@ -1981,6 +1981,27 @@ kbd {
   margin-top: var(--space-1);
   overflow-wrap: anywhere;
 }
+.cfg__credits-github {
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--text-2);
+  text-decoration: none;
+  white-space: nowrap;
+  transition: color var(--dur-fast) var(--ease), opacity var(--dur-fast) var(--ease);
+}
+.cfg__credits-github svg {
+  flex: none;
+  width: 12px;
+  height: 12px;
+}
+.cfg__credits-github:hover,
+.cfg__credits-github:focus-visible {
+  color: var(--text);
+  opacity: 0.78;
+}
+.cfg__credits-separator { color: var(--text-3); }
 .cfg__credits-ytdlp {
   flex: none;
   display: inline-flex;
