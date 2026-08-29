@@ -1,0 +1,96 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  python:
+    name: Python ${{ matrix.python-version }}
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.13"]
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+
+      - name: Set up Python
+        uses: actions/setup-python@e797f83bcb11b83ae66e0230d6156d7c80228e7c # v6.0.0
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: server/requirements.txt
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r server/requirements.txt
+
+      - name: Compile Python sources
+        run: >-
+          python -m py_compile
+          launcher.py
+          server/main.py
+          server/browser_auth.py
+          server/dedicated_auth.py
+          server/youtube_pot.py
+
+      - name: Run Python tests
+        run: python -m unittest discover -s tests -p "test_*.py"
+
+      - name: Check dependency consistency
+        run: python -m pip check
+
+  javascript:
+    name: JavaScript
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version: "24"
+
+      - name: Check JavaScript syntax
+        shell: bash
+        run: |
+          for file in app.js core.js graph-engine.js library.js motion.js remote-import.js scope-view.js scope-win.js settings.js startup.js; do
+            node --check "$file"
+          done
+
+      - name: Run JavaScript tests
+        run: node --test tests/*.test.js
+
+  hygiene:
+    name: Repository hygiene
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+
+      - name: Reject secrets and generated artifacts
+        shell: bash
+        run: |
+          forbidden="$(git ls-files | grep -Ei '(^|/)(\.env($|\.)|[^/]*cookies[^/]*\.txt$|[^/]*\.(pem|key)$|\.venv/|__pycache__/|logs/)|\.pyc$|\.zip$' || true)"
+          if [[ -n "$forbidden" ]]; then
+            echo "Forbidden tracked files:"
+            echo "$forbidden"
+            exit 1
+          fi
+
+          if git ls-files --error-unmatch GraphEngine.txt >/dev/null 2>&1; then
+            echo "GraphEngine.txt is a local prototype and must not be tracked."
+            exit 1
+          fi
