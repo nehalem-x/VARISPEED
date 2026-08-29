@@ -780,30 +780,77 @@ test('física preserva dois agrupamentos depois de estabilizar', () => {
 });
 
 test('applyCamera não repete a mesma escrita no compositor', () => {
-  let writes = 0;
+  let transformWrites = 0;
+  let viewBoxWrites = 0;
   const layer = () => ({
     style: {
       set transform(value) {
-        writes++;
+        transformWrites++;
         this.value = value;
       },
+    },
+  });
+  const svg = () => ({
+    setAttribute(name) {
+      if (name === 'viewBox') viewBoxWrites++;
     },
   });
   const world = layer();
   const linkWorld = layer();
   const graph = Object.create(GraphEngine.prototype);
   Object.assign(graph, {
-    camera: { x: 10, y: 20, scale: 1.2 },
-    zoomTarget: { x: 10, y: 20, scale: 1.2 },
+    camera: { x: 10, y: 20, scale: 1.1 },
+    zoomTarget: { x: 10, y: 20, scale: 1.1 },
     cameraFollow: null,
-    options: { initialZoom: 1 },
+    options: { initialZoom: 1, vectorCameraEnterScale: 1.16, vectorCameraExitScale: 1.04 },
+    W: 800,
+    H: 600,
+    svg: svg(),
+    linksSvg: svg(),
     world,
     linkWorld,
+    _cameraRenderMode: 'transform',
   });
 
   graph.applyCamera();
   graph.applyCamera();
-  assert.equal(writes, 2);
+  assert.equal(transformWrites, 2);
+  assert.equal(viewBoxWrites, 2);
+});
+
+test('applyCamera troca ampliação por viewBox com histerese no zoom próximo', () => {
+  const transforms = [];
+  const viewBoxes = [];
+  const layer = () => ({ style: { set transform(value) { transforms.push(value); } } });
+  const svg = () => ({ setAttribute(name, value) { if (name === 'viewBox') viewBoxes.push(value); } });
+  const graph = Object.create(GraphEngine.prototype);
+  Object.assign(graph, {
+    camera: { x: -240, y: -120, scale: 1.2 },
+    zoomTarget: { x: -240, y: -120, scale: 1.2 },
+    cameraFollow: null,
+    options: { initialZoom: 1, vectorCameraEnterScale: 1.16, vectorCameraExitScale: 1.04 },
+    W: 1200,
+    H: 600,
+    svg: svg(),
+    linksSvg: svg(),
+    world: layer(),
+    linkWorld: layer(),
+    _cameraRenderMode: 'transform',
+  });
+
+  graph.applyCamera();
+  assert.equal(graph._cameraRenderMode, 'viewBox');
+  assert.equal(viewBoxes.at(-1), '200.000 100.000 1000.000 500.000');
+  assert.deepEqual(transforms.slice(-2), ['none', 'none']);
+
+  graph.camera = { x: -210, y: -105, scale: 1.05 };
+  graph.applyCamera();
+  assert.equal(graph._cameraRenderMode, 'viewBox');
+
+  graph.camera = { x: -200, y: -100, scale: 1.03 };
+  graph.applyCamera();
+  assert.equal(graph._cameraRenderMode, 'transform');
+  assert.equal(viewBoxes.at(-1), '0 0 1200 600');
 });
 
 test('zoom consolida somente a pintura e nunca interrompe o arraste de um nó', () => {
