@@ -28,6 +28,7 @@ class GraphEngine {
       floatSpeed: 0.00042,
       cameraEaseMs: 82,
       wheelResponse: 0.62,
+      wheelRenderHoldMs: 72,
       cameraFollowMs: 520,
       fitPadding: 84,
       compactBreakpoint: 800,
@@ -87,6 +88,7 @@ class GraphEngine {
     this.wheelInteractionStartedAt = 0;
     this.wheelLastFrameAt = 0;
     this.wheelSettlePending = false;
+    this.wheelRenderHoldUntil = 0;
     this.cameraFollow = null;
     this.raf = 0;
     this.running = false;
@@ -106,6 +108,7 @@ class GraphEngine {
       zoomCameraMs: 0,
       zoomSettleMs: 0,
       zoomDroppedFrames: 0,
+      zoomDeferredRenders: 0,
       skippedDataUpdates: 0,
       sampleFrames: 0,
       sampleStartedAt: performance.now(),
@@ -220,6 +223,7 @@ class GraphEngine {
     this.cancelInteraction();
     this.stopCameraAnimation();
     this.wheelDelta = 0;
+    this.wheelRenderHoldUntil = 0;
     if (!this.running) return this;
     this.running = false;
     cancelAnimationFrame(this.raf);
@@ -283,6 +287,7 @@ class GraphEngine {
       zoomFrameMs: [],
       zoomCameraMs: [],
       zoomSettleMs: [],
+      deferredRenders: 0,
       resolve: resolveCapture,
       promise,
       timer: 0,
@@ -316,6 +321,7 @@ class GraphEngine {
     this.W = width;
     this.H = height;
     this.svg.setAttribute('viewBox', `0 0 ${this.W} ${this.H}`);
+    this.linksSvg?.setAttribute('viewBox', `0 0 ${this.W} ${this.H}`);
 
     if (this.nodes.length && !this.nodes[0].initialized) {
       this._initializeNodePositions();
@@ -651,7 +657,8 @@ class GraphEngine {
       );
 
     this.svg.classList.add(
-      'graph-engine-svg'
+      'graph-engine-svg',
+      'graph-engine-nodes-svg'
     );
 
     this.svg.setAttribute(
@@ -675,6 +682,32 @@ class GraphEngine {
       'graph-engine-world'
     );
 
+    this.linksSvg =
+      document.createElementNS(
+        'http://www.w3.org/2000/svg',
+        'svg'
+      );
+
+    this.linksSvg.classList.add(
+      'graph-engine-svg',
+      'graph-engine-links-svg'
+    );
+
+    this.linksSvg.setAttribute(
+      'aria-hidden',
+      'true'
+    );
+
+    this.linkWorld =
+      document.createElementNS(
+        'http://www.w3.org/2000/svg',
+        'g'
+      );
+
+    this.linkWorld.classList.add(
+      'graph-engine-world'
+    );
+
     this.gLinks =
       document.createElementNS(
         'http://www.w3.org/2000/svg',
@@ -695,9 +728,16 @@ class GraphEngine {
       'graph-engine-nodes'
     );
 
-    this.world.append(
-      this.gLinks,
+    this.linkWorld.appendChild(
+      this.gLinks
+    );
+
+    this.world.appendChild(
       this.gNodes
+    );
+
+    this.linksSvg.appendChild(
+      this.linkWorld
     );
 
     this.svg.append(
@@ -705,7 +745,8 @@ class GraphEngine {
       this.world
     );
 
-    this.host.appendChild(
+    this.host.append(
+      this.linksSvg,
       this.svg
     );
 
@@ -1281,10 +1322,10 @@ class GraphEngine {
       (node, i) => {
       const el = this.nodeEls[i];
       if (!el) return;
-      const transform = `translate(${node.x.toFixed(2)} ${node.y.toFixed(2)})`;
+      const transform = `translate(${node.x.toFixed(2)}px, ${node.y.toFixed(2)}px)`;
       if (el._graphPosition !== transform) {
         el._graphPosition = transform;
-        el.setAttribute('transform', transform);
+        el.style.transform = transform;
       }
       }
     );
@@ -1319,10 +1360,11 @@ class GraphEngine {
     }
 
     const transform = `translate(${this.camera.x}px, ${this.camera.y}px) scale(${this.camera.scale})`;
-    if (this.world._graphCamera !== transform) {
-      this.world._graphCamera = transform;
-      this.world.style.transform = transform;
-    }
+    [this.linkWorld, this.world].filter(Boolean).forEach(layer => {
+      if (layer._graphCamera === transform) return;
+      layer._graphCamera = transform;
+      layer.style.transform = transform;
+    });
   }
 
   _targetForNode(
@@ -1539,6 +1581,11 @@ class GraphEngine {
     const queuedAt = performance.now();
     if (!this.wheelDelta) this.wheelQueuedAt = queuedAt;
     if (!this.wheelInteractionStartedAt) this.wheelInteractionStartedAt = queuedAt;
+    const renderHoldMs = Math.max(0, Number(this.options.wheelRenderHoldMs) || 0);
+    this.wheelRenderHoldUntil = Math.max(
+      this.wheelRenderHoldUntil,
+      queuedAt + renderHoldMs
+    );
     this.wheelDelta += delta;
     this.wheelClientX = clientX;
     this.wheelClientY = clientY;
@@ -2575,9 +2622,15 @@ class GraphEngine {
         0.055;
 
       physicsMs = performance.now() - tickStartedAt;
-      const renderStartedAt = performance.now();
-      this._renderPositions();
-      renderMs = performance.now() - renderStartedAt;
+      const cameraOnlyFrame = this._shouldDeferPositionRender(tickStartedAt);
+      if (cameraOnlyFrame) {
+        this._performance.zoomDeferredRenders++;
+        if (this._performanceCapture) this._performanceCapture.deferredRenders++;
+      } else {
+        const renderStartedAt = performance.now();
+        this._renderPositions();
+        renderMs = performance.now() - renderStartedAt;
+      }
     }
 
     const measuredAt = performance.now();
@@ -2613,6 +2666,10 @@ class GraphEngine {
     const capture = this._performanceCapture;
     if (!capture || !Array.isArray(capture[name]) || !Number.isFinite(value)) return;
     capture[name].push(Math.max(0, value));
+  }
+
+  _shouldDeferPositionRender(frameTime = performance.now()) {
+    return frameTime < this.wheelRenderHoldUntil && this.dragging?.type !== 'node';
   }
 
   _recordPerformanceCaptureFrame(frameTime, physicsMs, renderMs) {
@@ -2685,6 +2742,7 @@ class GraphEngine {
         frame: this._performanceMetricSummary(capture.zoomFrameMs),
         camera: this._performanceMetricSummary(capture.zoomCameraMs),
         settle: this._performanceMetricSummary(capture.zoomSettleMs),
+        deferredRenders: capture.deferredRenders,
       },
     };
 

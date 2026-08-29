@@ -38,6 +38,7 @@ function performanceState() {
     zoomCameraMs: 0,
     zoomSettleMs: 0,
     zoomDroppedFrames: 0,
+    zoomDeferredRenders: 0,
     skippedDataUpdates: 0,
     sampleFrames: 0,
     sampleStartedAt: performance.now(),
@@ -168,7 +169,12 @@ test('grade espacial reduz pares de colisão sem perder candidatos nem mudar sua
 
 test('renderização ignora escritas SVG sem mudança visual', () => {
   const calls = [];
-  const element = () => ({ setAttribute: (name, value) => calls.push([name, value]) });
+  const element = () => ({
+    setAttribute: (name, value) => calls.push([name, value]),
+    style: {
+      set transform(value) { calls.push(['style.transform', value]); },
+    },
+  });
   const a = { id: 'a', x: 10, y: 20 };
   const b = { id: 'b', x: 40, y: 50 };
   const graph = Object.create(GraphEngine.prototype);
@@ -382,6 +388,7 @@ test('zoom pela roda encerra a cauda no primeiro quadro sem nova entrada', () =>
 });
 
 test('resize atualiza a origem reutilizada pelo zoom', () => {
+  const viewBoxes = [];
   const graph = Object.create(GraphEngine.prototype);
   Object.assign(graph, {
     W: 0,
@@ -393,7 +400,8 @@ test('resize atualiza a origem reutilizada pelo zoom', () => {
       clientHeight: 600,
       getBoundingClientRect: () => ({ left: 24, top: 72 }),
     },
-    svg: { setAttribute() {} },
+    svg: { setAttribute: (name, value) => viewBoxes.push(['nodes', name, value]) },
+    linksSvg: { setAttribute: (name, value) => viewBoxes.push(['links', name, value]) },
     options: { onResize: null },
   });
 
@@ -402,6 +410,10 @@ test('resize atualiza a origem reutilizada pelo zoom', () => {
   assert.deepEqual({ ...graph.hostOrigin }, { left: 24, top: 72 });
   assert.equal(graph.W, 800);
   assert.equal(graph.H, 600);
+  assert.deepEqual(viewBoxes, [
+    ['nodes', 'viewBox', '0 0 800 600'],
+    ['links', 'viewBox', '0 0 800 600'],
+  ]);
 });
 
 test('layout inicial distribui músicas em anéis e separa categorias', () => {
@@ -769,14 +781,16 @@ test('física preserva dois agrupamentos depois de estabilizar', () => {
 
 test('applyCamera não repete a mesma escrita no compositor', () => {
   let writes = 0;
-  const world = {
+  const layer = () => ({
     style: {
       set transform(value) {
         writes++;
         this.value = value;
       },
     },
-  };
+  });
+  const world = layer();
+  const linkWorld = layer();
   const graph = Object.create(GraphEngine.prototype);
   Object.assign(graph, {
     camera: { x: 10, y: 20, scale: 1.2 },
@@ -784,11 +798,25 @@ test('applyCamera não repete a mesma escrita no compositor', () => {
     cameraFollow: null,
     options: { initialZoom: 1 },
     world,
+    linkWorld,
   });
 
   graph.applyCamera();
   graph.applyCamera();
-  assert.equal(writes, 1);
+  assert.equal(writes, 2);
+});
+
+test('zoom consolida somente a pintura e nunca interrompe o arraste de um nó', () => {
+  const graph = Object.create(GraphEngine.prototype);
+  Object.assign(graph, {
+    wheelRenderHoldUntil: 172,
+    dragging: null,
+  });
+
+  assert.equal(graph._shouldDeferPositionRender(140), true);
+  assert.equal(graph._shouldDeferPositionRender(180), false);
+  graph.dragging = { type: 'node' };
+  assert.equal(graph._shouldDeferPositionRender(140), false);
 });
 
 test('captura de desempenho resume frames, física, render e zoom sem alterar a simulação', async () => {
@@ -810,6 +838,7 @@ test('captura de desempenho resume frames, física, render e zoom sem alterar a 
   graph._capturePerformanceMetric('zoomFrameMs', 7);
   graph._capturePerformanceMetric('zoomCameraMs', 0.08);
   graph._capturePerformanceMetric('zoomSettleMs', 14);
+  graph._performanceCapture.deferredRenders = 3;
 
   const report = graph._finishPerformanceCapture();
   const resolved = await pending;
@@ -824,6 +853,7 @@ test('captura de desempenho resume frames, física, render e zoom sem alterar a 
   assert.equal(report.render.samples, 4);
   assert.equal(report.zoom.latency.samples, 1);
   assert.equal(report.zoom.latency.max, 3.5);
+  assert.equal(report.zoom.deferredRenders, 3);
   assert.equal(report.cancelled, false);
   assert.equal(graph._performanceCapture, null);
 });

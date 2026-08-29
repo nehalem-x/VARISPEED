@@ -193,11 +193,13 @@ A simulação física permanece contínua, com colisões, `alpha`, amortecimento
 - zoom ancorado no ponteiro não calcula os insets do viewport, pois eles são necessários somente no zoom centralizado;
 - a origem do host é atualizada em `resize()` e reutilizada pela roda, removendo leituras de layout do caminho normal do zoom;
 - a roda aplica `62%` do novo alvo no próprio frame consolidado e, se não houver nova entrada no quadro seguinte, conclui exatamente o movimento. Isso preserva a continuidade de trackpads sem deixar a cauda exponencial de um passo isolado do mouse ativa por centenas de milissegundos;
-- a câmera usa uma transformação CSS promovida ao compositor; transformações idênticas não são reescritas;
-- posições continuam sendo calculadas com precisão total; somente escritas SVG visualmente idênticas dentro de 0,01 px são suprimidas;
+- ligações e nós vivem em dois SVGs sobrepostos com o mesmo `viewBox` e a mesma câmera. Assim a atualização das linhas não invalida junto o plano mais caro de círculos, textos e rótulos;
+- nós são posicionados por transformações CSS compostas, enquanto as ligações preservam seus atributos SVG. A câmera escreve a mesma transformação nos dois planos e não repete valores idênticos;
+- durante o burst curto da roda, a física continua avançando em todos os frames, mas as escritas de posição ficam consolidadas por até `72 ms`; a escala da câmera concorre apenas com composição e uma posição integral é redesenhada imediatamente ao final. Arraste de nó nunca entra nessa consolidação;
+- posições continuam sendo calculadas com precisão total; somente serializações visuais idênticas dentro de 0,01 px são suprimidas;
 - apenas o `ResizeObserver` interno do `GraphEngine` mede o host; a Biblioteca recebe o resultado por `onResize`;
 - Configurações → Avançado → Diagnóstico mostra FPS, física, renderização e também latência de entrada, intervalo entre quadros, custo da câmera, resposta completa e frames tardios específicos do zoom.
-- **Medir grafo · 8 s** fecha temporariamente as Configurações para permitir zoom, pan e arraste reais, sem alterar a Biblioteca. Ao terminar, reabre o Diagnóstico com FPS observado, cadência estimada, orçamento de frame, frames tardios e média/p95/máximo de frame, física, render e zoom; **Copiar relatório** gera um bloco reproduzível para comparar computadores e sessões.
+- **Medir grafo · 8 s** fecha temporariamente as Configurações para permitir zoom, pan e arraste reais, sem alterar a Biblioteca. Ao terminar, reabre o Diagnóstico com FPS observado, cadência estimada, orçamento de frame, frames tardios, renders consolidados e média/p95/máximo de frame, física, render e zoom; **Copiar relatório** gera um bloco reproduzível para comparar computadores e sessões.
 
 Na linha de base sintética deste projeto, 17 músicas passaram de aproximadamente `0,61 ms` para `0,45 ms` de física por quadro; com 50 músicas, de `4,07 ms` para `2,56 ms`. Esses números são comparativos e variam conforme o computador.
 
