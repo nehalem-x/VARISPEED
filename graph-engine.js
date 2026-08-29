@@ -27,7 +27,7 @@ class GraphEngine {
       floatForce: 0.018,
       floatSpeed: 0.00042,
       cameraEaseMs: 82,
-      wheelResponse: 0.42,
+      wheelResponse: 0.62,
       cameraFollowMs: 520,
       fitPadding: 84,
       compactBreakpoint: 800,
@@ -83,6 +83,10 @@ class GraphEngine {
     this.wheelDelta = 0;
     this.wheelClientX = 0;
     this.wheelClientY = 0;
+    this.wheelQueuedAt = 0;
+    this.wheelInteractionStartedAt = 0;
+    this.wheelLastFrameAt = 0;
+    this.wheelSettlePending = false;
     this.cameraFollow = null;
     this.raf = 0;
     this.running = false;
@@ -96,6 +100,11 @@ class GraphEngine {
       renderMs: 0,
       buildMs: 0,
       marqueeMs: 0,
+      zoomLatencyMs: 0,
+      zoomFrameMs: 0,
+      zoomCameraMs: 0,
+      zoomSettleMs: 0,
+      zoomDroppedFrames: 0,
       skippedDataUpdates: 0,
       sampleFrames: 0,
       sampleStartedAt: performance.now(),
@@ -503,6 +512,10 @@ class GraphEngine {
     this.zoomFrame = 0;
     this.zoomLastTime = 0;
     this.wheelDelta = 0;
+    this.wheelQueuedAt = 0;
+    this.wheelInteractionStartedAt = 0;
+    this.wheelLastFrameAt = 0;
+    this.wheelSettlePending = false;
     this.cameraFollow = null;
 
     this.zoomTarget = {
@@ -1373,7 +1386,8 @@ class GraphEngine {
 
     const animate =
       time => {
-        const wheelZoomed = this._consumeWheelZoom();
+        const wheelZoomed = this._consumeWheelZoom(performance.now());
+        const finishingWheel = !wheelZoomed && this.wheelSettlePending;
         this._refreshFollowTarget();
 
         const previous =
@@ -1399,11 +1413,33 @@ class GraphEngine {
               .cameraEaseMs
           );
 
-        const ease = wheelZoomed
-          ? Math.max(timedEase, this.options.wheelResponse)
-          : timedEase;
+        const ease = finishingWheel
+          ? 1
+          : wheelZoomed
+            ? Math.max(timedEase, this.options.wheelResponse)
+            : timedEase;
 
+        const cameraStartedAt = performance.now();
         this._moveCameraTowardTarget(ease);
+        const cameraMs = performance.now() - cameraStartedAt;
+
+        if (wheelZoomed || finishingWheel) {
+          this._recordZoomFrame(time, cameraMs);
+        }
+
+        if (wheelZoomed) {
+          this.wheelSettlePending = true;
+        } else if (finishingWheel) {
+          this.wheelSettlePending = false;
+          if (this._performance && this.wheelInteractionStartedAt) {
+            this._performance.zoomSettleMs = Math.max(
+              0,
+              performance.now() - this.wheelInteractionStartedAt
+            );
+          }
+          this.wheelInteractionStartedAt = 0;
+          this.wheelLastFrameAt = 0;
+        }
 
         const settled =
           Math.abs(
@@ -1462,17 +1498,32 @@ class GraphEngine {
   }
 
   _queueWheelZoom(deltaY, clientX, clientY) {
-    this.wheelDelta += deltaY;
+    const delta = Number(deltaY);
+    if (!Number.isFinite(delta) || delta === 0) return;
+    const queuedAt = performance.now();
+    if (!this.wheelDelta) this.wheelQueuedAt = queuedAt;
+    if (!this.wheelInteractionStartedAt) this.wheelInteractionStartedAt = queuedAt;
+    this.wheelDelta += delta;
     this.wheelClientX = clientX;
     this.wheelClientY = clientY;
 
     this._startSmoothCamera();
   }
 
-  _consumeWheelZoom() {
+  _consumeWheelZoom(frameTime = performance.now()) {
     const delta = this.wheelDelta;
     this.wheelDelta = 0;
     if (this.dragging || !delta) return false;
+
+    if (this._performance && this.wheelQueuedAt) {
+      const latency = Math.max(0, frameTime - this.wheelQueuedAt);
+      this._performance.zoomLatencyMs = this._blendMetric(
+        this._performance.zoomLatencyMs,
+        latency,
+        0.2
+      );
+    }
+    this.wheelQueuedAt = 0;
 
     /* A roda e a câmera compartilham o mesmo frame. Assim cada quadro recebe
        no máximo uma transformação, mesmo durante uma sequência de scroll. */
@@ -1484,6 +1535,25 @@ class GraphEngine {
         x: this.wheelClientX - origin.left,
         y: this.wheelClientY - origin.top
       }
+    );
+  }
+
+  _recordZoomFrame(frameTime, cameraMs) {
+    if (!this._performance) return;
+    if (this.wheelLastFrameAt) {
+      const interval = Math.max(0, frameTime - this.wheelLastFrameAt);
+      this._performance.zoomFrameMs = this._blendMetric(
+        this._performance.zoomFrameMs,
+        interval,
+        0.2
+      );
+      if (interval > 25) this._performance.zoomDroppedFrames++;
+    }
+    this.wheelLastFrameAt = frameTime;
+    this._performance.zoomCameraMs = this._blendMetric(
+      this._performance.zoomCameraMs,
+      Math.max(0, cameraMs),
+      0.2
     );
   }
 
@@ -2948,6 +3018,13 @@ class GraphEngine {
       /[^a-zA-Z0-9_-]/g,
       '-'
     );
+  }
+
+  _blendMetric(previous, current, weight = 0.1) {
+    const amount = this._clamp(Number(weight) || 0, 0, 1);
+    return previous
+      ? previous * (1 - amount) + current * amount
+      : current;
   }
 
   _clamp(
