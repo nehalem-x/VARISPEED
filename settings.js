@@ -990,16 +990,36 @@ window.Settings = (() => {
     sec.setAttribute('aria-label', 'Sobre o criador');
 
     const media = h('div', 'cfg__credits-media');
-    const light = document.createElement('img');
-    light.className = 'cfg__credits-photo cfg__credits-photo--light';
-    light.src = 'assets/creator-light.png';
-    light.alt = '';
-    light.draggable = false;
-    const dark = document.createElement('img');
-    dark.className = 'cfg__credits-photo cfg__credits-photo--dark';
-    dark.src = 'assets/creator-dark.png';
-    dark.alt = 'Retrato do criador';
-    dark.draggable = false;
+    media.setAttribute('aria-hidden', 'true');
+    const portraitStates = new Map();
+    const settlePortrait = (image, available) => {
+      if (portraitStates.has(image)) return;
+      portraitStates.set(image, available);
+      image.hidden = !available;
+      if (portraitStates.size < 2) return;
+      const availableCount = [...portraitStates.values()].filter(Boolean).length;
+      if (!availableCount) {
+        media.hidden = true;
+        sec.classList.add('is-text-only');
+      } else if (availableCount === 1) {
+        // Um único retrato local ainda funciona nos dois temas. Isso evita um
+        // box vazio quando apenas uma variante pessoal está instalada.
+        media.dataset.fallback = 'single';
+      }
+    };
+    const portrait = (className, src) => {
+      const image = document.createElement('img');
+      image.className = `cfg__credits-photo ${className}`;
+      image.alt = '';
+      image.draggable = false;
+      image.hidden = true;
+      image.addEventListener('load', () => settlePortrait(image, image.naturalWidth > 0), { once: true });
+      image.addEventListener('error', () => settlePortrait(image, false), { once: true });
+      image.src = src;
+      return image;
+    };
+    const light = portrait('cfg__credits-photo--light', 'assets/creator-light.png');
+    const dark = portrait('cfg__credits-photo--dark', 'assets/creator-dark.png');
     media.appendChild(light);
     media.appendChild(dark);
 
