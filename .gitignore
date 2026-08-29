@@ -10,3 +10,7 @@ logs/*.log
 logs/*.pid
 youtube-cookies.txt
 *cookies*.txt
+
+# Local creator portraits (personal assets; never publish)
+assets/creator-dark.png
+assets/creator-light.png
