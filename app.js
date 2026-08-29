@@ -2355,6 +2355,7 @@
         graphZoomCamera: graphPerf ? `${graphPerf.zoomCameraMs.toFixed(3)} ms` : '—',
         graphZoomSettle: graphPerf ? `${graphPerf.zoomSettleMs.toFixed(1)} ms` : '—',
         graphZoomDropped: graphPerf ? String(graphPerf.zoomDroppedFrames) : '—',
+        graphZoomDeferred: graphPerf ? String(graphPerf.zoomDeferredRenders) : '—',
         motion: window.Motion.reduced() ? 'reduzido' : cfg('motion.level') === 'discreet' ? 'discreto' : 'completo',
       };
     },

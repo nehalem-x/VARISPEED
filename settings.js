@@ -191,6 +191,7 @@ window.Settings = (() => {
         ['graphZoomCamera', 'Custo da câmera'],
         ['graphZoomSettle', 'Resposta completa do zoom'],
         ['graphZoomDropped', 'Frames tardios no zoom'],
+        ['graphZoomDeferred', 'Renders consolidados no zoom'],
         ['motion', 'Animações efetivas'],
         ['store', 'Preferências'],
       ],
@@ -970,6 +971,7 @@ window.Settings = (() => {
         `Zoom intervalo médio / p95 / máx: ${graphMetric(zoom.frame)}`,
         `Zoom câmera média / p95 / máx: ${graphMetric(zoom.camera)}`,
         `Zoom resposta média / p95 / máx: ${graphMetric(zoom.settle)}`,
+        `Zoom renders consolidados: ${zoom.deferredRenders || 0}`,
       ] : []),
     ].join('\n');
   }

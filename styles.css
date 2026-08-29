@@ -1042,7 +1042,16 @@ button, input { font: inherit; color: inherit; }
 /* GraphEngine: somente apresentação. As forças e a cadência permanecem no JS. */
 .graph-engine-host { position: relative; }
 .library__graph.graph-engine-host { position: absolute; inset: 0; }
-.graph-engine-svg { width: 100%; height: 100%; display: block; overflow: visible; }
+.graph-engine-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  overflow: visible;
+}
+.graph-engine-links-svg { pointer-events: none; }
+.graph-engine-nodes-svg { pointer-events: auto; }
 .graph-engine-world {
   transform-box: view-box;
   transform-origin: 0 0;
@@ -1058,7 +1067,13 @@ button, input { font: inherit; color: inherit; }
 .graph-engine-link.muted { opacity: 0.18; }
 .graph-engine-link.kind-affinity { opacity: 0.34; stroke-dasharray: 2 4; }
 .graph-engine-link.kind-affinity.active { opacity: 0.8; }
-.graph-engine-node { cursor: pointer; outline: none; }
+.graph-engine-node {
+  cursor: pointer;
+  outline: none;
+  transform-box: view-box;
+  transform-origin: 0 0;
+  will-change: transform;
+}
 .graph-engine-node:active { cursor: grabbing; }
 .graph-engine-hit { fill: transparent; }
 .graph-engine-dot {
