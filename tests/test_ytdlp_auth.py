@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-import os
 import asyncio
-import unittest
+import os
 import tempfile
+import unittest
 from pathlib import Path
 from unittest.mock import patch
 
@@ -14,10 +14,10 @@ from starlette.requests import Request
 
 from server.main import (
     DEDICATED_AUTH,
-    _clean_error,
-    _authentication_error_code,
-    _common_opts,
     _auth_mode_for_url,
+    _authentication_error_code,
+    _clean_error,
+    _common_opts,
     _has_authorized_local_origin,
     _requires_authentication,
     _set_auth_browser,
