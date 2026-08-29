@@ -512,6 +512,109 @@ test('conexão secundária não substitui a categoria principal no spawn', () =>
   assert.ok(distance(nodes[1], nodes[3]) > 128);
 });
 
+test('categoria incremental nasce no território livre entre clusters preservados', () => {
+  const root = { id: 'root', role: 'root' };
+  const favorites = { id: 'favorites', role: 'category' };
+  const hoodtraps = { id: 'hoodtraps', role: 'category' };
+  const nescau = { id: 'nescau', role: 'category' };
+  const testCategory = { id: 'test', role: 'category' };
+  const hoodTrack = { id: 'hood-track', role: 'track' };
+  const nodes = [root, favorites, hoodtraps, nescau, testCategory, hoodTrack];
+  const rootPosition = { x: 600, y: 400, vx: 0, vy: 0 };
+  const pointAt = angle => ({
+    x: rootPosition.x + Math.cos(angle) * 520,
+    y: rootPosition.y + Math.sin(angle) * 520,
+    vx: 0,
+    vy: 0,
+  });
+  const oldPositions = new Map([
+    [root.id, rootPosition],
+    [favorites.id, pointAt(-Math.PI / 2)],
+    [hoodtraps.id, pointAt(Math.PI * 0.75)],
+    [nescau.id, pointAt(Math.PI * 0.25)],
+    [hoodTrack.id, { x: 120, y: 230, vx: 0, vy: 0 }],
+  ]);
+  const links = [favorites, hoodtraps, nescau, testCategory].map(category => ({
+    source: root.id,
+    target: category.id,
+    _graphPhysics: { distance: 520 },
+  }));
+  links.push({
+    source: hoodtraps.id,
+    target: hoodTrack.id,
+    _graphPhysics: { distance: 198 },
+  });
+  const graph = Object.create(GraphEngine.prototype);
+  Object.assign(graph, {
+    W: 1200,
+    H: 800,
+    alpha: 0,
+    nodes,
+    links,
+    byId: new Map(nodes.map(node => [node.id, node])),
+    options: {
+      getNodeRole: node => node.role,
+      categorySpawnRadius: 0.46,
+      nodeSpawnRadius: 0.28,
+      nodeRingGap: 0.13,
+      initialRingCapacity: 12,
+      spawnJitter: 0,
+    },
+  });
+
+  graph._initializeNodePositions(oldPositions);
+
+  assert.equal(hoodtraps.x, oldPositions.get(hoodtraps.id).x);
+  assert.equal(hoodtraps.y, oldPositions.get(hoodtraps.id).y);
+  assert.ok(testCategory.x > rootPosition.x);
+  assert.ok(testCategory.y < rootPosition.y);
+  assert.ok(Math.abs(Math.hypot(
+    testCategory.x - rootPosition.x,
+    testCategory.y - rootPosition.y
+  ) - 520) < 1e-9);
+  assert.ok(Math.hypot(testCategory.x - hoodTrack.x, testCategory.y - hoodTrack.y) > 700);
+});
+
+test('música incremental nasce ao redor da posição preservada da categoria', () => {
+  const root = { id: 'root', role: 'root' };
+  const category = { id: 'category', role: 'category' };
+  const track = { id: 'track', role: 'track' };
+  const nodes = [root, category, track];
+  const links = [
+    { source: root.id, target: category.id, _graphPhysics: { distance: 520 } },
+    { source: category.id, target: track.id, _graphPhysics: { distance: 198 } },
+  ];
+  const categoryPosition = { x: 280, y: 690, vx: 0, vy: 0 };
+  const oldPositions = new Map([
+    [root.id, { x: 600, y: 400, vx: 0, vy: 0 }],
+    [category.id, categoryPosition],
+  ]);
+  const graph = Object.create(GraphEngine.prototype);
+  Object.assign(graph, {
+    W: 1200,
+    H: 800,
+    alpha: 0,
+    nodes,
+    links,
+    byId: new Map(nodes.map(node => [node.id, node])),
+    options: {
+      getNodeRole: node => node.role,
+      categorySpawnRadius: 0.46,
+      nodeSpawnRadius: 0.28,
+      nodeRingGap: 0.13,
+      initialRingCapacity: 12,
+      spawnJitter: 0,
+    },
+  });
+
+  graph._initializeNodePositions(oldPositions);
+
+  assert.ok(Math.abs(Math.hypot(
+    track.x - categoryPosition.x,
+    track.y - categoryPosition.y
+  ) - 198) < 1e-9);
+});
+
 function recoveryFixture({ dragX = 1100, dragY = 400 } = {}) {
   const root = { id: 'root', role: 'root', x: 600, y: 400, vx: 0, vy: 0 };
   const category = { id: 'category', role: 'category', x: dragX, y: dragY, vx: 0, vy: 0, fx: dragX, fy: dragY };

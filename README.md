@@ -181,6 +181,7 @@ A simulação física permanece contínua, com colisões, `alpha`, amortecimento
 - durante a recuperação de uma categoria, a influência das músicas cresce suavemente de `24%` até `100%` conforme o hub se aproxima de sua distância estrutural;
 
 - a distribuição inicial é dirigida pela topologia: cada categoria nasce na distância de repouso de sua ligação e cada música nasce em um anel ao redor da categoria à qual pertence; anéis adicionais continuam escalonados, sem congelar posições;
+- ao criar uma categoria com o grafo já desenvolvido, sua posição inicial usa o maior setor angular disponível e a folga real até músicas e hubs existentes para desempatar. Categorias preservadas viram as âncoras reais de novas músicas, impedindo que expansões incrementais nasçam sobre outro aglomerado;
 - o enquadramento automático preserva uma escala mínima legível conforme a rede cresce; o zoom manual ainda alcança a visão geral mais afastada quando desejado;
 - `setData()` reutiliza integralmente o SVG quando nós, links e conteúdo não mudaram;
 - nós e links novos ainda são montados normalmente, mas entram no DOM em fragmentos para evitar layouts intermediários;
