@@ -936,8 +936,8 @@ Não embarca no app e não entra em `PUBLIC_FILES`. Sem framework externo:
 `node:test` no JavaScript e `unittest` no Python.
 
 ```bash
-node --test tests/                      # 34 testes de core.js
-python3 -m unittest discover -s tests -t .   # 14 testes de _validate_url
+node --test tests/*.test.js
+python -m unittest discover -s tests -p "test_*.py"
 ```
 
 - `tests/legacy-snapshot.js` — cópia **literal** das implementações que
@@ -970,8 +970,22 @@ python3 -m unittest discover -s tests -t .   # 14 testes de _validate_url
   aprovado, e o yt-dlp resolve de novo) e porta fora de 0–65535, que
   hoje sobe como erro não tratado em vez de `400`.
 
-Os testes de Python precisam do `.venv` do projeto (usam `fastapi` para
-`HTTPException`); `yt_dlp` é dispensado com um módulo vazio.
+Os testes de Python precisam das dependências de `server/requirements.txt`.
+
+## `.github/workflows/ci.yml`
+
+Executa três jobs independentes em `push`, pull request e acionamento manual:
+
+- `Python 3.11` e `Python 3.13` em Windows: instala dependências com cache de
+  pip, compila os módulos, roda `unittest` e valida o ambiente com `pip check`;
+- `JavaScript` em Node.js 24/Linux: verifica a sintaxe dos scripts de produção
+  e executa todos os arquivos `tests/*.test.js`;
+- `Repository hygiene`: falha se segredos usuais, cookies, chaves, ambientes,
+  caches, logs, ZIPs ou `GraphEngine.txt` forem rastreados.
+
+As actions de terceiros estão presas ao SHA completo das versões documentadas;
+o workflow declara somente `contents: read` e cancela execuções antigas da
+mesma branch. Não adicionar permissão de escrita sem uma necessidade explícita.
 
 ## `index.html`
 

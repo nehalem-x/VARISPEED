@@ -1190,8 +1190,26 @@ node --check remote-import.js
 ## Verificação Python
 
 ```bash
-python -m py_compile server/main.py
+python -m py_compile launcher.py server/main.py server/browser_auth.py server/dedicated_auth.py server/youtube_pot.py
+python -m unittest discover -s tests -p "test_*.py"
+python -m pip check
 ```
+
+## Integração contínua
+
+`.github/workflows/ci.yml` executa a mesma base de validação em todo `push`,
+pull request e acionamento manual:
+
+- Python 3.11 e 3.13 no Windows, com instalação por
+  `server/requirements.txt`, compilação dos módulos, testes e `pip check`;
+- Node.js 24 no Linux, com verificação sintática dos scripts e toda a suíte
+  `node:test`;
+- auditoria de higiene que rejeita `.env`, cookies, chaves privadas, ambientes,
+  caches, logs, ZIPs e o protótipo local `GraphEngine.txt` caso sejam rastreados.
+
+As actions externas ficam presas a hashes completos e o workflow possui apenas
+permissão de leitura do conteúdo. O projeto continua sem `package.json` e sem
+dependências npm.
 
 ## Health check
 
