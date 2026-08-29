@@ -12,6 +12,8 @@ function loadGraphEngine(overrides = {}) {
     ResizeObserver: class {},
     requestAnimationFrame: () => 0,
     cancelAnimationFrame: () => {},
+    setTimeout,
+    clearTimeout,
     ...overrides,
   };
   vm.createContext(context);
@@ -787,4 +789,57 @@ test('applyCamera não repete a mesma escrita no compositor', () => {
   graph.applyCamera();
   graph.applyCamera();
   assert.equal(writes, 1);
+});
+
+test('captura de desempenho resume frames, física, render e zoom sem alterar a simulação', async () => {
+  const graph = Object.create(GraphEngine.prototype);
+  Object.assign(graph, {
+    nodes: [{ id: 'root' }, { id: 'track' }],
+    links: [{ source: 'root', target: 'track' }],
+    W: 1280,
+    H: 720,
+    _performanceCapture: null,
+  });
+
+  const pending = graph.startPerformanceCapture({ durationMs: 3000 });
+  graph._recordPerformanceCaptureFrame(100, 1.2, 0.4);
+  graph._recordPerformanceCaptureFrame(107, 1.4, 0.5);
+  graph._recordPerformanceCaptureFrame(114, 1.1, 0.3);
+  graph._recordPerformanceCaptureFrame(128, 2.2, 0.8);
+  graph._capturePerformanceMetric('zoomLatencyMs', 3.5);
+  graph._capturePerformanceMetric('zoomFrameMs', 7);
+  graph._capturePerformanceMetric('zoomCameraMs', 0.08);
+  graph._capturePerformanceMetric('zoomSettleMs', 14);
+
+  const report = graph._finishPerformanceCapture();
+  const resolved = await pending;
+
+  assert.equal(resolved, report);
+  assert.equal(report.nodes, 2);
+  assert.equal(report.links, 1);
+  assert.equal(report.refreshHz, 143);
+  assert.equal(report.frame.samples, 3);
+  assert.equal(report.lateFrames, 1);
+  assert.equal(report.physics.samples, 4);
+  assert.equal(report.render.samples, 4);
+  assert.equal(report.zoom.latency.samples, 1);
+  assert.equal(report.zoom.latency.max, 3.5);
+  assert.equal(report.cancelled, false);
+  assert.equal(graph._performanceCapture, null);
+});
+
+test('captura de desempenho ativa é reutilizada e pode ser cancelada com segurança', async () => {
+  const graph = Object.create(GraphEngine.prototype);
+  Object.assign(graph, {
+    nodes: [], links: [], W: 0, H: 0, _performanceCapture: null,
+  });
+
+  const first = graph.startPerformanceCapture({ durationMs: 3000 });
+  const second = graph.startPerformanceCapture({ durationMs: 3000 });
+  assert.equal(first, second);
+
+  const report = graph.cancelPerformanceCapture();
+  assert.equal((await first), report);
+  assert.equal(report.cancelled, true);
+  assert.equal(graph.cancelPerformanceCapture(), null);
 });

@@ -386,6 +386,8 @@ window.Settings = (() => {
   const systemCells = new Map();
   const testButtons = new Map();
   let systemShutdownBtn = null, systemCopyBtn = null;
+  let graphCaptureProvider = null, graphCaptureButton = null, graphCaptureCopyButton = null;
+  let graphCaptureOutput = null, graphCaptureReport = null, advancedDisclosure = null;
   let authSessionStatus = null, authSessionPrimary = null, authSessionSecondary = null, authSessionHint = null;
   let authSessionBusy = false;
   let authSessionState = { available: false, connected: false, login_open: false, validation: 'missing' };
@@ -935,6 +937,105 @@ window.Settings = (() => {
     return box;
   }
 
+  const graphMetric = (metric = {}) => {
+    const average = Number(metric.average) || 0;
+    const p95 = Number(metric.p95) || 0;
+    const max = Number(metric.max) || 0;
+    return `${average.toFixed(2)} / ${p95.toFixed(2)} / ${max.toFixed(2)} ms`;
+  };
+
+  function formatGraphCapture(report) {
+    const viewport = report.viewport || {};
+    const zoom = report.zoom || {};
+    const capturedAt = report.capturedAt
+      ? new Date(report.capturedAt).toLocaleString('pt-BR')
+      : '—';
+    const zoomUsed = Number(zoom.latency?.samples) > 0;
+    return [
+      'VARISPEED · DIAGNÓSTICO DO GRAFO',
+      `Captura: ${capturedAt}`,
+      `Escala: ${report.nodes || 0} nós · ${report.links || 0} ligações`,
+      `Viewport: ${Math.round(viewport.width || 0)}×${Math.round(viewport.height || 0)} · DPR ${(Number(viewport.pixelRatio) || 1).toFixed(2)}`,
+      `Duração: ${(Number(report.durationMs || 0) / 1000).toFixed(1)} s`,
+      `Cadência estimada: ${report.refreshHz || '—'} Hz · orçamento ${(Number(report.frameBudgetMs) || 0).toFixed(2)} ms`,
+      `FPS observado: ${(Number(report.fps) || 0).toFixed(1)}`,
+      `Frames tardios: ${report.lateFrames || 0} (${(Number(report.lateFramePercent) || 0).toFixed(1)}%)`,
+      `Frame médio / p95 / máx: ${graphMetric(report.frame)}`,
+      `Física média / p95 / máx: ${graphMetric(report.physics)}`,
+      `Render médio / p95 / máx: ${graphMetric(report.render)}`,
+      zoomUsed
+        ? `Zoom entrada média / p95 / máx: ${graphMetric(zoom.latency)}`
+        : 'Zoom: não exercitado durante a captura',
+      ...(zoomUsed ? [
+        `Zoom intervalo médio / p95 / máx: ${graphMetric(zoom.frame)}`,
+        `Zoom câmera média / p95 / máx: ${graphMetric(zoom.camera)}`,
+        `Zoom resposta média / p95 / máx: ${graphMetric(zoom.settle)}`,
+      ] : []),
+    ].join('\n');
+  }
+
+  function renderGraphCapture() {
+    if (!graphCaptureOutput || !graphCaptureCopyButton) return;
+    graphCaptureOutput.hidden = !graphCaptureReport;
+    graphCaptureOutput.textContent = graphCaptureReport ? formatGraphCapture(graphCaptureReport) : '';
+    graphCaptureCopyButton.disabled = !graphCaptureReport;
+  }
+
+  async function copyGraphCapture() {
+    if (!graphCaptureReport) return;
+    const value = formatGraphCapture(graphCaptureReport);
+    try {
+      await navigator.clipboard.writeText(value);
+      panelFeedback('Relatório do grafo copiado');
+    } catch (_) {
+      const ta = document.createElement('textarea');
+      ta.value = value;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      const copied = document.execCommand('copy');
+      ta.remove();
+      panelFeedback(copied ? 'Relatório do grafo copiado' : 'Não foi possível copiar o relatório', {
+        kind: copied ? '' : 'err',
+      });
+    }
+  }
+
+  async function runGraphCapture() {
+    if (!graphCaptureProvider || graphCaptureButton?.disabled) return;
+    graphCaptureButton.disabled = true;
+    graphCaptureButton.textContent = 'Preparando…';
+    graphCaptureReport = null;
+    renderGraphCapture();
+    close({ restoreFocus: false });
+    await new Promise(resolve => setTimeout(resolve, 240));
+
+    let error = null;
+    try {
+      const report = await graphCaptureProvider({ durationMs: 8000 });
+      if (!report || report.cancelled) throw new Error('A captura foi interrompida.');
+      graphCaptureReport = report;
+    } catch (cause) {
+      error = cause;
+    }
+
+    graphCaptureButton.disabled = false;
+    graphCaptureButton.textContent = 'Medir grafo · 8 s';
+    if (advancedDisclosure) advancedDisclosure.open = true;
+    open({ restoreFocus: false });
+    renderGraphCapture();
+    requestAnimationFrame(() => {
+      const target = graphCaptureReport ? graphCaptureOutput : graphCaptureButton;
+      target?.scrollIntoView?.({ block: 'center', behavior: window.Motion?.reduced?.() ? 'auto' : 'smooth' });
+      graphCaptureButton?.focus({ preventScroll: true });
+    });
+    panelFeedback(
+      error ? (error.message || 'Não foi possível medir o grafo.') : 'Medição concluída · relatório pronto',
+      { kind: error ? 'err' : '', hold: error ? 4000 : 2600 }
+    );
+  }
+
   function buildGroup(g) {
     const sec = h('section', 'cfg__group');
     const head = h('div', 'cfg__head');
@@ -975,6 +1076,20 @@ window.Settings = (() => {
         list.appendChild(r);
       });
       sec.appendChild(list);
+      const hint = h('p', 'cfg__diag-hint', 'Ao iniciar, use a roda do mouse, arraste o grafo e mova uma categoria durante 8 segundos. Nenhum dado da Biblioteca é alterado.');
+      const actions = h('div', 'cfg__diag-actions');
+      graphCaptureButton = h('button', 'btn btn--primary cfg__diag-action', 'Medir grafo · 8 s');
+      graphCaptureButton.type = 'button';
+      graphCaptureButton.addEventListener('click', runGraphCapture);
+      graphCaptureCopyButton = h('button', 'btn btn--ghost cfg__diag-action', 'Copiar relatório');
+      graphCaptureCopyButton.type = 'button';
+      graphCaptureCopyButton.disabled = true;
+      graphCaptureCopyButton.addEventListener('click', copyGraphCapture);
+      graphCaptureOutput = h('pre', 'cfg__diag-report mono');
+      graphCaptureOutput.hidden = true;
+      graphCaptureOutput.setAttribute('aria-live', 'polite');
+      actions.append(graphCaptureButton, graphCaptureCopyButton);
+      sec.append(hint, actions, graphCaptureOutput);
       return sec;
     }
 
@@ -1179,6 +1294,7 @@ window.Settings = (() => {
     panelStatus = document.getElementById('cfgStatus');
     cfgUndo = document.getElementById('cfgUndo');
     diagProvider = opts.diagnostics || null;
+    graphCaptureProvider = opts.captureGraphPerformance || null;
     if (!panel || !body) return;
 
     const appendGroups = (host, groups) => {
@@ -1191,6 +1307,7 @@ window.Settings = (() => {
     appendGroups(body, GROUPS.filter((g) => !ADVANCED_GROUPS.has(g.id)));
 
     const advanced = h('details', 'cfg__advanced');
+    advancedDisclosure = advanced;
     const advancedSummary = h('summary', 'cfg__advanced-summary');
     advancedSummary.appendChild(h('span', null, 'Avançado'));
     advancedSummary.appendChild(h('span', 'cfg__advanced-chevron mono', '+'));

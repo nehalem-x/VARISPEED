@@ -2358,6 +2358,12 @@
         motion: window.Motion.reduced() ? 'reduzido' : cfg('motion.level') === 'discreet' ? 'discreto' : 'completo',
       };
     },
+    captureGraphPerformance: async ({ durationMs = 8000 } = {}) => {
+      flash('DIAGNÓSTICO DO GRAFO · use zoom, arrasto e mova uma categoria', {
+        hold: durationMs + 500,
+      });
+      return window.MediaLibrary.measurePerformance({ durationMs });
+    },
   });
   syncRemoteAuth();
   window.MediaLibrary?.mount({
