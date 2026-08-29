@@ -9,10 +9,10 @@ from __future__ import annotations
 import json
 import os
 import threading
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Callable
-
+from typing import Any
 
 BROWSER_LABELS = {
     "chrome": "Google Chrome",

@@ -8,8 +8,8 @@ janela e o perfil temporário são encerrados e removidos.
 
 from __future__ import annotations
 
-import json
 import io
+import json
 import os
 import secrets
 import shutil
@@ -25,7 +25,6 @@ from urllib.request import urlopen
 
 from websockets.sync.client import connect
 from yt_dlp.cookies import YoutubeDLCookieJar
-
 
 YOUTUBE_HOST = "youtube.com"
 YOUTUBE_AUTH_COOKIES = frozenset({

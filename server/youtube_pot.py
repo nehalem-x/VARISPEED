@@ -17,7 +17,6 @@ from importlib import metadata
 from pathlib import Path
 from typing import Any
 
-
 MIN_NODE_MAJOR = 22
 PROVIDER_DISTRIBUTION = "yt-dlp-getpot-wpc"
 
