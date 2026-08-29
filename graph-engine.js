@@ -94,6 +94,7 @@ class GraphEngine {
     this.instanceId = ++graphInstanceSequence;
     this._dataSignature = '';
     this._labelWidthCache = new Map();
+    this._performanceCapture = null;
     this._performance = {
       fps: 0,
       physicsMs: 0,
@@ -262,6 +263,38 @@ class GraphEngine {
 
   getPerformanceSnapshot() {
     return { ...this._performance };
+  }
+
+  startPerformanceCapture({ durationMs = 8000 } = {}) {
+    if (this._performanceCapture) return this._performanceCapture.promise;
+
+    const duration = this._clamp(Number(durationMs) || 8000, 3000, 30000);
+    const startedAt = performance.now();
+    let resolveCapture;
+    const promise = new Promise(resolve => { resolveCapture = resolve; });
+    const capture = {
+      startedAt,
+      durationMs: duration,
+      lastFrameAt: 0,
+      frameMs: [],
+      physicsMs: [],
+      renderMs: [],
+      zoomLatencyMs: [],
+      zoomFrameMs: [],
+      zoomCameraMs: [],
+      zoomSettleMs: [],
+      resolve: resolveCapture,
+      promise,
+      timer: 0,
+    };
+
+    capture.timer = setTimeout(() => this._finishPerformanceCapture(), duration);
+    this._performanceCapture = capture;
+    return promise;
+  }
+
+  cancelPerformanceCapture() {
+    return this._finishPerformanceCapture({ cancelled: true });
   }
 
   resize() {
@@ -591,6 +624,7 @@ class GraphEngine {
   }
 
   destroy() {
+    this.cancelPerformanceCapture();
     this.pause();
     cancelAnimationFrame(this.labelFrame);
     this.labelFrame = 0;
@@ -1432,10 +1466,12 @@ class GraphEngine {
         } else if (finishingWheel) {
           this.wheelSettlePending = false;
           if (this._performance && this.wheelInteractionStartedAt) {
-            this._performance.zoomSettleMs = Math.max(
+            const settleMs = Math.max(
               0,
               performance.now() - this.wheelInteractionStartedAt
             );
+            this._performance.zoomSettleMs = settleMs;
+            this._capturePerformanceMetric('zoomSettleMs', settleMs);
           }
           this.wheelInteractionStartedAt = 0;
           this.wheelLastFrameAt = 0;
@@ -1522,6 +1558,7 @@ class GraphEngine {
         latency,
         0.2
       );
+      this._capturePerformanceMetric('zoomLatencyMs', latency);
     }
     this.wheelQueuedAt = 0;
 
@@ -1547,6 +1584,7 @@ class GraphEngine {
         interval,
         0.2
       );
+      this._capturePerformanceMetric('zoomFrameMs', interval);
       if (interval > 25) this._performance.zoomDroppedFrames++;
     }
     this.wheelLastFrameAt = frameTime;
@@ -1555,6 +1593,7 @@ class GraphEngine {
       Math.max(0, cameraMs),
       0.2
     );
+    this._capturePerformanceMetric('zoomCameraMs', Math.max(0, cameraMs));
   }
 
   // ---------------------------------------------------------------------------
@@ -2547,6 +2586,7 @@ class GraphEngine {
       : current;
     this._performance.physicsMs = blend(this._performance.physicsMs, physicsMs);
     this._performance.renderMs = blend(this._performance.renderMs, renderMs);
+    this._recordPerformanceCaptureFrame(measuredAt, physicsMs, renderMs);
     this._performance.sampleFrames++;
     const sampleElapsed = measuredAt - this._performance.sampleStartedAt;
     if (sampleElapsed >= 500) {
@@ -2568,6 +2608,89 @@ class GraphEngine {
   // ---------------------------------------------------------------------------
   // INTERNAL HELPERS
   // ---------------------------------------------------------------------------
+
+  _capturePerformanceMetric(name, value) {
+    const capture = this._performanceCapture;
+    if (!capture || !Array.isArray(capture[name]) || !Number.isFinite(value)) return;
+    capture[name].push(Math.max(0, value));
+  }
+
+  _recordPerformanceCaptureFrame(frameTime, physicsMs, renderMs) {
+    const capture = this._performanceCapture;
+    if (!capture) return;
+    if (capture.lastFrameAt) {
+      const interval = frameTime - capture.lastFrameAt;
+      if (Number.isFinite(interval) && interval >= 0) capture.frameMs.push(interval);
+    }
+    capture.lastFrameAt = frameTime;
+    if (Number.isFinite(physicsMs)) capture.physicsMs.push(Math.max(0, physicsMs));
+    if (Number.isFinite(renderMs)) capture.renderMs.push(Math.max(0, renderMs));
+  }
+
+  _performanceMetricSummary(values = []) {
+    const sorted = values.filter(Number.isFinite).sort((a, b) => a - b);
+    if (!sorted.length) return { samples: 0, average: 0, p95: 0, max: 0 };
+    const total = sorted.reduce((sum, value) => sum + value, 0);
+    const p95Index = Math.min(sorted.length - 1, Math.ceil(sorted.length * 0.95) - 1);
+    return {
+      samples: sorted.length,
+      average: total / sorted.length,
+      p95: sorted[p95Index],
+      max: sorted[sorted.length - 1],
+    };
+  }
+
+  _finishPerformanceCapture({ cancelled = false } = {}) {
+    const capture = this._performanceCapture;
+    if (!capture) return null;
+    this._performanceCapture = null;
+    clearTimeout(capture.timer);
+
+    const endedAt = performance.now();
+    const elapsedMs = Math.max(0, endedAt - capture.startedAt);
+    const frame = this._performanceMetricSummary(capture.frameMs);
+    const sortedFrames = capture.frameMs
+      .filter(value => Number.isFinite(value) && value > 1 && value < 100)
+      .sort((a, b) => a - b);
+    const medianFrameMs = sortedFrames.length
+      ? sortedFrames[Math.floor(sortedFrames.length / 2)]
+      : 0;
+    const refreshHz = medianFrameMs > 0 ? Math.round(1000 / medianFrameMs) : 0;
+    const lateThresholdMs = medianFrameMs > 0 ? medianFrameMs * 1.5 : 25;
+    const lateFrames = capture.frameMs.filter(value => value > lateThresholdMs).length;
+    const report = {
+      version: 1,
+      cancelled: Boolean(cancelled),
+      capturedAt: new Date().toISOString(),
+      durationMs: elapsedMs,
+      nodes: this.nodes.length,
+      links: this.links.length,
+      viewport: {
+        width: this.W,
+        height: this.H,
+        pixelRatio: Number(globalThis.devicePixelRatio) || 1,
+      },
+      refreshHz,
+      frameBudgetMs: medianFrameMs,
+      fps: elapsedMs > 0 ? capture.frameMs.length * 1000 / elapsedMs : 0,
+      lateFrames,
+      lateFramePercent: capture.frameMs.length
+        ? lateFrames * 100 / capture.frameMs.length
+        : 0,
+      frame,
+      physics: this._performanceMetricSummary(capture.physicsMs),
+      render: this._performanceMetricSummary(capture.renderMs),
+      zoom: {
+        latency: this._performanceMetricSummary(capture.zoomLatencyMs),
+        frame: this._performanceMetricSummary(capture.zoomFrameMs),
+        camera: this._performanceMetricSummary(capture.zoomCameraMs),
+        settle: this._performanceMetricSummary(capture.zoomSettleMs),
+      },
+    };
+
+    capture.resolve(report);
+    return report;
+  }
 
   _flushPendingData() {
     if (this.dragging || !this._pendingData) return;

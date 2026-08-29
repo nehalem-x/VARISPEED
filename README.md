@@ -197,6 +197,7 @@ A simulação física permanece contínua, com colisões, `alpha`, amortecimento
 - posições continuam sendo calculadas com precisão total; somente escritas SVG visualmente idênticas dentro de 0,01 px são suprimidas;
 - apenas o `ResizeObserver` interno do `GraphEngine` mede o host; a Biblioteca recebe o resultado por `onResize`;
 - Configurações → Avançado → Diagnóstico mostra FPS, física, renderização e também latência de entrada, intervalo entre quadros, custo da câmera, resposta completa e frames tardios específicos do zoom.
+- **Medir grafo · 8 s** fecha temporariamente as Configurações para permitir zoom, pan e arraste reais, sem alterar a Biblioteca. Ao terminar, reabre o Diagnóstico com FPS observado, cadência estimada, orçamento de frame, frames tardios e média/p95/máximo de frame, física, render e zoom; **Copiar relatório** gera um bloco reproduzível para comparar computadores e sessões.
 
 Na linha de base sintética deste projeto, 17 músicas passaram de aproximadamente `0,61 ms` para `0,45 ms` de física por quadro; com 50 músicas, de `4,07 ms` para `2,56 ms`. Esses números são comparativos e variam conforme o computador.
 

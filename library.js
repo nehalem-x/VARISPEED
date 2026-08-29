@@ -885,6 +885,23 @@
     options.onViewChange?.(false);
   }
 
+  async function measurePerformance({ durationMs = 8000 } = {}) {
+    if (!mounted) throw new Error('A Biblioteca ainda não está pronta.');
+    if (el.view.hidden) show();
+
+    await new Promise(resolve => requestAnimationFrame(resolve));
+    await new Promise(resolve => requestAnimationFrame(resolve));
+    ensureEngine();
+    closeTutorial({ remember: false, restoreFocus: false });
+    engine?.resize();
+    engine?.resume();
+    if (!engine?.startPerformanceCapture) {
+      throw new Error('O diagnóstico do grafo não está disponível.');
+    }
+
+    return engine.startPerformanceCapture({ durationMs });
+  }
+
   async function openSelected() {
     const item = items.find((entry) => entry.id === selectedId);
     if (!item || typeof options.onOpen !== 'function') return;
@@ -1156,7 +1173,7 @@
   }
 
   window.MediaLibrary = {
-    mount, record, updateActive, show, hide,
+    mount, record, updateActive, show, hide, measurePerformance,
     find(data = {}) {
       const item = items.find((entry) => sameMedia(entry, data));
       return item ? { ...item } : null;
