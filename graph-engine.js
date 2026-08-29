@@ -2741,15 +2741,53 @@ class GraphEngine {
       group.forEach((track, index) => trackPlacement.set(track.id, { index, count: group.length }));
     }
 
-    if (root) spawnAnchors.set(root.id, { x: centerX, y: centerY });
-    categories.forEach((node, index) => {
-      const angle = -Math.PI / 2 + index / Math.max(1, categories.length) * Math.PI * 2;
-      const ring = spawnDistance.get(node.id) ?? minDimension * this.options.categorySpawnRadius;
-      spawnAnchors.set(node.id, {
-        x: centerX + Math.cos(angle) * ring,
-        y: centerY + Math.sin(angle) * ring,
+    const preservedRoot = root ? oldPositions.get(root.id) : null;
+    const rootAnchor = preservedRoot && Number.isFinite(preservedRoot.x) && Number.isFinite(preservedRoot.y)
+      ? { x: preservedRoot.x, y: preservedRoot.y }
+      : { x: centerX, y: centerY };
+    if (root) spawnAnchors.set(root.id, rootAnchor);
+
+    const preservedCategoryAngles = [];
+    const occupiedPositions = [];
+    for (const node of this.nodes) {
+      const old = oldPositions.get(node.id);
+      if (!old || !Number.isFinite(old.x) || !Number.isFinite(old.y)) continue;
+      if (node !== root) occupiedPositions.push({ x: old.x, y: old.y });
+      if (this._role(node) !== 'category') continue;
+      spawnAnchors.set(node.id, { x: old.x, y: old.y });
+      preservedCategoryAngles.push(Math.atan2(old.y - rootAnchor.y, old.x - rootAnchor.x));
+    }
+
+    const newCategories = categories.filter(node => !spawnAnchors.has(node.id));
+    if (!preservedCategoryAngles.length) {
+      newCategories.forEach((node, index) => {
+        const angle = -Math.PI / 2 + index / Math.max(1, newCategories.length) * Math.PI * 2;
+        const ring = spawnDistance.get(node.id) ?? minDimension * this.options.categorySpawnRadius;
+        const anchor = {
+          x: rootAnchor.x + Math.cos(angle) * ring,
+          y: rootAnchor.y + Math.sin(angle) * ring,
+        };
+        spawnAnchors.set(node.id, anchor);
+        occupiedPositions.push(anchor);
       });
-    });
+    } else {
+      newCategories.forEach(node => {
+        const ring = spawnDistance.get(node.id) ?? minDimension * this.options.categorySpawnRadius;
+        const angle = this._categorySpawnAngle(
+          preservedCategoryAngles,
+          rootAnchor,
+          ring,
+          occupiedPositions
+        );
+        const anchor = {
+          x: rootAnchor.x + Math.cos(angle) * ring,
+          y: rootAnchor.y + Math.sin(angle) * ring,
+        };
+        spawnAnchors.set(node.id, anchor);
+        preservedCategoryAngles.push(angle);
+        occupiedPositions.push(anchor);
+      });
+    }
 
     this.nodes.forEach(
       (
@@ -2880,6 +2918,45 @@ class GraphEngine {
     }
 
     return set;
+  }
+
+  _categorySpawnAngle(angles, root, ring, occupiedPositions = []) {
+    const tau = Math.PI * 2;
+    const normalized = angles
+      .filter(Number.isFinite)
+      .map(angle => ((angle % tau) + tau) % tau)
+      .sort((a, b) => a - b);
+    if (!normalized.length) return -Math.PI / 2;
+
+    let best = null;
+    for (let index = 0; index < normalized.length; index++) {
+      const start = normalized[index];
+      const end = index + 1 < normalized.length
+        ? normalized[index + 1]
+        : normalized[0] + tau;
+      const gap = end - start;
+      const angle = start + gap / 2;
+      const x = root.x + Math.cos(angle) * ring;
+      const y = root.y + Math.sin(angle) * ring;
+      const clearance = occupiedPositions.length
+        ? occupiedPositions.reduce(
+            (nearest, point) => Math.min(nearest, Math.hypot(x - point.x, y - point.y)),
+            Infinity
+          )
+        : gap * ring;
+
+      /* O tamanho angular escolhe o setor estrutural; a folga real desempata
+         setores equivalentes para não nascer dentro de um cluster já aberto. */
+      if (
+        !best ||
+        gap > best.gap + 1e-9 ||
+        (Math.abs(gap - best.gap) <= 1e-9 && clearance > best.clearance)
+      ) {
+        best = { angle, gap, clearance };
+      }
+    }
+
+    return best ? best.angle : -Math.PI / 2;
   }
 
   _role(node) {
