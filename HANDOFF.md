@@ -815,7 +815,7 @@ Não volte a capturar o ponteiro no `<g>` do nó: esses elementos são descartá
 │   ├── favicon.png
 │   └── varispeed.ico
 ├── VARISPEED.vbs
-├── Criar atalho VARISPEED.vbs
+├── Create VARISPEED shortcut.vbs
 ├── launcher.py
 ├── startup.html
 ├── startup.css
@@ -1321,7 +1321,7 @@ VARISPEED.vbs
 ou o atalho criado por:
 
 ```text
-Criar atalho VARISPEED.vbs
+Create VARISPEED shortcut.vbs
 ```
 
 O atalho aponta para `wscript.exe`, passa `VARISPEED.vbs` como argumento e usa `assets/varispeed.ico`. Como `wscript.exe` + `WshShell.Run(..., 0, False)` são usados, a janela de console do bootstrap fica oculta.
@@ -1368,7 +1368,7 @@ ready → startup redireciona para :8765
 ### Arquivos envolvidos
 
 - `VARISPEED.vbs` — ponto de entrada oculto;
-- `Criar atalho VARISPEED.vbs` — cria `.lnk` no Desktop com ícone;
+- `Create VARISPEED shortcut.vbs` — cria `.lnk` no Desktop com ícone;
 - `launcher.py` — state machine/bootstrap/HTTP temporário;
 - `startup.html`, `startup.css`, `startup.js` — UI de inicialização;
 - `assets/varispeed.ico` — ícone Windows multi-resolução;
