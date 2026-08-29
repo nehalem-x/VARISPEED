@@ -230,6 +230,7 @@ Uma verificação adicional no teto estrutural usou `200` músicas, `64` categor
 .
 ├── index.html              # interface principal
 ├── styles.css              # design system e layout
+├── theme-boot.js           # tema/densidade antes do primeiro paint
 ├── app.js                  # core da aplicação e fluxo de áudio
 ├── settings.js             # preferências/configurações
 ├── motion.js               # microinterações e motion system
@@ -242,8 +243,8 @@ Uma verificação adicional no teto estrutural usou `200` músicas, `64` categor
 ├── assets/
 │   ├── cat-brand-light.png # gato preto / olhos amarelos / fundo branco
 │   ├── cat-brand-dark.png  # gato branco / olhos amarelos / fundo preto
-│   ├── creator-light.png   # retrato Light dos créditos
-│   ├── creator-dark.png    # retrato Dark dos créditos
+│   ├── creator-light.png   # retrato pessoal local, não publicado
+│   ├── creator-dark.png    # retrato pessoal local, não publicado
 │   ├── favicon.png         # favicon derivado do mascote
 │   └── varispeed.ico       # ícone multi-resolução do atalho Windows
 ├── VARISPEED.vbs           # launcher normal no Windows, sem terminal visível
@@ -261,7 +262,9 @@ Uma verificação adicional no teto estrutural usou `200` músicas, `64` categor
 │   ├── browser_auth.py     # descoberta/validação de perfis instalados
 │   ├── dedicated_auth.py   # sessão isolada e filtrada do YouTube
 │   ├── youtube_pot.py      # PO Token WPC + runtime EJS local
-│   └── requirements.txt
+│   ├── requirements.txt
+│   └── requirements-dev.txt # lint e auditoria usados na CI
+├── pyproject.toml          # política Ruff do projeto
 ├── README.md
 ├── HANDOFF.md
 └── .gitignore
@@ -834,7 +837,7 @@ Todas as chaves atualmente expostas pelo schema possuem consumidor no runtime. A
 
 ## Créditos no final do painel
 
-O final da lista de Configurações contém um bloco autoral com a fotografia do criador à esquerda e as informações centralizadas verticalmente à direita:
+O final da lista de Configurações contém um bloco autoral. Quando os retratos pessoais estão instalados localmente, a fotografia aparece à esquerda e as informações ficam centralizadas verticalmente à direita:
 
 ```text
 CRIADOR DO VARISPEED
@@ -853,14 +856,16 @@ assets/creator-dark.png
 assets/yt-dlp-logo.png
 ```
 
-As duas variantes possuem exatamente o mesmo tamanho e usam o mesmo box CSS. O tema troca apenas a opacidade entre as camadas; não há `scale`, `translate`, `filter` ou `object-position` diferente entre Light e Dark. Isso evita deslocamento perceptível do retrato ao alternar o tema.
+Os dois retratos são assets pessoais locais: permanecem no computador do criador, mas estão no `.gitignore` e não são publicados no GitHub. Um clone limpo renderiza automaticamente o crédito em modo somente texto, sem ícone quebrado nem espaço vazio. Se apenas uma variante existir, ela é usada como fallback nos dois temas.
+
+Quando presentes, as duas variantes possuem exatamente o mesmo tamanho e usam o mesmo box CSS. O tema troca apenas a opacidade entre as camadas; não há `scale`, `translate`, `filter` ou `object-position` diferente entre Light e Dark. Isso evita deslocamento perceptível do retrato ao alternar o tema.
 
 - Dark: fotografia integrada ao fundo preto, com camiseta branca.
-- Light: usa **o retrato aprovado pelo criador**, com fundo branco e camiseta preta. O arquivo enviado foi incorporado diretamente ao projeto e apenas normalizado para `640 × 640 px`, sem regeneração, recorte adicional ou filtro CSS.
+- Light: usa **o retrato aprovado pelo criador**, com fundo branco e camiseta preta. O arquivo local foi apenas normalizado para `640 × 640 px`, sem regeneração, recorte adicional ou filtro CSS.
 - O rosto, os óculos, o cabelo, a expressão e o enquadramento do asset Light não devem ser reinterpretados por IA nem substituídos por uma versão estilizada sem solicitação explícita.
 - As duas camadas continuam usando o mesmo box CSS, `object-fit`, `object-position` e geometria de layout para impedir deslocamentos causados pela troca de tema.
 
-O backend local possui whitelist explícita para os dois assets. Se os arquivos forem renomeados, `server/main.py` também precisa ser atualizado.
+O backend local possui whitelist explícita para os dois caminhos opcionais. Se os arquivos forem renomeados, `server/main.py` também precisa ser atualizado.
 
 Esta mudança é somente de UI/branding e **não adiciona dependências** ao projeto.
 
@@ -1186,6 +1191,9 @@ node --check motion.js
 node --check scope-view.js
 node --check scope-win.js
 node --check remote-import.js
+node --check theme-boot.js
+node --test tests/*.test.js
+npx --yes html-validate@10.4.0 index.html startup.html scope.html
 ```
 
 ## Verificação Python
@@ -1194,6 +1202,8 @@ node --check remote-import.js
 python -m py_compile launcher.py server/main.py server/browser_auth.py server/dedicated_auth.py server/youtube_pot.py
 python -m unittest discover -s tests -p "test_*.py"
 python -m pip check
+python -m ruff check launcher.py server tests
+python -m pip_audit -r server/requirements.txt
 ```
 
 ## Integração contínua
@@ -1202,15 +1212,35 @@ python -m pip check
 pull request e acionamento manual:
 
 - Python 3.11 e 3.13 no Windows, com instalação por
-  `server/requirements.txt`, compilação dos módulos, testes e `pip check`;
-- Node.js 24 no Linux, com verificação sintática dos scripts e toda a suíte
-  `node:test`;
+  `server/requirements-dev.txt`, Ruff, compilação dos módulos, testes e
+  `pip check`; a matriz 3.13 também executa `pip-audit`;
+- Node.js 24 no Linux, com verificação sintática dos scripts, toda a suíte
+  `node:test` e validação semântica dos três documentos HTML;
 - auditoria de higiene que rejeita `.env`, cookies, chaves privadas, ambientes,
   caches, logs, ZIPs e o protótipo local `GraphEngine.txt` caso sejam rastreados.
 
 As actions externas ficam presas a hashes completos e o workflow possui apenas
 permissão de leitura do conteúdo. O projeto continua sem `package.json` e sem
 dependências npm.
+
+O Dependabot verifica mensalmente dependências Python e GitHub Actions, com teto
+de três pull requests abertos por ecossistema para não gerar ruído excessivo.
+
+## Política HTTP local
+
+O backend aplica a mesma camada de proteção a todas as respostas:
+
+- API usa `Cache-Control: no-store`, porque pode conter metadados de mídia ou
+  estado de autenticação;
+- HTML, JavaScript, CSS e imagens usam `no-cache`, revalidando o conteúdo em
+  cada recarga e evitando que uma revisão pareça não ter sido aplicada após F5;
+- CSP restringe scripts ao próprio VARISPEED, mantendo apenas os domínios das
+  fontes, imagens HTTPS, mídia/Workers `blob:` e estilos inline necessários;
+- `X-Frame-Options`, `nosniff`, `Referrer-Policy` e `Permissions-Policy`
+  reduzem superfícies que o editor não utiliza.
+
+O bootstrap de tema saiu do HTML inline e vive em `theme-boot.js`, preservando
+o tema antes do primeiro paint sem relaxar a política de scripts.
 
 ## Health check
 
