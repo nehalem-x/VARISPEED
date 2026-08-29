@@ -246,7 +246,7 @@ Uma verificação adicional no teto estrutural usou `200` músicas, `64` categor
 │   ├── favicon.png         # favicon derivado do mascote
 │   └── varispeed.ico       # ícone multi-resolução do atalho Windows
 ├── VARISPEED.vbs           # launcher normal no Windows, sem terminal visível
-├── Criar atalho VARISPEED.vbs # cria atalho com ícone do gato no Desktop
+├── Create VARISPEED shortcut.vbs # cria atalho com ícone do gato no Desktop
 ├── launcher.py             # bootstrap gráfico, somente stdlib Python
 ├── startup.html            # tela de inicialização real
 ├── startup.css
@@ -297,7 +297,7 @@ O ponto de entrada recomendado é **`VARISPEED.vbs`** ou o atalho `VARISPEED` cr
 Na primeira vez, execute uma vez:
 
 ```text
-Criar atalho VARISPEED.vbs
+Create VARISPEED shortcut.vbs
 ```
 
 Isso cria `VARISPEED.lnk` na Área de Trabalho usando `assets/varispeed.ico`, derivado do favicon do gato. Depois, abra o aplicativo pelo atalho.
