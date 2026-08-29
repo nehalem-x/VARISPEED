@@ -29,6 +29,8 @@ class GraphEngine {
       cameraEaseMs: 82,
       wheelResponse: 0.62,
       wheelRenderHoldMs: 72,
+      vectorCameraEnterScale: 1.16,
+      vectorCameraExitScale: 1.04,
       cameraFollowMs: 520,
       fitPadding: 84,
       compactBreakpoint: 800,
@@ -90,6 +92,7 @@ class GraphEngine {
     this.wheelSettlePending = false;
     this.wheelRenderHoldUntil = 0;
     this.cameraFollow = null;
+    this._cameraRenderMode = 'transform';
     this.raf = 0;
     this.running = false;
     this.labelFrame = 0;
@@ -320,8 +323,7 @@ class GraphEngine {
     const changed = width !== this.W || height !== this.H;
     this.W = width;
     this.H = height;
-    this.svg.setAttribute('viewBox', `0 0 ${this.W} ${this.H}`);
-    this.linksSvg?.setAttribute('viewBox', `0 0 ${this.W} ${this.H}`);
+    this.applyCamera();
 
     if (this.nodes.length && !this.nodes[0].initialized) {
       this._initializeNodePositions();
@@ -1358,6 +1360,46 @@ class GraphEngine {
       this.zoomTarget = { ...this.camera };
       this.cameraFollow = null;
     }
+
+    const enterScale = Math.max(1, Number(this.options.vectorCameraEnterScale) || 1.16);
+    const exitScale = Math.min(
+      enterScale,
+      Math.max(1, Number(this.options.vectorCameraExitScale) || 1.04)
+    );
+    const useVectorCamera = this._cameraRenderMode === 'viewBox'
+      ? this.camera.scale > exitScale
+      : this.camera.scale >= enterScale;
+    this._cameraRenderMode = useVectorCamera ? 'viewBox' : 'transform';
+
+    if (useVectorCamera && this.W > 0 && this.H > 0) {
+      const scale = this.camera.scale;
+      const viewBox = [
+        -this.camera.x / scale,
+        -this.camera.y / scale,
+        this.W / scale,
+        this.H / scale,
+      ].map(value => value.toFixed(3)).join(' ');
+
+      [this.svg, this.linksSvg].filter(Boolean).forEach(layer => {
+        if (layer._graphViewBox === viewBox) return;
+        layer._graphViewBox = viewBox;
+        layer.setAttribute('viewBox', viewBox);
+      });
+
+      [this.linkWorld, this.world].filter(Boolean).forEach(layer => {
+        if (layer._graphCamera === 'none') return;
+        layer._graphCamera = 'none';
+        layer.style.transform = 'none';
+      });
+      return;
+    }
+
+    const baseViewBox = `0 0 ${this.W} ${this.H}`;
+    [this.svg, this.linksSvg].filter(Boolean).forEach(layer => {
+      if (layer._graphViewBox === baseViewBox) return;
+      layer._graphViewBox = baseViewBox;
+      layer.setAttribute('viewBox', baseViewBox);
+    });
 
     const transform = `translate(${this.camera.x}px, ${this.camera.y}px) scale(${this.camera.scale})`;
     [this.linkWorld, this.world].filter(Boolean).forEach(layer => {

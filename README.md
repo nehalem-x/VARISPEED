@@ -193,8 +193,8 @@ A simulação física permanece contínua, com colisões, `alpha`, amortecimento
 - zoom ancorado no ponteiro não calcula os insets do viewport, pois eles são necessários somente no zoom centralizado;
 - a origem do host é atualizada em `resize()` e reutilizada pela roda, removendo leituras de layout do caminho normal do zoom;
 - a roda aplica `62%` do novo alvo no próprio frame consolidado e, se não houver nova entrada no quadro seguinte, conclui exatamente o movimento. Isso preserva a continuidade de trackpads sem deixar a cauda exponencial de um passo isolado do mouse ativa por centenas de milissegundos;
-- ligações e nós vivem em dois SVGs sobrepostos com o mesmo `viewBox` e a mesma câmera. Assim a atualização das linhas não invalida junto o plano mais caro de círculos, textos e rótulos;
-- nós são posicionados por transformações CSS compostas, enquanto as ligações preservam seus atributos SVG. A câmera escreve a mesma transformação nos dois planos e não repete valores idênticos;
+- ligações e nós vivem em dois SVGs sobrepostos, recortados no viewport e isolados em seu próprio contexto de pintura. Assim a atualização das linhas não invalida junto o plano mais caro de círculos, textos e rótulos nem mantém conteúdo ampliado fora da área visível;
+- nós são posicionados por transformações CSS compostas, enquanto as ligações preservam seus atributos SVG. Até `1,16×`, a câmera usa composição CSS; acima disso, troca para dois `viewBox` idênticos para evitar rasterizar uma textura SVG gigante. A volta só ocorre abaixo de `1,04×`, impedindo alternância durante o gesto;
 - durante o burst curto da roda, a física continua avançando em todos os frames, mas as escritas de posição ficam consolidadas por até `72 ms`; a escala da câmera concorre apenas com composição e uma posição integral é redesenhada imediatamente ao final. Arraste de nó nunca entra nessa consolidação;
 - posições continuam sendo calculadas com precisão total; somente serializações visuais idênticas dentro de 0,01 px são suprimidas;
 - apenas o `ResizeObserver` interno do `GraphEngine` mede o host; a Biblioteca recebe o resultado por `onResize`;
