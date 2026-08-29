@@ -191,11 +191,11 @@ A simulação física permanece contínua, com colisões, `alpha`, amortecimento
 - eventos de roda/trackpad são acumulados e consumidos pelo mesmo ciclo da câmera; mesmo durante scroll contínuo existe no máximo uma transformação visual por quadro;
 - zoom ancorado no ponteiro não calcula os insets do viewport, pois eles são necessários somente no zoom centralizado;
 - a origem do host é atualizada em `resize()` e reutilizada pela roda, removendo leituras de layout do caminho normal do zoom;
-- a roda aplica uma resposta parcial no próprio frame consolidado e deixa apenas o restante para a suavização exponencial; não há mais dois loops concorrentes escrevendo a câmera;
+- a roda aplica `62%` do novo alvo no próprio frame consolidado e, se não houver nova entrada no quadro seguinte, conclui exatamente o movimento. Isso preserva a continuidade de trackpads sem deixar a cauda exponencial de um passo isolado do mouse ativa por centenas de milissegundos;
 - a câmera usa uma transformação CSS promovida ao compositor; transformações idênticas não são reescritas;
 - posições continuam sendo calculadas com precisão total; somente escritas SVG visualmente idênticas dentro de 0,01 px são suprimidas;
 - apenas o `ResizeObserver` interno do `GraphEngine` mede o host; a Biblioteca recebe o resultado por `onResize`;
-- Configurações → Avançado → Diagnóstico mostra FPS, tempo de física e tempo de renderização do grafo.
+- Configurações → Avançado → Diagnóstico mostra FPS, física, renderização e também latência de entrada, intervalo entre quadros, custo da câmera, resposta completa e frames tardios específicos do zoom.
 
 Na linha de base sintética deste projeto, 17 músicas passaram de aproximadamente `0,61 ms` para `0,45 ms` de física por quadro; com 50 músicas, de `4,07 ms` para `2,56 ms`. Esses números são comparativos e variam conforme o computador.
 

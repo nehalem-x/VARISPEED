@@ -2350,6 +2350,11 @@
         graphFps: graphPerf?.fps ? `${graphPerf.fps}/s` : '—',
         graphPhysics: graphPerf ? `${graphPerf.physicsMs.toFixed(2)} ms` : '—',
         graphRender: graphPerf ? `${graphPerf.renderMs.toFixed(2)} ms` : '—',
+        graphZoomLatency: graphPerf ? `${graphPerf.zoomLatencyMs.toFixed(2)} ms` : '—',
+        graphZoomFrame: graphPerf ? `${graphPerf.zoomFrameMs.toFixed(2)} ms` : '—',
+        graphZoomCamera: graphPerf ? `${graphPerf.zoomCameraMs.toFixed(3)} ms` : '—',
+        graphZoomSettle: graphPerf ? `${graphPerf.zoomSettleMs.toFixed(1)} ms` : '—',
+        graphZoomDropped: graphPerf ? String(graphPerf.zoomDroppedFrames) : '—',
         motion: window.Motion.reduced() ? 'reduzido' : cfg('motion.level') === 'discreet' ? 'discreto' : 'completo',
       };
     },

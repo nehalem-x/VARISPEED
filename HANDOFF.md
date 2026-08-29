@@ -780,7 +780,8 @@ A física de `graph-engine.js` continua usando os parâmetros da engine de orige
 - seleção de nó espera dois frames para o painel ocupar seu espaço, usa o viewport útil, aplica zoom mínimo de `1.35` e passa `followDuration: Infinity` enquanto a seleção existir; `closeDetails()` remove o painel antes de enfileirar `fitGraph()`, que encerra o follow e restaura a visão geral sem salto. Roda, pan e saída da Biblioteca também cancelam o acompanhamento;
 - `hostOrigin` é atualizado no `resize()` visível e reutilizado pela roda; `getBoundingClientRect()` no frame de wheel é apenas fallback anterior à primeira medição;
 - `applyCamera()` escreve `style.transform` em `.graph-engine-world`, com `transform-box:view-box`, `transform-origin:0 0` e promoção ao compositor; manter uma única escrita de câmera por frame e preservar o cache `_graphCamera`;
-- `wheelResponse` aplica parte do novo alvo imediatamente no frame consolidado; `_startSmoothCamera()` inicia com timestamp real para que o primeiro frame seguinte não seja vazio;
+- `wheelResponse: 0.62` aplica a maior parte do novo alvo no frame consolidado. Se o quadro seguinte não consumir outra entrada, `wheelSettlePending` conclui exatamente o alvo nesse segundo quadro; não restaurar a antiga cauda exponencial longa para passos isolados de mouse;
+- o snapshot de desempenho inclui `zoomLatencyMs`, `zoomFrameMs`, `zoomCameraMs`, `zoomSettleMs` e `zoomDroppedFrames`; esses campos alimentam Configurações → Avançado → Diagnóstico e devem continuar sendo apenas métricas, sem interferir na física;
 - `applyCamera()` conserva a última serialização em `world._graphCamera` e não repete `style.transform` quando a transformação é idêntica;
 - `_renderPositions()` arredonda apenas a serialização SVG a centésimos de pixel, sem arredondar `node.x/y/vx/vy`;
 - `_labelWidthCache` evita repetir `getComputedTextLength()` para o mesmo título/largura;

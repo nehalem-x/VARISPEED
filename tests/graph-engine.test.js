@@ -31,6 +31,11 @@ function performanceState() {
     renderMs: 0,
     buildMs: 0,
     marqueeMs: 0,
+    zoomLatencyMs: 0,
+    zoomFrameMs: 0,
+    zoomCameraMs: 0,
+    zoomSettleMs: 0,
+    zoomDroppedFrames: 0,
     skippedDataUpdates: 0,
     sampleFrames: 0,
     sampleStartedAt: performance.now(),
@@ -308,6 +313,70 @@ test('eventos de roda compartilham o frame da câmera e fazem uma única escrita
   assert.ok(Math.abs(graph.zoomTarget.y - 240 * (1 - scale)) < 1e-12);
   assert.equal(cameraWrites, 1);
   assert.equal(frameRequests, 2);
+});
+
+test('zoom pela roda encerra a cauda no primeiro quadro sem nova entrada', () => {
+  let frameCallback = null;
+  let frameRequests = 0;
+  let cameraWrites = 0;
+  const WheelGraphEngine = loadGraphEngine({
+    requestAnimationFrame(callback) {
+      frameRequests++;
+      frameCallback = callback;
+      return frameRequests;
+    },
+  });
+  const graph = Object.create(WheelGraphEngine.prototype);
+  Object.assign(graph, {
+    dragging: null,
+    zoomFrame: 0,
+    zoomLastTime: 0,
+    wheelDelta: 0,
+    wheelClientX: 0,
+    wheelClientY: 0,
+    wheelQueuedAt: 0,
+    wheelInteractionStartedAt: 0,
+    wheelLastFrameAt: 0,
+    wheelSettlePending: false,
+    cameraFollow: null,
+    camera: { x: 0, y: 0, scale: 1 },
+    zoomTarget: { x: 0, y: 0, scale: 1 },
+    _performance: performanceState(),
+    options: {
+      cameraEaseMs: 82,
+      wheelResponse: 0.62,
+      minZoom: 0.48,
+      maxZoom: 2.35,
+      initialZoom: 1,
+    },
+    world: {
+      style: {
+        set transform(value) {
+          cameraWrites++;
+          this.value = value;
+        },
+      },
+    },
+    hostOrigin: { left: 0, top: 0 },
+    host: { getBoundingClientRect: () => ({ left: 0, top: 0 }) },
+  });
+
+  graph._queueWheelZoom(120, 100, 100);
+  const startedAt = graph.zoomLastTime;
+  frameCallback(startedAt + 16);
+  assert.notEqual(graph.camera.scale, graph.zoomTarget.scale);
+  assert.equal(cameraWrites, 1);
+
+  frameCallback(startedAt + 32);
+  assert.equal(graph.camera.scale, graph.zoomTarget.scale);
+  assert.equal(graph.camera.x, graph.zoomTarget.x);
+  assert.equal(graph.camera.y, graph.zoomTarget.y);
+  assert.equal(graph.zoomFrame, 0);
+  assert.equal(cameraWrites, 2);
+  assert.ok(graph._performance.zoomLatencyMs >= 0);
+  assert.equal(graph._performance.zoomFrameMs, 16);
+  assert.ok(graph._performance.zoomCameraMs >= 0);
+  assert.ok(graph._performance.zoomSettleMs >= 0);
 });
 
 test('resize atualiza a origem reutilizada pelo zoom', () => {
