@@ -110,6 +110,7 @@ button, a { -webkit-tap-highlight-color: transparent; }
 @keyframes numbers-marquee-right { from { transform: translateX(-50%); } to { transform: translateX(0); } }
 
 .title-grid-section, .library-section { position: relative; background: linear-gradient(180deg, #000 0%, var(--surface) 35%, var(--surface) 72%, #000 100%); }
+.manifesto.title-grid-section { background: linear-gradient(180deg, transparent 0%, rgba(0,0,0,.24) 18%, var(--surface) 42%, var(--surface) 72%, #000 100%); }
 .title-grid-section::before, .library-section::before { content: ''; position: absolute; inset: 0; opacity: .18; pointer-events: none; background-image: linear-gradient(rgba(255,255,255,.06) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.06) 1px, transparent 1px); background-size: 44px 44px; mask-image: linear-gradient(transparent, #000 22%, #000 78%, transparent); }
 .title-grid-section > .shell, .library-section > .shell { position: relative; }
 .section-heading-wide { grid-template-columns: minmax(0, 1.35fr) minmax(300px, .5fr); }
