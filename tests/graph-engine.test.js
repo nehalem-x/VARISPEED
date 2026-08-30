@@ -256,46 +256,6 @@ test('canvas limita o backing store sem alterar o viewport lógico', () => {
   assert.equal(graph.linksCanvas.height, 1200);
 });
 
-test('canvas preserva rótulo recortado, contagem e outline sem SVG textual', () => {
-  const calls = [];
-  const context = {
-    save: () => calls.push(['save']),
-    restore: () => calls.push(['restore']),
-    measureText: () => ({ width: 300 }),
-    beginPath: () => calls.push(['begin']),
-    rect: (...args) => calls.push(['rect', ...args]),
-    clip: () => calls.push(['clip']),
-    strokeText: (...args) => calls.push(['strokeText', ...args]),
-    fillText: (...args) => calls.push(['fillText', ...args]),
-  };
-  const graph = Object.create(GraphEngine.prototype);
-  Object.assign(graph, {
-    W: 400,
-    H: 240,
-    camera: { x: 0, y: 0, scale: 2 },
-    nodes: [{ id: 'track', x: 50, y: 30 }],
-    nodeVisuals: [{
-      role: 'track', label: 'Título longo', countLabel: '3:15 · 100%',
-      maxLabelWidth: 100, focused: false, muted: false, selected: false, playing: false,
-    }],
-    options: { reduceMotion: () => true },
-    _labelWidthCache: new Map(),
-    _labelAnimationStartedAt: 0,
-    _performance: performanceState(),
-    _radius: () => 8,
-  });
-  const palette = {
-    background: '#000', text: '#fff', text2: '#aaa', text3: '#666',
-    fontUi: 'sans-serif', fontMono: 'monospace',
-  };
-
-  graph._renderLabels(context, palette);
-
-  assert.ok(calls.some(call => call[0] === 'rect' && call[3] === 200));
-  assert.equal(calls.filter(call => call[0] === 'strokeText').length, 2);
-  assert.equal(calls.filter(call => call[0] === 'fillText').length, 2);
-});
-
 test('snapshot de desempenho não expõe o estado interno para mutação', () => {
   const graph = Object.create(GraphEngine.prototype);
   graph._performance = performanceState();
@@ -980,8 +940,6 @@ test('captura de desempenho resume frames, física, render e zoom sem alterar a 
   graph._capturePerformanceMetric('zoomFrameMs', 7);
   graph._capturePerformanceMetric('zoomCameraMs', 0.08);
   graph._capturePerformanceMetric('zoomSettleMs', 14);
-  graph._recordProgrammaticCameraFrame(140, 0.05);
-  graph._recordProgrammaticCameraFrame(150, 0.06);
   graph._performanceCapture.deferredRenders = 3;
 
   const report = graph._finishPerformanceCapture();
@@ -997,8 +955,6 @@ test('captura de desempenho resume frames, física, render e zoom sem alterar a 
   assert.equal(report.render.samples, 4);
   assert.equal(report.zoom.latency.samples, 1);
   assert.equal(report.zoom.latency.max, 3.5);
-  assert.equal(report.zoom.programmaticFrames, 2);
-  assert.equal(report.zoom.frame.samples, 2);
   assert.equal(report.zoom.deferredRenders, 3);
   assert.equal(report.cancelled, false);
   assert.equal(graph._performanceCapture, null);

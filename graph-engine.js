@@ -69,7 +69,6 @@ class GraphEngine {
     this.byId = new Map();
     this.degree = {};
     this.linkVisuals = [];
-    this.nodeVisuals = [];
     this.nodeEls = [];
 
     this.W = 0;
@@ -97,9 +96,9 @@ class GraphEngine {
     this._cameraRenderMode = 'transform';
     this._linkPixelRatio = 1;
     this._linkPalette = null;
-    this._labelAnimationStartedAt = performance.now();
     this.raf = 0;
     this.running = false;
+    this.labelFrame = 0;
     this.instanceId = ++graphInstanceSequence;
     this._dataSignature = '';
     this._labelWidthCache = new Map();
@@ -296,8 +295,6 @@ class GraphEngine {
       zoomCameraMs: [],
       zoomSettleMs: [],
       deferredRenders: 0,
-      cameraLastFrameAt: 0,
-      programmaticFrames: 0,
       resolve: resolveCapture,
       promise,
       timer: 0,
@@ -643,6 +640,9 @@ class GraphEngine {
   destroy() {
     this.cancelPerformanceCapture();
     this.pause();
+    cancelAnimationFrame(this.labelFrame);
+    this.labelFrame = 0;
+
     this._resizeObserver?.disconnect();
     this._abortController?.abort();
 
@@ -777,22 +777,6 @@ class GraphEngine {
       muted: false,
       affinity: link.kind === 'affinity',
     }));
-    this._labelAnimationStartedAt = performance.now() + 800;
-    this.nodeVisuals = this.nodes.map(node => {
-      const role = this._role(node);
-      return {
-        role,
-        label: String(this.options.getNodeLabel(node) ?? ''),
-        countLabel: String(this.options.getNodeCountLabel(node) ?? ''),
-        maxLabelWidth: role === 'track'
-          ? Math.max(0, Number(this.options.nodeLabelMaxWidth) || 0)
-          : 0,
-        focused: false,
-        muted: false,
-        selected: false,
-        playing: false,
-      };
-    });
 
     this.nodeEls =
       this.nodes.map((node, i) => {
@@ -869,22 +853,6 @@ class GraphEngine {
             'circle'
           );
 
-        const labelHit = document.createElementNS(
-          'http://www.w3.org/2000/svg',
-          'rect'
-        );
-        const label = this.options.getNodeLabel(node);
-        const countLabel = this.options.getNodeCountLabel(node);
-        const maxLabelWidth = role === 'track'
-          ? Math.max(0, Number(this.options.nodeLabelMaxWidth) || 0)
-          : 0;
-        const labelHitWidth = maxLabelWidth || Math.max(96, Math.min(240, String(label || '').length * 7));
-        labelHit.classList.add('graph-engine-label-hit');
-        labelHit.setAttribute('x', String(-labelHitWidth / 2));
-        labelHit.setAttribute('y', String(this._radius(node) + 5));
-        labelHit.setAttribute('width', String(labelHitWidth));
-        labelHit.setAttribute('height', countLabel ? '34' : '20');
-
         const playingRing =
           document.createElementNS(
             'http://www.w3.org/2000/svg',
@@ -912,7 +880,6 @@ class GraphEngine {
         group.append(
           title,
           hit,
-          labelHit,
           playingRing,
           dot
         );
@@ -928,6 +895,102 @@ class GraphEngine {
             dot,
             engine: this
           });
+        }
+
+        const label =
+          this.options.getNodeLabel(
+            node
+          );
+
+        if (
+          label !== null &&
+          label !== undefined &&
+          String(label) !== ''
+        ) {
+          const text =
+            document.createElementNS(
+              'http://www.w3.org/2000/svg',
+              'text'
+            );
+
+          text.classList.add(
+            'graph-engine-label'
+          );
+
+          text.setAttribute(
+            'text-anchor',
+            'middle'
+          );
+
+          text.setAttribute(
+            'y',
+            this._radius(node) + 18
+          );
+
+          text.textContent =
+            label;
+
+          const maxLabelWidth =
+            role === 'track'
+              ? Math.max(0, Number(this.options.nodeLabelMaxWidth) || 0)
+              : 0;
+
+          if (maxLabelWidth > 0) {
+            const clipId = `graph-label-${this.instanceId}-${i}`;
+            const clip = document.createElementNS('http://www.w3.org/2000/svg', 'clipPath');
+            const clipRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+            clip.setAttribute('id', clipId);
+            clipRect.setAttribute('x', String(-maxLabelWidth / 2));
+            clipRect.setAttribute('y', String(this._radius(node) + 6));
+            clipRect.setAttribute('width', String(maxLabelWidth));
+            clipRect.setAttribute('height', '18');
+            clip.appendChild(clipRect);
+            this.defs.appendChild(clip);
+            text.setAttribute('clip-path', `url(#${clipId})`);
+            text.dataset.marqueeWidth = String(maxLabelWidth);
+          }
+
+          group.appendChild(
+            text
+          );
+        }
+
+        const countLabel =
+          this.options.getNodeCountLabel(
+            node
+          );
+
+        if (
+          countLabel !== null &&
+          countLabel !== undefined &&
+          String(countLabel) !== ''
+        ) {
+          const count =
+            document.createElementNS(
+              'http://www.w3.org/2000/svg',
+              'text'
+            );
+
+          count.classList.add(
+            'graph-engine-count-label'
+          );
+
+          count.setAttribute(
+            'text-anchor',
+            'middle'
+          );
+
+          count.setAttribute(
+            'y',
+            this._radius(node) + 31
+          );
+
+          count.textContent =
+            countLabel;
+
+          group.appendChild(
+            count
+          );
         }
 
         nodeFragment.appendChild(
@@ -1039,7 +1102,52 @@ class GraphEngine {
     this.gNodes.appendChild(nodeFragment);
 
     this._renderStyles();
+    cancelAnimationFrame(this.labelFrame);
+    this.labelFrame = requestAnimationFrame(() => {
+      this.labelFrame = requestAnimationFrame(() => {
+        this.labelFrame = 0;
+        this._refreshNodeLabelMarquees();
+      });
+    });
     this._performance.buildMs = performance.now() - buildStartedAt;
+  }
+
+  _refreshNodeLabelMarquees() {
+    const marqueeStartedAt = performance.now();
+    const reduced = this.options.reduceMotion?.() === true;
+    this.gNodes.querySelectorAll('.graph-engine-label[data-marquee-width]').forEach(text => {
+      text.querySelector('animate')?.remove();
+      text.classList.remove('is-overflowing');
+      text.setAttribute('text-anchor', 'middle');
+      text.setAttribute('x', '0');
+      if (reduced) return;
+
+      const width = Number(text.dataset.marqueeWidth) || 0;
+      const measureKey = `${text.textContent}\u0000${width}`;
+      let contentWidth = this._labelWidthCache.get(measureKey);
+      if (!Number.isFinite(contentWidth)) {
+        try { contentWidth = text.getComputedTextLength(); }
+        catch (_) { return; }
+        this._labelWidthCache.set(measureKey, contentWidth);
+      }
+      if (!(contentWidth > width + 1)) return;
+
+      const start = -width / 2;
+      const end = start - (contentWidth - width);
+      const duration = Math.max(7, Math.min(18, 4 + (contentWidth - width) / 18));
+      const animation = document.createElementNS('http://www.w3.org/2000/svg', 'animate');
+      text.classList.add('is-overflowing');
+      text.setAttribute('text-anchor', 'start');
+      text.setAttribute('x', String(start));
+      animation.setAttribute('attributeName', 'x');
+      animation.setAttribute('values', `${start};${start};${end};${end};${start}`);
+      animation.setAttribute('keyTimes', '0;0.14;0.58;0.72;1');
+      animation.setAttribute('dur', `${duration.toFixed(2)}s`);
+      animation.setAttribute('begin', '0.8s');
+      animation.setAttribute('repeatCount', 'indefinite');
+      text.appendChild(animation);
+    });
+    this._performance.marqueeMs = performance.now() - marqueeStartedAt;
   }
 
   _renderStyles() {
@@ -1092,15 +1200,6 @@ class GraphEngine {
               this
             );
 
-        if (this.nodeVisuals[i]) {
-          Object.assign(this.nodeVisuals[i], {
-            focused,
-            muted,
-            selected,
-            playing,
-          });
-        }
-
         this.nodeEls[i]
           ?.setAttribute(
             'class',
@@ -1142,8 +1241,6 @@ class GraphEngine {
         el._graphPosition = transform;
         el.style.transform = transform;
       }
-      node._graphRenderedX = node.x;
-      node._graphRenderedY = node.y;
     });
   }
 
@@ -1166,12 +1263,6 @@ class GraphEngine {
     this._linkPalette = {
       base: styles?.getPropertyValue('--border-c').trim() || '#2a2a2a',
       active: styles?.getPropertyValue('--text-2').trim() || '#a3a3a3',
-      background: styles?.getPropertyValue('--bg').trim() || '#000000',
-      text: styles?.getPropertyValue('--text').trim() || '#f2f2f2',
-      text2: styles?.getPropertyValue('--text-2').trim() || '#a3a3a3',
-      text3: styles?.getPropertyValue('--text-3').trim() || '#6e6e6e',
-      fontUi: styles?.getPropertyValue('--font-ui').trim() || 'sans-serif',
-      fontMono: styles?.getPropertyValue('--font-mono').trim() || 'monospace',
     };
     return this._linkPalette;
   }
@@ -1193,10 +1284,10 @@ class GraphEngine {
       const A = this.byId.get(link.source);
       const B = this.byId.get(link.target);
       if (!A || !B) return;
-      const x1 = (Number.isFinite(A._graphRenderedX) ? A._graphRenderedX : A.x) * scale + offsetX;
-      const y1 = (Number.isFinite(A._graphRenderedY) ? A._graphRenderedY : A.y) * scale + offsetY;
-      const x2 = (Number.isFinite(B._graphRenderedX) ? B._graphRenderedX : B.x) * scale + offsetX;
-      const y2 = (Number.isFinite(B._graphRenderedY) ? B._graphRenderedY : B.y) * scale + offsetY;
+      const x1 = A.x * scale + offsetX;
+      const y1 = A.y * scale + offsetY;
+      const x2 = B.x * scale + offsetX;
+      const y2 = B.y * scale + offsetY;
       if (
         (x1 < -2 && x2 < -2) ||
         (x1 > this.W + 2 && x2 > this.W + 2) ||
@@ -1233,109 +1324,6 @@ class GraphEngine {
     });
     context.globalAlpha = 1;
     context.setLineDash([]);
-    this._renderLabels(context, palette);
-  }
-
-  _marqueeOffset(overflow, duration, now = performance.now()) {
-    if (!(overflow > 0) || this.options.reduceMotion?.() === true) return 0;
-    const elapsed = now - this._labelAnimationStartedAt;
-    if (!(elapsed > 0)) return 0;
-    const phase = (elapsed % (duration * 1000)) / (duration * 1000);
-    if (phase <= 0.14) return 0;
-    if (phase < 0.58) return -overflow * ((phase - 0.14) / 0.44);
-    if (phase <= 0.72) return -overflow;
-    return -overflow * (1 - (phase - 0.72) / 0.28);
-  }
-
-  _renderLabels(context, palette) {
-    if (!Array.isArray(this.nodeVisuals) || !this.nodeVisuals.length) return;
-    const startedAt = performance.now();
-    const scale = this.camera.scale;
-    const offsetX = this.camera.x;
-    const offsetY = this.camera.y;
-    const now = performance.now();
-
-    this.nodeVisuals.forEach((visual, index) => {
-      if (!visual?.label && !visual?.countLabel) return;
-      const node = this.nodes[index];
-      if (!node) return;
-      const nodeX = Number.isFinite(node._graphRenderedX) ? node._graphRenderedX : node.x;
-      const nodeY = Number.isFinite(node._graphRenderedY) ? node._graphRenderedY : node.y;
-      const x = nodeX * scale + offsetX;
-      const y = nodeY * scale + offsetY;
-      const radius = this._radius(node);
-      const coarseMargin = Math.max(120, (visual.maxLabelWidth || 220) * scale);
-      if (
-        x < -coarseMargin ||
-        x > this.W + coarseMargin ||
-        y < -80 * scale ||
-        y > this.H + 50 * scale
-      ) return;
-
-      const role = visual.role;
-      const labelSize = role === 'root' ? 11 : 10;
-      const labelWeight = role === 'track' ? 500 : 600;
-      const labelColor = role === 'root' || visual.focused || visual.selected || visual.playing
-        ? palette.text
-        : palette.text2;
-      const opacity = visual.muted ? 0.24 : 1;
-      const labelY = y + (radius + 18) * scale;
-      const fontKey = `${role}\u0000${visual.label}`;
-
-      context.save();
-      context.globalAlpha = opacity;
-      context.font = `${labelWeight} ${(labelSize * scale).toFixed(2)}px ${palette.fontUi}`;
-      if ('letterSpacing' in context) {
-        context.letterSpacing = role === 'track' ? '0px' : `${(labelSize * scale * 0.06).toFixed(2)}px`;
-      }
-      context.textBaseline = 'alphabetic';
-      context.lineJoin = 'round';
-      context.lineWidth = Math.max(1, 3 * scale);
-      context.strokeStyle = palette.background;
-      context.fillStyle = labelColor;
-
-      let contentWidth = this._labelWidthCache.get(fontKey);
-      if (!Number.isFinite(contentWidth)) {
-        contentWidth = context.measureText(visual.label).width / scale;
-        this._labelWidthCache.set(fontKey, contentWidth);
-      }
-
-      if (visual.maxLabelWidth > 0 && contentWidth > visual.maxLabelWidth + 1) {
-        const clipWidth = visual.maxLabelWidth * scale;
-        const overflow = (contentWidth - visual.maxLabelWidth) * scale;
-        const duration = Math.max(7, Math.min(18, 4 + (contentWidth - visual.maxLabelWidth) / 18));
-        const labelX = x - clipWidth / 2 + this._marqueeOffset(overflow, duration, now);
-        context.beginPath();
-        context.rect(x - clipWidth / 2, y + (radius + 6) * scale, clipWidth, 18 * scale);
-        context.clip();
-        context.textAlign = 'left';
-        context.strokeText(visual.label, labelX, labelY);
-        context.fillText(visual.label, labelX, labelY);
-      } else if (visual.label) {
-        context.textAlign = 'center';
-        context.strokeText(visual.label, x, labelY);
-        context.fillText(visual.label, x, labelY);
-      }
-
-      if (visual.countLabel) {
-        context.restore();
-        context.save();
-        context.globalAlpha = opacity;
-        context.font = `400 ${(7 * scale).toFixed(2)}px ${palette.fontMono}`;
-        if ('letterSpacing' in context) context.letterSpacing = `${(7 * scale * 0.06).toFixed(2)}px`;
-        context.textAlign = 'center';
-        context.textBaseline = 'alphabetic';
-        context.lineJoin = 'round';
-        context.lineWidth = Math.max(1, 3 * scale);
-        context.strokeStyle = palette.background;
-        context.fillStyle = visual.playing ? palette.text2 : palette.text3;
-        const countY = y + (radius + 31) * scale;
-        context.strokeText(visual.countLabel, x, countY);
-        context.fillText(visual.countLabel, x, countY);
-      }
-      context.restore();
-    });
-    this._performance.marqueeMs = performance.now() - startedAt;
   }
 
   // ---------------------------------------------------------------------------
@@ -1541,19 +1529,11 @@ class GraphEngine {
             : timedEase;
 
         const cameraStartedAt = performance.now();
-        const programmaticMotion = !wheelZoomed && !finishingWheel && (
-          Math.abs(this.camera.x - this.zoomTarget.x) >= 0.02 ||
-          Math.abs(this.camera.y - this.zoomTarget.y) >= 0.02 ||
-          Math.abs(this.camera.scale - this.zoomTarget.scale) >= 0.00015 ||
-          !!this.cameraFollow
-        );
         this._moveCameraTowardTarget(ease);
         const cameraMs = performance.now() - cameraStartedAt;
 
         if (wheelZoomed || finishingWheel) {
           this._recordZoomFrame(time, cameraMs);
-        } else if (programmaticMotion) {
-          this._recordProgrammaticCameraFrame(time, cameraMs);
         }
 
         if (wheelZoomed) {
@@ -1602,7 +1582,6 @@ class GraphEngine {
 
           this.zoomFrame = 0;
           this.zoomLastTime = 0;
-          if (this._performanceCapture) this._performanceCapture.cameraLastFrameAt = 0;
 
           return;
         }
@@ -1694,17 +1673,6 @@ class GraphEngine {
       Math.max(0, cameraMs),
       0.2
     );
-    this._capturePerformanceMetric('zoomCameraMs', Math.max(0, cameraMs));
-  }
-
-  _recordProgrammaticCameraFrame(frameTime, cameraMs) {
-    const capture = this._performanceCapture;
-    if (!capture) return;
-    if (capture.cameraLastFrameAt) {
-      this._capturePerformanceMetric('zoomFrameMs', Math.max(0, frameTime - capture.cameraLastFrameAt));
-    }
-    capture.cameraLastFrameAt = frameTime;
-    capture.programmaticFrames++;
     this._capturePerformanceMetric('zoomCameraMs', Math.max(0, cameraMs));
   }
 
@@ -2780,7 +2748,7 @@ class GraphEngine {
     const lateThresholdMs = medianFrameMs > 0 ? medianFrameMs * 1.5 : 25;
     const lateFrames = capture.frameMs.filter(value => value > lateThresholdMs).length;
     const report = {
-      version: 2,
+      version: 1,
       cancelled: Boolean(cancelled),
       capturedAt: new Date().toISOString(),
       durationMs: elapsedMs,
@@ -2807,7 +2775,6 @@ class GraphEngine {
         camera: this._performanceMetricSummary(capture.zoomCameraMs),
         settle: this._performanceMetricSummary(capture.zoomSettleMs),
         deferredRenders: capture.deferredRenders,
-        programmaticFrames: capture.programmaticFrames,
       },
     };
 

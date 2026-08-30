@@ -183,9 +183,9 @@ A simulação física permanece contínua, com colisões, `alpha`, amortecimento
 - a distribuição inicial é dirigida pela topologia: cada categoria nasce na distância de repouso de sua ligação e cada música nasce em um anel ao redor da categoria à qual pertence; anéis adicionais continuam escalonados, sem congelar posições;
 - ao criar uma categoria com o grafo já desenvolvido, sua posição inicial usa o maior setor angular disponível e a folga real até músicas e hubs existentes para desempatar. Categorias preservadas viram as âncoras reais de novas músicas, impedindo que expansões incrementais nasçam sobre outro aglomerado;
 - o enquadramento automático preserva uma escala mínima legível conforme a rede cresce; o zoom manual ainda alcança a visão geral mais afastada quando desejado;
-- `setData()` reutiliza integralmente as camadas DOM/Canvas quando nós, links e conteúdo não mudaram;
+- `setData()` reutiliza integralmente o SVG quando nós, links e conteúdo não mudaram;
 - nós e links novos ainda são montados normalmente, mas entram no DOM em fragmentos para evitar layouts intermediários;
-- largura de títulos longos é cacheada em unidades lógicas e o marquee do grafo é calculado no próprio Canvas, sem medições de layout;
+- largura de títulos longos é cacheada e o marquee é medido dois frames depois da montagem;
 - raio, carga, atração central, fase flutuante, distância e força dos links são cacheados depois da indexação;
 - a colisão usa uma grade espacial dimensionada pelo maior alcance possível entre dois nós; somente células vizinhas produzem candidatos e, dentro delas, a rejeição por eixo continua acontecendo antes de `Math.hypot()`;
 - a grade não altera posição, velocidade, força ou ordem: os candidatos são reordenados pelo índice `i/j` original e a fórmula, o espaçamento de `44 px` e o impulso da colisão permanecem integrais;
@@ -193,8 +193,8 @@ A simulação física permanece contínua, com colisões, `alpha`, amortecimento
 - zoom ancorado no ponteiro não calcula os insets do viewport, pois eles são necessários somente no zoom centralizado;
 - a origem do host é atualizada em `resize()` e reutilizada pela roda, removendo leituras de layout do caminho normal do zoom;
 - a roda aplica `62%` do novo alvo no próprio frame consolidado e, se não houver nova entrada no quadro seguinte, conclui exatamente o movimento. Isso preserva a continuidade de trackpads sem deixar a cauda exponencial de um passo isolado do mouse ativa por centenas de milissegundos;
-- conexões, títulos e contagens vivem em um Canvas próprio atrás do SVG interativo. As linhas são projetadas diretamente em coordenadas de tela, agrupadas por aparência e rejeitadas quando o segmento inteiro está fora do viewport; títulos mantêm outline, recorte e marquee, mas deixam de criar recortes e animações SVG contínuas;
-- círculos, foco e áreas de clique continuam vetoriais no SVG e posicionados por transformações CSS compostas. Até `1,16×`, a câmera usa composição CSS; acima disso, troca esse SVG leve para `viewBox`. A volta só ocorre abaixo de `1,04×`, impedindo alternância durante o gesto;
+- conexões vivem em um Canvas próprio atrás do SVG interativo dos nós. As linhas são projetadas diretamente em coordenadas de tela, agrupadas por aparência e rejeitadas quando o segmento inteiro está fora do viewport; tracejados de afinidade, destaque e atenuação continuam visualmente equivalentes, sem o custo de rasterizar linhas SVG longas no zoom próximo;
+- nós continuam vetoriais e posicionados por transformações CSS compostas. Até `1,16×`, a câmera usa composição CSS; acima disso, troca o SVG dos nós para `viewBox`, evitando rasterizar uma textura gigante. A volta só ocorre abaixo de `1,04×`, impedindo alternância durante o gesto;
 - durante o burst curto da roda, a física continua avançando em todos os frames, mas as escritas de posição ficam consolidadas por até `72 ms`; a escala da câmera concorre apenas com composição e uma posição integral é redesenhada imediatamente ao final. Arraste de nó nunca entra nessa consolidação;
 - posições continuam sendo calculadas com precisão total; somente serializações visuais idênticas dentro de 0,01 px são suprimidas;
 - apenas o `ResizeObserver` interno do `GraphEngine` mede o host; a Biblioteca recebe o resultado por `onResize`;
@@ -221,8 +221,8 @@ Uma verificação adicional no teto estrutural usou `200` músicas, `64` categor
 - a simulação é pausada enquanto a Biblioteca está oculta e retomada ao reabrir, sem alterar os parâmetros da física;
 - medições `0 × 0` emitidas enquanto a Biblioteca está oculta não substituem o último viewport válido; nós novos aguardam a próxima medição visível antes de receber posição;
 - câmera, foco e enquadramento rejeitam coordenadas não finitas e restauram um estado seguro, impedindo que `translate(NaN NaN)` bloqueie pan e arraste;
-- nomes de músicas usam marquee horizontal apenas quando ultrapassam a largura disponível: cabeçalho, detalhe da Biblioteca e `Fonte → Arquivo` medem overflow real, enquanto o Canvas do grafo recorta o título completo em uma janela fixa sob o nó;
-- o marquee espera antes de mover, revela o final e retorna ao início; nomes curtos permanecem estáticos e a preferência de movimento reduzido é respeitada. Nas superfícies DOM, hover também pausa o movimento;
+- nomes de músicas usam marquee horizontal apenas quando ultrapassam a largura disponível: cabeçalho, detalhe da Biblioteca e `Fonte → Arquivo` medem overflow real, enquanto o grafo recorta o título completo em uma janela fixa sob o nó;
+- o marquee espera antes de mover, revela o final e retorna ao início; nomes curtos permanecem estáticos, hover pausa o movimento e a preferência de movimento reduzido é respeitada;
 - atalhos globais não interceptam teclas usadas em campos, botões, links, sliders ou outros controles interativos.
 
 ---
