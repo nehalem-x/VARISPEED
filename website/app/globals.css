@@ -58,6 +58,15 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .manifesto p:not(.section-index) { margin: 0; font-size: clamp(19px, 1.4vw, 25px); line-height: 1.42; letter-spacing: -.025em; text-wrap: pretty; }
 .manifesto .muted-copy { margin-top: 28px; color: var(--text-2); font-size: 16px; line-height: 1.65; letter-spacing: 0; }
 
+.manifesto,
+.product-section .section-heading,
+.graph-demo-section .demo-copy,
+.principles .section-heading {
+  background-image: linear-gradient(rgba(255,255,255,.035) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.035) 1px, transparent 1px);
+  background-position: -1px -1px;
+  background-size: 44px 44px;
+}
+
 @media (max-width: 800px) {
   .shell { width: min(100% - 28px, 1480px); }
   .site-header { height: 70px; }
