@@ -167,7 +167,7 @@ test('grade espacial reduz pares de colisão sem perder candidatos nem mudar sua
   });
 });
 
-test('renderização ignora escritas SVG sem mudança visual', () => {
+test('renderização dos nós ignora escritas SVG sem mudança visual', () => {
   const calls = [];
   const element = () => ({
     setAttribute: (name, value) => calls.push([name, value]),
@@ -179,9 +179,9 @@ test('renderização ignora escritas SVG sem mudança visual', () => {
   const b = { id: 'b', x: 40, y: 50 };
   const graph = Object.create(GraphEngine.prototype);
   Object.assign(graph, {
-    nodes: [a, b], links: [{ source: 'a', target: 'b' }],
+    nodes: [a, b], links: [],
     byId: new Map([['a', a], ['b', b]]),
-    linkEls: [element()], nodeEls: [element(), element()],
+    nodeEls: [element(), element()],
   });
 
   graph._renderPositions();
@@ -192,6 +192,68 @@ test('renderização ignora escritas SVG sem mudança visual', () => {
   a.x += 0.02;
   graph._renderPositions();
   assert.ok(calls.length > initialWrites);
+});
+
+test('canvas desenha somente conexões que podem cruzar o viewport', () => {
+  const calls = [];
+  const context = {
+    setTransform: (...args) => calls.push(['transform', ...args]),
+    clearRect: (...args) => calls.push(['clear', ...args]),
+    setLineDash: value => calls.push(['dash', ...value]),
+    beginPath: () => calls.push(['begin']),
+    moveTo: (...args) => calls.push(['move', ...args]),
+    lineTo: (...args) => calls.push(['line', ...args]),
+    stroke: () => calls.push(['stroke']),
+  };
+  const nodes = [
+    { id: 'a', x: -10, y: 20 },
+    { id: 'b', x: 60, y: 20 },
+    { id: 'c', x: -50, y: 40 },
+    { id: 'd', x: -40, y: 50 },
+  ];
+  const graph = Object.create(GraphEngine.prototype);
+  Object.assign(graph, {
+    W: 100,
+    H: 80,
+    camera: { x: 0, y: 0, scale: 2 },
+    linkContext: context,
+    _linkPixelRatio: 1.25,
+    _linkPalette: { base: '#222', active: '#aaa' },
+    links: [
+      { source: 'a', target: 'b', kind: 'affinity' },
+      { source: 'c', target: 'd' },
+    ],
+    linkVisuals: [
+      { active: false, muted: false, affinity: true },
+      { active: false, muted: false, affinity: false },
+    ],
+    byId: new Map(nodes.map(node => [node.id, node])),
+  });
+
+  graph._renderLinks();
+
+  assert.deepEqual(calls[0], ['transform', 1.25, 0, 0, 1.25, 0, 0]);
+  assert.deepEqual(calls.filter(call => call[0] === 'move'), [['move', -20, 40]]);
+  assert.deepEqual(calls.filter(call => call[0] === 'line'), [['line', 120, 40]]);
+  assert.ok(calls.some(call => call.join(':') === 'dash:2:4'));
+});
+
+test('canvas limita o backing store sem alterar o viewport lógico', () => {
+  const HighDprGraphEngine = loadGraphEngine({ window: { devicePixelRatio: 3 } });
+  const graph = Object.create(HighDprGraphEngine.prototype);
+  Object.assign(graph, {
+    W: 800,
+    H: 600,
+    options: { maxLinkPixelRatio: 2 },
+    linksCanvas: { width: 0, height: 0 },
+    _linkPixelRatio: 1,
+  });
+
+  graph._resizeLinkCanvas();
+
+  assert.equal(graph._linkPixelRatio, 2);
+  assert.equal(graph.linksCanvas.width, 1600);
+  assert.equal(graph.linksCanvas.height, 1200);
 });
 
 test('snapshot de desempenho não expõe o estado interno para mutação', () => {
@@ -401,7 +463,6 @@ test('resize atualiza a origem reutilizada pelo zoom', () => {
       getBoundingClientRect: () => ({ left: 24, top: 72 }),
     },
     svg: { setAttribute: (name, value) => viewBoxes.push(['nodes', name, value]) },
-    linksSvg: { setAttribute: (name, value) => viewBoxes.push(['links', name, value]) },
     options: { onResize: null },
   });
 
@@ -412,7 +473,6 @@ test('resize atualiza a origem reutilizada pelo zoom', () => {
   assert.equal(graph.H, 600);
   assert.deepEqual(viewBoxes, [
     ['nodes', 'viewBox', '0 0 800 600'],
-    ['links', 'viewBox', '0 0 800 600'],
   ]);
 });
 
@@ -796,7 +856,6 @@ test('applyCamera não repete a mesma escrita no compositor', () => {
     },
   });
   const world = layer();
-  const linkWorld = layer();
   const graph = Object.create(GraphEngine.prototype);
   Object.assign(graph, {
     camera: { x: 10, y: 20, scale: 1.1 },
@@ -806,16 +865,14 @@ test('applyCamera não repete a mesma escrita no compositor', () => {
     W: 800,
     H: 600,
     svg: svg(),
-    linksSvg: svg(),
     world,
-    linkWorld,
     _cameraRenderMode: 'transform',
   });
 
   graph.applyCamera();
   graph.applyCamera();
-  assert.equal(transformWrites, 2);
-  assert.equal(viewBoxWrites, 2);
+  assert.equal(transformWrites, 1);
+  assert.equal(viewBoxWrites, 1);
 });
 
 test('applyCamera troca ampliação por viewBox com histerese no zoom próximo', () => {
@@ -832,16 +889,14 @@ test('applyCamera troca ampliação por viewBox com histerese no zoom próximo',
     W: 1200,
     H: 600,
     svg: svg(),
-    linksSvg: svg(),
     world: layer(),
-    linkWorld: layer(),
     _cameraRenderMode: 'transform',
   });
 
   graph.applyCamera();
   assert.equal(graph._cameraRenderMode, 'viewBox');
   assert.equal(viewBoxes.at(-1), '200.000 100.000 1000.000 500.000');
-  assert.deepEqual(transforms.slice(-2), ['none', 'none']);
+  assert.deepEqual(transforms.slice(-1), ['none']);
 
   graph.camera = { x: -210, y: -105, scale: 1.05 };
   graph.applyCamera();
