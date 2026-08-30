@@ -170,7 +170,11 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .footer-copy small { width: min(100%, 430px); margin-top: clamp(90px, 13vh, 160px); padding-top: 24px; border-top: 1px solid var(--border); color: var(--text-3); font: 500 9px/1 var(--font-mono); letter-spacing: .13em; }
 .footer-mascot { position: relative; min-height: 720px; align-self: stretch; }
 .footer-mascot img { position: absolute; z-index: 2; right: -9%; bottom: -3%; width: min(64vw, 960px); max-width: none; filter: contrast(1.04); }
-.footer-mascot span { position: absolute; z-index: 1; right: -3%; bottom: -2%; color: var(--surface-3); font: 650 clamp(100px, 16vw, 260px)/.72 var(--font-ui); letter-spacing: -.085em; writing-mode: vertical-rl; transform: rotate(180deg); user-select: none; }
+.footer-marquee { position: absolute; z-index: 1; inset: -38% -3% -38% auto; overflow: hidden; pointer-events: none; user-select: none; }
+.footer-marquee-track { display: flex; flex-direction: column; align-items: flex-end; animation: footer-marquee-y 18s linear infinite; will-change: transform; }
+.footer-marquee span { flex: none; padding-bottom: clamp(64px, 9vh, 120px); color: var(--surface-3); font: 650 clamp(100px, 16vw, 260px)/.72 var(--font-ui); letter-spacing: -.085em; writing-mode: vertical-rl; transform: rotate(180deg); }
+
+@keyframes footer-marquee-y { to { transform: translateY(-50%); } }
 
 .reveal { animation: reveal-up both linear; animation-timeline: view(); animation-range: entry 5% cover 35%; }
 @keyframes reveal-up { from { opacity: .2; transform: translateY(42px); } to { opacity: 1; transform: translateY(0); } }
@@ -192,8 +196,12 @@ button, a { -webkit-tap-highlight-color: transparent; }
   .footer-copy { min-height: 620px; }
   .footer-mascot { min-height: 560px; }
   .footer-mascot img { width: min(105vw, 900px); right: -16%; }
-  .footer-mascot span { writing-mode: initial; transform: none; right: -6%; bottom: 2%; }
+  .footer-marquee { inset: auto -18% 1% -18%; }
+  .footer-marquee-track { width: max-content; flex-direction: row; align-items: flex-end; animation-name: footer-marquee-x; }
+  .footer-marquee span { padding: 0 clamp(64px, 10vw, 120px) 0 0; writing-mode: initial; transform: none; }
 }
+
+@keyframes footer-marquee-x { to { transform: translateX(-50%); } }
 
 @media (max-width: 620px) {
   .frame-bar span:last-child, .interface-frame figcaption span:last-child { display: none; }

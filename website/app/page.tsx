@@ -179,7 +179,12 @@ export default function Home() {
           </div>
           <div className="footer-mascot" aria-label="Mascote do VARISPEED">
             <img src="/cat-brand-transparent.png" alt="Gato mascote do VARISPEED" loading="lazy" />
-            <span aria-hidden="true">VARISPEED</span>
+            <div className="footer-marquee" aria-hidden="true">
+              <div className="footer-marquee-track">
+                <span>VARISPEED</span>
+                <span>VARISPEED</span>
+              </div>
+            </div>
           </div>
         </div>
       </footer>
