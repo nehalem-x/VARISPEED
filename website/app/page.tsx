@@ -1,0 +1,188 @@
+import { ArrowDown, ArrowRight, ArrowUpRight } from 'lucide-react';
+import { LibraryGraph } from './components/library-graph';
+import { LiquidDots } from './components/liquid-dots';
+
+const GITHUB_URL = 'https://github.com/nehalem-x/VARISPEED';
+
+export default function Home() {
+  return (
+    <main>
+      <section className="hero" id="inicio" aria-labelledby="hero-title">
+        <LiquidDots />
+        <div className="hero-grid" aria-hidden="true" />
+
+        <header className="site-header shell">
+          <a className="brand" href="#inicio" aria-label="VARISPEED — início">
+            <span>VARISPEED</span>
+            <span className="version">1.0</span>
+          </a>
+          <nav aria-label="Navegação principal">
+            <a href="#sistema">Sistema</a>
+            <a href="#biblioteca">Biblioteca</a>
+            <a className="nav-github" href={GITHUB_URL} target="_blank" rel="noreferrer">
+              GitHub
+              <ArrowUpRight aria-hidden="true" />
+            </a>
+          </nav>
+        </header>
+
+        <div className="hero-copy shell">
+          <h1 id="hero-title">
+            Ouvir também
+            <br />
+            é construir.
+          </h1>
+          <p className="hero-lede">
+            Velocidade sem correção de pitch. Uma biblioteca que cresce como
+            memória — faixa por faixa, conexão por conexão.
+          </p>
+          <div className="hero-actions">
+            <a className="button button-primary" href={GITHUB_URL} target="_blank" rel="noreferrer">
+              Conhecer o projeto
+              <ArrowRight aria-hidden="true" />
+            </a>
+            <a className="button button-quiet" href="#sistema">
+              Explorar
+              <ArrowDown aria-hidden="true" />
+            </a>
+          </div>
+        </div>
+
+        <div className="hero-fade" aria-hidden="true" />
+      </section>
+
+      <section className="manifesto shell" id="sistema" aria-labelledby="manifesto-title">
+        <p className="section-index">01 / PROPOSTA</p>
+        <div className="manifesto-grid">
+          <h2 id="manifesto-title">Sua biblioteca deixa rastros.</h2>
+          <div>
+            <p>
+              Isto não é apenas uma lista. Cada música adicionada ocupa um lugar
+              em um mapa que pertence somente a você.
+            </p>
+            <p className="muted-copy">
+              O VARISPEED transforma tempo, pitch e organização em uma experiência
+              visual precisa — sem esconder a complexidade que você construiu.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section className="product-section shell feature-split" aria-labelledby="editor-title">
+        <div className="section-heading feature-copy">
+          <p className="section-index">02 / FERRAMENTA</p>
+          <h2 id="editor-title">O tempo muda.<br />A música responde.</h2>
+          <p>
+            Reduza ou aumente a velocidade sem preservar o pitch. Grave e agudo
+            mudam junto com o tempo — como fita, vinil e memória física.
+          </p>
+        </div>
+
+        <figure className="interface-frame interface-frame-editor reveal feature-visual">
+          <div className="frame-bar" aria-hidden="true">
+            <span>VARISPEED / EDITOR</span>
+            <span>100.0%</span>
+          </div>
+          <img
+            src="/varispeed-editor.png"
+            alt="Editor real do VARISPEED com timeline, controle de velocidade e informações de áudio"
+            loading="lazy"
+          />
+          <figcaption>
+            <span>CONTROLE DIRETO</span>
+            <span>SEM CORREÇÃO DE PITCH</span>
+          </figcaption>
+        </figure>
+      </section>
+
+      <section className="numbers" aria-label="Características principais">
+        <div className="numbers-grid shell">
+          <div><strong>25–400</strong><span>% DE VELOCIDADE</span></div>
+          <div><strong>LOCAL</strong><span>SEUS ARQUIVOS, SEU COMPUTADOR</span></div>
+          <div><strong>WAV</strong><span>EXPORTAÇÃO SEM ATALHOS</span></div>
+          <div><strong>∞</strong><span>FORMAS DE ORGANIZAR</span></div>
+        </div>
+      </section>
+
+      <section className="library-section" id="biblioteca" aria-labelledby="library-title">
+        <div className="shell feature-split feature-split-library">
+          <div className="section-heading section-heading-wide feature-copy">
+            <p className="section-index">03 / BIBLIOTECA</p>
+            <h2 id="library-title">Complexidade é memória visível.</h2>
+            <p>
+              Músicas viram nós. Categorias viram territórios. Com o tempo, a
+              biblioteca deixa de ser uma lista e passa a revelar a história da sua escuta.
+            </p>
+          </div>
+
+          <figure className="interface-frame reveal feature-visual">
+            <div className="frame-bar" aria-hidden="true">
+              <span>VARISPEED / BIBLIOTECA REAL</span>
+              <span>GRAFO EM REPOUSO</span>
+            </div>
+            <img
+              src="/varispeed-library.png"
+              alt="Biblioteca real do VARISPEED mostrando músicas conectadas no grafo"
+              loading="lazy"
+            />
+            <figcaption>
+              <span>CADA ARQUIVO OCUPA UM LUGAR</span>
+              <span>O MAPA CRESCE COM VOCÊ</span>
+            </figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <section className="graph-demo-section shell" aria-labelledby="graph-demo-title">
+        <div className="demo-copy">
+          <p className="section-index">04 / SISTEMA VIVO</p>
+          <h2 id="graph-demo-title">Não é uma ilustração.<br />É o grafo real.</h2>
+          <p>
+            A mesma física da Biblioteca está rodando aqui. Arraste categorias,
+            aproxime o mapa e clique em qualquer nó para acompanhá-lo.
+          </p>
+        </div>
+        <LibraryGraph />
+      </section>
+
+      <section className="principles shell" aria-labelledby="principles-title">
+        <div className="section-heading">
+          <p className="section-index">05 / PRINCÍPIOS</p>
+          <h2 id="principles-title">Feito para ouvir.<br />Construído para durar.</h2>
+        </div>
+        <div className="principles-grid">
+          <article><span>01</span><h3>Sem maquiagem</h3><p>A velocidade altera naturalmente duração, frequência e pitch. O resultado é físico, direto e previsível.</p></article>
+          <article><span>02</span><h3>Local primeiro</h3><p>O fluxo principal acontece no seu computador. A interface não precisa transformar escuta em conta ou perfil.</p></article>
+          <article><span>03</span><h3>Complexidade legível</h3><p>O grafo não esconde uma biblioteca grande. Ele organiza seu crescimento e permite que ela mostre o tempo acumulado.</p></article>
+          <article><span>04</span><h3>Uma identidade</h3><p>Editor, biblioteca, visualizadores e movimentos compartilham a mesma linguagem precisa e monocromática.</p></article>
+        </div>
+      </section>
+
+      <footer className="site-footer">
+        <div className="footer-grid shell">
+          <div className="footer-copy">
+            <h2>Ouça diferente.<br />Deixe rastros.</h2>
+            <p>Projeto independente de áudio, tempo e memória visual.</p>
+            <div className="footer-links">
+              <a className="footer-github" href={GITHUB_URL} target="_blank" rel="noreferrer" aria-label="Abrir nehalem-x/VARISPEED no GitHub">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path fill="currentColor" d="M12 .7a11.5 11.5 0 0 0-3.64 22.4c.58.1.79-.25.79-.56v-2.2c-3.22.7-3.9-1.36-3.9-1.36-.53-1.34-1.29-1.7-1.29-1.7-1.05-.72.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.04 1.77 2.71 1.26 3.37.96.1-.75.4-1.26.74-1.55-2.57-.29-5.27-1.28-5.27-5.69 0-1.26.45-2.28 1.19-3.09-.12-.29-.52-1.47.11-3.05 0 0 .97-.31 3.16 1.18a10.96 10.96 0 0 1 5.76 0c2.2-1.49 3.16-1.18 3.16-1.18.63 1.58.23 2.76.11 3.05.74.81 1.19 1.83 1.19 3.09 0 4.42-2.71 5.39-5.29 5.68.42.36.79 1.06.79 2.14v3.18c0 .31.21.67.8.56A11.5 11.5 0 0 0 12 .7Z" />
+                </svg>
+                <span>nehalem-x/VARISPEED</span>
+              </a>
+              <span className="footer-link-separator" aria-hidden="true">·</span>
+              <a className="footer-ytdlp" href="https://github.com/yt-dlp/yt-dlp" target="_blank" rel="noreferrer" aria-label="Abrir o projeto yt-dlp no GitHub">
+                <img src="/yt-dlp-logo.png?v=20260830" alt="yt-dlp" width="38" height="15" />
+              </a>
+            </div>
+            <small>CRIADO POR NEHALEM-X · 2026</small>
+          </div>
+          <div className="footer-mascot" aria-label="Mascote do VARISPEED">
+            <img src="/cat-brand-transparent.png" alt="Gato mascote do VARISPEED" loading="lazy" />
+            <span aria-hidden="true">VARISPEED</span>
+          </div>
+        </div>
+      </footer>
+    </main>
+  );
+}
