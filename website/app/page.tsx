@@ -4,6 +4,21 @@ import { LiquidDots } from './components/liquid-dots';
 
 const GITHUB_URL = 'https://github.com/nehalem-x/VARISPEED';
 
+const MARQUEE_FACTS = [
+  {
+    direction: 'right',
+    items: ['25–400% DE VELOCIDADE', 'PITCH E TEMPO SE MOVEM JUNTOS', 'VARISPEED'],
+  },
+  {
+    direction: 'left',
+    items: ['PROCESSAMENTO LOCAL', 'SEUS ARQUIVOS NO SEU COMPUTADOR', 'SEM MAQUIAGEM'],
+  },
+  {
+    direction: 'right',
+    items: ['EXPORTAÇÃO WAV', 'BIBLIOTECA EM GRAFO', 'FORMAS DE ORGANIZAR ∞'],
+  },
+] as const;
+
 export default function Home() {
   return (
     <main>
@@ -87,13 +102,24 @@ export default function Home() {
         </figure>
       </section>
 
-      <section className="numbers" aria-label="Características principais">
-        <div className="numbers-grid shell">
-          <div><strong>25–400</strong><span>% DE VELOCIDADE</span></div>
-          <div><strong>LOCAL</strong><span>SEUS ARQUIVOS, SEU COMPUTADOR</span></div>
-          <div><strong>WAV</strong><span>EXPORTAÇÃO SEM ATALHOS</span></div>
-          <div><strong>∞</strong><span>FORMAS DE ORGANIZAR</span></div>
-        </div>
+      <section className="numbers" aria-label="Características principais do VARISPEED">
+        <p className="numbers-accessible">
+          Velocidade de 25 a 400 por cento; processamento local; exportação WAV;
+          biblioteca organizada em grafo.
+        </p>
+        {MARQUEE_FACTS.map((row) => (
+          <div className={`numbers-row numbers-row-${row.direction}`} key={row.items[0]} aria-hidden="true">
+            <div className="numbers-track">
+              {[0, 1].map((copy) => (
+                <div className="numbers-group" key={copy}>
+                  {row.items.map((item) => (
+                    <span key={item}>{item}</span>
+                  ))}
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
       </section>
 
       <section className="library-section" id="biblioteca" aria-labelledby="library-title">
