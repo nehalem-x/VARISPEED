@@ -238,6 +238,35 @@ test('canvas desenha somente conexões que podem cruzar o viewport', () => {
   assert.ok(calls.some(call => call.join(':') === 'dash:2:4'));
 });
 
+test('canvas ancora ligações no mesmo snapshot visual dos nós durante o zoom', () => {
+  const calls = [];
+  const context = {
+    setTransform() {}, clearRect() {}, setLineDash() {}, beginPath() {}, stroke() {},
+    moveTo: (...args) => calls.push(['move', ...args]),
+    lineTo: (...args) => calls.push(['line', ...args]),
+  };
+  const a = { id: 'a', x: 90, y: 90, _graphRenderedX: 10, _graphRenderedY: 20 };
+  const b = { id: 'b', x: 140, y: 140, _graphRenderedX: 40, _graphRenderedY: 50 };
+  const graph = Object.create(GraphEngine.prototype);
+  Object.assign(graph, {
+    W: 400, H: 300,
+    camera: { x: 5, y: 7, scale: 2 },
+    linkContext: context,
+    _linkPixelRatio: 1,
+    _linkPalette: { base: '#222', active: '#aaa' },
+    links: [{ source: 'a', target: 'b' }],
+    linkVisuals: [{}],
+    byId: new Map([['a', a], ['b', b]]),
+  });
+
+  graph._renderLinks();
+
+  assert.deepEqual(calls, [
+    ['move', 25, 47],
+    ['line', 85, 107],
+  ]);
+});
+
 test('canvas limita o backing store sem alterar o viewport lógico', () => {
   const HighDprGraphEngine = loadGraphEngine({ window: { devicePixelRatio: 3 } });
   const graph = Object.create(HighDprGraphEngine.prototype);
