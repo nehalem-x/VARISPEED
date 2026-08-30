@@ -158,14 +158,13 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .footer-copy { position: relative; z-index: 2; padding-block: clamp(90px, 12vw, 180px) 50px; display: flex; flex-direction: column; align-items: flex-start; }
 .footer-copy h2 { font-size: clamp(52px, 7vw, 116px); }
 .footer-copy > p:not(.section-index) { margin: 32px 0 0; max-width: 430px; color: var(--text-2); font-size: 17px; line-height: 1.6; }
-.footer-links { min-width: 0; display: flex; align-items: center; gap: 7px; margin-top: 45px; color: var(--text-3); font: 500 9px/1.4 var(--font-mono); letter-spacing: .04em; }
+.footer-links { min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 14px; margin-top: 45px; color: var(--text-3); font: 500 11px/1.4 var(--font-mono); letter-spacing: .04em; }
 .footer-links a { text-decoration: none; transition: color 120ms ease, opacity 120ms ease; }
-.footer-github { min-width: 0; display: inline-flex; align-items: center; gap: 5px; color: var(--text-2); white-space: nowrap; }
-.footer-github svg { flex: none; width: 13px; height: 13px; }
+.footer-github { min-width: 0; min-height: 24px; display: inline-flex; align-items: center; gap: 8px; color: var(--text-2); white-space: nowrap; }
+.footer-github svg { flex: none; width: 16px; height: 16px; }
 .footer-github:hover, .footer-github:focus-visible { color: var(--text); opacity: .78; }
-.footer-link-separator { color: var(--text-3); }
-.footer-ytdlp { flex: none; display: inline-flex; align-items: center; padding: 2px; }
-.footer-ytdlp img { display: block; width: 38px; max-width: 38px; height: 15px; object-fit: contain; }
+.footer-ytdlp { flex: none; min-height: 27px; display: inline-flex; align-items: center; padding: 3px 0; }
+.footer-ytdlp img { display: block; width: 54px; max-width: 54px; height: 21px; object-fit: contain; }
 .footer-ytdlp:hover img, .footer-ytdlp:focus-visible img { opacity: .72; }
 .footer-copy small { width: min(100%, 430px); margin-top: clamp(90px, 13vh, 160px); padding-top: 24px; border-top: 1px solid var(--border); color: var(--text-3); font: 500 9px/1 var(--font-mono); letter-spacing: .13em; }
 .footer-mascot { position: relative; min-height: 720px; align-self: stretch; }
