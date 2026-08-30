@@ -1228,8 +1228,8 @@ class GraphEngine {
   }
 
   _renderPositions({ links = true, nodes = true } = {}) {
-    if (links) this._renderLinks();
     if (nodes) this._renderNodePositions();
+    if (links) this._renderLinks();
   }
 
   _renderNodePositions() {
@@ -1241,6 +1241,8 @@ class GraphEngine {
         el._graphPosition = transform;
         el.style.transform = transform;
       }
+      node._graphRenderedX = node.x;
+      node._graphRenderedY = node.y;
     });
   }
 
@@ -1284,10 +1286,18 @@ class GraphEngine {
       const A = this.byId.get(link.source);
       const B = this.byId.get(link.target);
       if (!A || !B) return;
-      const x1 = A.x * scale + offsetX;
-      const y1 = A.y * scale + offsetY;
-      const x2 = B.x * scale + offsetX;
-      const y2 = B.y * scale + offsetY;
+      /* Canvas e SVG devem projetar o mesmo quadro visual. Durante o hold da
+         roda a física continua, mas os grupos SVG permanecem na última posição
+         composta; usar esse mesmo snapshot impede que as linhas antecipem os
+         nós até a próxima escrita integral. */
+      const ax = Number.isFinite(A._graphRenderedX) ? A._graphRenderedX : A.x;
+      const ay = Number.isFinite(A._graphRenderedY) ? A._graphRenderedY : A.y;
+      const bx = Number.isFinite(B._graphRenderedX) ? B._graphRenderedX : B.x;
+      const by = Number.isFinite(B._graphRenderedY) ? B._graphRenderedY : B.y;
+      const x1 = ax * scale + offsetX;
+      const y1 = ay * scale + offsetY;
+      const x2 = bx * scale + offsetX;
+      const y2 = by * scale + offsetY;
       if (
         (x1 < -2 && x2 < -2) ||
         (x1 > this.W + 2 && x2 > this.W + 2) ||
