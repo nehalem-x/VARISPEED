@@ -101,6 +101,7 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .numbers-row:nth-of-type(3) { background: #070707; }
 .numbers-track { width: max-content; display: flex; will-change: transform; animation: numbers-marquee-left 30s linear infinite; }
 .numbers-row-right .numbers-track { animation-name: numbers-marquee-right; }
+.numbers-row:last-child .numbers-track { animation-duration: 36s; }
 .numbers-group { flex: none; display: flex; align-items: center; gap: clamp(42px, 6vw, 104px); padding-right: clamp(42px, 6vw, 104px); }
 .numbers-group span { display: inline-flex; align-items: center; gap: clamp(42px, 6vw, 104px); color: var(--text); font: 520 clamp(30px, 4.1vw, 68px)/.95 var(--font-ui); letter-spacing: -.045em; white-space: nowrap; }
 .numbers-group span::after { content: '·'; color: var(--text-3); font-family: var(--font-mono); font-size: .62em; font-weight: 400; }
@@ -204,6 +205,7 @@ button, a { -webkit-tap-highlight-color: transparent; }
 @media (max-width: 620px) {
   .numbers-row { min-height: 88px; }
   .numbers-track { animation-duration: 24s; }
+  .numbers-row:last-child .numbers-track { animation-duration: 29s; }
   .principles-grid { grid-template-columns: 1fr; }
   .principles article { min-height: 260px; grid-template-columns: 36px 1fr; }
   .graph-stage { min-height: 480px; }
