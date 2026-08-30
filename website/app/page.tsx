@@ -78,20 +78,12 @@ export default function Home() {
           </p>
         </div>
 
-        <figure className="interface-frame interface-frame-editor reveal feature-visual">
-          <div className="frame-bar" aria-hidden="true">
-            <span>VARISPEED / EDITOR</span>
-            <span>100.0%</span>
-          </div>
+        <figure className="product-shot reveal feature-visual">
           <img
             src="/varispeed-editor.png"
             alt="Editor real do VARISPEED com timeline, controle de velocidade e informações de áudio"
             loading="lazy"
           />
-          <figcaption>
-            <span>CONTROLE DIRETO</span>
-            <span>SEM CORREÇÃO DE PITCH</span>
-          </figcaption>
         </figure>
       </section>
 
@@ -115,20 +107,12 @@ export default function Home() {
             </p>
           </div>
 
-          <figure className="interface-frame reveal feature-visual">
-            <div className="frame-bar" aria-hidden="true">
-              <span>VARISPEED / BIBLIOTECA REAL</span>
-              <span>GRAFO EM REPOUSO</span>
-            </div>
+          <figure className="product-shot reveal feature-visual">
             <img
               src="/varispeed-library.png"
               alt="Biblioteca real do VARISPEED mostrando músicas conectadas no grafo"
               loading="lazy"
             />
-            <figcaption>
-              <span>CADA ARQUIVO OCUPA UM LUGAR</span>
-              <span>O MAPA CRESCE COM VOCÊ</span>
-            </figcaption>
           </figure>
         </div>
       </section>
