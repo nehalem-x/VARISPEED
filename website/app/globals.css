@@ -54,7 +54,7 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .manifesto .section-index { margin-bottom: clamp(42px, 5vw, 76px); }
 .manifesto-grid { display: grid; grid-template-columns: minmax(0, 1.32fr) minmax(320px, .68fr); gap: clamp(64px, 8vw, 140px); align-items: end; }
 .manifesto h2 { margin: 0; max-width: 880px; font-size: clamp(58px, 7.15vw, 118px); line-height: .86; letter-spacing: -.064em; font-weight: 520; text-wrap: balance; }
-.manifesto-grid > div { width: min(100%, 470px); justify-self: end; padding-top: 26px; border-top: 1px solid var(--border-strong); }
+.manifesto-grid > div { width: min(100%, 470px); justify-self: end; padding-top: 26px; }
 .manifesto p:not(.section-index) { margin: 0; font-size: clamp(20px, 1.55vw, 27px); line-height: 1.4; letter-spacing: -.025em; text-wrap: pretty; }
 .manifesto .muted-copy { margin-top: 28px; color: var(--text-2); font-size: 16px; line-height: 1.65; letter-spacing: 0; }
 
