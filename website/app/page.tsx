@@ -66,40 +66,44 @@ export default function Home() {
         <div className="hero-fade" aria-hidden="true" />
       </section>
 
-      <section className="manifesto shell" id="sistema" aria-labelledby="manifesto-title">
-        <p className="section-index">01 / PROPOSTA</p>
-        <div className="manifesto-grid">
-          <h2 id="manifesto-title">Sua biblioteca deixa rastros.</h2>
-          <div>
-            <p>
-              Isto não é apenas uma lista. Cada música adicionada ocupa um lugar
-              em um mapa que pertence somente a você.
-            </p>
-            <p className="muted-copy">
-              O VARISPEED transforma tempo, pitch e organização em uma experiência
-              visual precisa — sem esconder a complexidade que você construiu.
-            </p>
+      <section className="manifesto title-grid-section" id="sistema" aria-labelledby="manifesto-title">
+        <div className="shell">
+          <p className="section-index">01 / PROPOSTA</p>
+          <div className="manifesto-grid">
+            <h2 id="manifesto-title">Sua biblioteca deixa rastros.</h2>
+            <div>
+              <p>
+                Isto não é apenas uma lista. Cada música adicionada ocupa um lugar
+                em um mapa que pertence somente a você.
+              </p>
+              <p className="muted-copy">
+                O VARISPEED transforma tempo, pitch e organização em uma experiência
+                visual precisa — sem esconder a complexidade que você construiu.
+              </p>
+            </div>
           </div>
         </div>
       </section>
 
-      <section className="product-section shell feature-split" aria-labelledby="editor-title">
-        <div className="section-heading feature-copy">
-          <p className="section-index">02 / FERRAMENTA</p>
-          <h2 id="editor-title">O tempo muda.<br />A música responde.</h2>
-          <p>
-            Reduza ou aumente a velocidade sem preservar o pitch. Grave e agudo
-            mudam junto com o tempo — como fita, vinil e memória física.
-          </p>
-        </div>
+      <section className="product-section title-grid-section" aria-labelledby="editor-title">
+        <div className="shell feature-split">
+          <div className="section-heading feature-copy">
+            <p className="section-index">02 / FERRAMENTA</p>
+            <h2 id="editor-title">O tempo muda.<br />A música responde.</h2>
+            <p>
+              Reduza ou aumente a velocidade sem preservar o pitch. Grave e agudo
+              mudam junto com o tempo — como fita, vinil e memória física.
+            </p>
+          </div>
 
-        <figure className="product-shot reveal feature-visual">
-          <img
-            src="/varispeed-editor.png"
-            alt="Editor real do VARISPEED com timeline, controle de velocidade e informações de áudio"
-            loading="lazy"
-          />
-        </figure>
+          <figure className="product-shot reveal feature-visual">
+            <img
+              src="/varispeed-editor.png"
+              alt="Editor real do VARISPEED com timeline, controle de velocidade e informações de áudio"
+              loading="lazy"
+            />
+          </figure>
+        </div>
       </section>
 
       <section className="numbers" aria-label="Características principais do VARISPEED">
@@ -143,28 +147,32 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="graph-demo-section shell" aria-labelledby="graph-demo-title">
-        <div className="demo-copy">
-          <p className="section-index">04 / SISTEMA VIVO</p>
-          <h2 id="graph-demo-title">Não é uma ilustração.<br />É o grafo real.</h2>
-          <p>
-            A mesma física da Biblioteca está rodando aqui. Arraste categorias,
-            aproxime o mapa e clique em qualquer nó para acompanhá-lo.
-          </p>
+      <section className="graph-demo-section title-grid-section" aria-labelledby="graph-demo-title">
+        <div className="shell graph-demo-content">
+          <div className="demo-copy">
+            <p className="section-index">04 / SISTEMA VIVO</p>
+            <h2 id="graph-demo-title">Não é uma ilustração.<br />É o grafo real.</h2>
+            <p>
+              A mesma física da Biblioteca está rodando aqui. Arraste categorias,
+              aproxime o mapa e clique em qualquer nó para acompanhá-lo.
+            </p>
+          </div>
+          <LibraryGraph />
         </div>
-        <LibraryGraph />
       </section>
 
-      <section className="principles shell" aria-labelledby="principles-title">
-        <div className="section-heading">
-          <p className="section-index">05 / PRINCÍPIOS</p>
-          <h2 id="principles-title">Feito para ouvir.<br />Construído para durar.</h2>
-        </div>
-        <div className="principles-grid">
-          <article><span>01</span><h3>Sem maquiagem</h3><p>A velocidade altera naturalmente duração, frequência e pitch. O resultado é físico, direto e previsível.</p></article>
-          <article><span>02</span><h3>Local primeiro</h3><p>O fluxo principal acontece no seu computador. A interface não precisa transformar escuta em conta ou perfil.</p></article>
-          <article><span>03</span><h3>Complexidade legível</h3><p>O grafo não esconde uma biblioteca grande. Ele organiza seu crescimento e permite que ela mostre o tempo acumulado.</p></article>
-          <article><span>04</span><h3>Uma identidade</h3><p>Editor, biblioteca, visualizadores e movimentos compartilham a mesma linguagem precisa e monocromática.</p></article>
+      <section className="principles title-grid-section" aria-labelledby="principles-title">
+        <div className="shell">
+          <div className="section-heading">
+            <p className="section-index">05 / PRINCÍPIOS</p>
+            <h2 id="principles-title">Feito para ouvir.<br />Construído para durar.</h2>
+          </div>
+          <div className="principles-grid">
+            <article><span>01</span><h3>Sem maquiagem</h3><p>A velocidade altera naturalmente duração, frequência e pitch. O resultado é físico, direto e previsível.</p></article>
+            <article><span>02</span><h3>Local primeiro</h3><p>O fluxo principal acontece no seu computador. A interface não precisa transformar escuta em conta ou perfil.</p></article>
+            <article><span>03</span><h3>Complexidade legível</h3><p>O grafo não esconde uma biblioteca grande. Ele organiza seu crescimento e permite que ela mostre o tempo acumulado.</p></article>
+            <article><span>04</span><h3>Uma identidade</h3><p>Editor, biblioteca, visualizadores e movimentos compartilham a mesma linguagem precisa e monocromática.</p></article>
+          </div>
         </div>
       </section>
 
