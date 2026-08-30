@@ -2104,3 +2104,12 @@ Limitação do ambiente de empacotamento: o `yt-dlp` não está instalado no Pyt
 ## 28.5 Próximo passo recomendado
 
 A sequência REV 1–7 está encerrada. A partir daqui, novas mudanças devem ser tratadas como **features/correções específicas**, e não como uma nova rodada genérica de responsividade. Antes de alterar UI, comparar contra este baseline e repetir apenas a matriz de QA afetada pelo blast radius.
+
+## 28.6 Site de apresentação local
+
+O site narrativo do projeto está integrado em `website/`, com dependências e
+build próprios. Ele deve permanecer local e não contém `.openai/hosting.json`.
+No grafo demonstrativo, o palco captura a roda em modo não passivo, bloqueia a
+rolagem da página e envia o delta diretamente para `GraphEngine.zoomBy`, usando
+o cursor como âncora. Manter `overscroll-behavior: contain` e `touch-action:
+none` em `.graph-stage` para preservar essa fronteira de interação.

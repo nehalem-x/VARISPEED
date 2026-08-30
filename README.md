@@ -1588,3 +1588,17 @@ Os valores de `Servidor`, `Rede local` e `Porta` permanecem alinhados à direita
 5. a aba atual troca para uma tela local `VARISPEED DESLIGADO`.
 
 O botão só é habilitado quando a interface foi aberta pelo próprio computador via loopback. Em clientes LAN ele fica indisponível. Um novo clique no atalho VARISPEED inicia o backend novamente.
+
+# 24. Site de apresentação local
+
+O site de apresentação fica em `website/` e é executado separadamente, somente
+no computador local:
+
+```powershell
+cd website
+npm ci
+npm run dev
+```
+
+Abra o endereço informado pelo servidor de desenvolvimento, normalmente
+`http://localhost:3000`. A pasta não contém configuração de hospedagem.
