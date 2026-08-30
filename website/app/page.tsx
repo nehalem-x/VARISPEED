@@ -149,8 +149,15 @@ export default function Home() {
             <p>Projeto independente de áudio, tempo e memória visual.</p>
             <small className="footer-credit">
               <span>CRIADO POR</span>
-              <a href={GITHUB_URL} target="_blank" rel="noreferrer">NEHALEM-X/VARISPEED</a>
-              <a href="https://github.com/yt-dlp/yt-dlp" target="_blank" rel="noreferrer">YT-DLP</a>
+              <a className="footer-credit-github" href={GITHUB_URL} target="_blank" rel="noreferrer" aria-label="Abrir nehalem-x/VARISPEED no GitHub">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path fill="currentColor" d="M12 .7a11.5 11.5 0 0 0-3.64 22.4c.58.1.79-.25.79-.56v-2.2c-3.22.7-3.9-1.36-3.9-1.36-.53-1.34-1.29-1.7-1.29-1.7-1.05-.72.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.04 1.77 2.71 1.26 3.37.96.1-.75.4-1.26.74-1.55-2.57-.29-5.27-1.28-5.27-5.69 0-1.26.45-2.28 1.19-3.09-.12-.29-.52-1.47.11-3.05 0 0 .97-.31 3.16 1.18a10.96 10.96 0 0 1 5.76 0c2.2-1.49 3.16-1.18 3.16-1.18.63 1.58.23 2.76.11 3.05.74.81 1.19 1.83 1.19 3.09 0 4.42-2.71 5.39-5.29 5.68.42.36.79 1.06.79 2.14v3.18c0 .31.21.67.8.56A11.5 11.5 0 0 0 12 .7Z" />
+                </svg>
+                <span>NEHALEM-X/VARISPEED</span>
+              </a>
+              <a className="footer-credit-ytdlp" href="https://github.com/yt-dlp/yt-dlp" target="_blank" rel="noreferrer" aria-label="Abrir o projeto yt-dlp no GitHub">
+                <img src="/yt-dlp-logo.png?v=20260830" alt="yt-dlp" width="38" height="15" />
+              </a>
               <span>2026</span>
             </small>
           </div>

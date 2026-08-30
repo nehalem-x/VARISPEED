@@ -156,8 +156,12 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .footer-copy h2 { font-size: clamp(52px, 7vw, 116px); }
 .footer-copy > p:not(.section-index) { margin: 32px 0 0; max-width: 430px; color: var(--text-2); font-size: 17px; line-height: 1.6; }
 .footer-credit { width: min(100%, 560px); margin-top: clamp(48px, 6vh, 72px); padding-top: 20px; border-top: 1px solid var(--border); display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; color: var(--text-3); font: 500 9px/1.5 var(--font-mono); letter-spacing: .11em; }
-.footer-credit a { color: var(--text-2); transition: color 120ms ease; }
-.footer-credit a:hover, .footer-credit a:focus-visible { color: var(--text); }
+.footer-credit-github { display: inline-flex; align-items: center; gap: 5px; color: var(--text-2); white-space: nowrap; transition: color 120ms ease, opacity 120ms ease; }
+.footer-credit-github svg { flex: none; width: 12px; height: 12px; }
+.footer-credit-github:hover, .footer-credit-github:focus-visible { color: var(--text); opacity: .78; }
+.footer-credit-ytdlp { display: inline-flex; align-items: center; padding: 2px; transition: opacity 120ms ease; }
+.footer-credit-ytdlp img { display: block; width: 38px; max-width: 38px; height: 15px; object-fit: contain; pointer-events: none; }
+.footer-credit-ytdlp:hover, .footer-credit-ytdlp:focus-visible { opacity: .72; }
 .footer-mascot { position: relative; min-height: 720px; align-self: stretch; }
 .footer-mascot img { position: absolute; z-index: 2; right: -9%; bottom: -3%; width: min(64vw, 960px); max-width: none; filter: contrast(1.04); }
 .footer-marquee { position: absolute; z-index: 1; inset: -38% -3% -38% auto; overflow: hidden; pointer-events: none; user-select: none; }
