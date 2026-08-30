@@ -62,7 +62,7 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .product-section .section-heading,
 .graph-demo-section .demo-copy,
 .principles .section-heading {
-  background-image: linear-gradient(rgba(255,255,255,.035) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.035) 1px, transparent 1px);
+  background-image: linear-gradient(rgba(255,255,255,.06) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.06) 1px, transparent 1px);
   background-position: -1px -1px;
   background-size: 44px 44px;
 }
