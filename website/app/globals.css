@@ -171,6 +171,7 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .footer-credit-ytdlp { display: inline-flex; align-items: center; padding: 2px; transition: opacity 120ms ease; }
 .footer-credit-ytdlp img { display: block; width: 38px; max-width: 38px; height: 15px; object-fit: contain; pointer-events: none; }
 .footer-credit-ytdlp:hover, .footer-credit-ytdlp:focus-visible { opacity: .72; }
+.footer-credit-separator { color: var(--text-3); }
 .footer-mascot { position: relative; min-height: 720px; align-self: stretch; }
 .footer-mascot img { position: absolute; z-index: 2; right: -9%; bottom: -3%; width: min(64vw, 960px); max-width: none; filter: contrast(1.04); }
 .footer-marquee { position: absolute; z-index: 1; inset: -38% -3% -38% auto; overflow: hidden; pointer-events: none; user-select: none; }

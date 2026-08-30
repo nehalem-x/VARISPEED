@@ -189,9 +189,11 @@ export default function Home() {
                 </svg>
                 <span>NEHALEM-X/VARISPEED</span>
               </a>
+              <span className="footer-credit-separator" aria-hidden="true">•</span>
               <a className="footer-credit-ytdlp" href="https://github.com/yt-dlp/yt-dlp" target="_blank" rel="noreferrer" aria-label="Abrir o projeto yt-dlp no GitHub">
                 <img src="/yt-dlp-logo.png?v=20260830" alt="yt-dlp" width="38" height="15" />
               </a>
+              <span className="footer-credit-separator" aria-hidden="true">•</span>
               <span>2026</span>
             </small>
           </div>
