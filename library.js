@@ -1174,6 +1174,7 @@
 
   window.MediaLibrary = {
     mount, record, updateActive, show, hide, measurePerformance,
+    refreshStyles() { engine?.refreshStyles(); },
     find(data = {}) {
       const item = items.find((entry) => sameMedia(entry, data));
       return item ? { ...item } : null;

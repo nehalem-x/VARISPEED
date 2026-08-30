@@ -346,7 +346,12 @@
     el.root.dataset.theme = t;
     if (el.themeColor) el.themeColor.content = t === 'light' ? '#ffffff' : '#000000';
 
-    const repaint = () => { invalidateScopeColors(); draw(); repaintScope(); };
+    const repaint = () => {
+      invalidateScopeColors();
+      draw();
+      repaintScope();
+      window.MediaLibrary?.refreshStyles?.();
+    };
     requestAnimationFrame(repaint);
     if (soft) setTimeout(repaint, 120);   // repinta no meio do cross-dissolve
   }

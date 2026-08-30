@@ -31,6 +31,7 @@ class GraphEngine {
       wheelRenderHoldMs: 72,
       vectorCameraEnterScale: 1.16,
       vectorCameraExitScale: 1.04,
+      maxLinkPixelRatio: 2,
       cameraFollowMs: 520,
       fitPadding: 84,
       compactBreakpoint: 800,
@@ -67,7 +68,7 @@ class GraphEngine {
     this.links = [];
     this.byId = new Map();
     this.degree = {};
-    this.linkEls = [];
+    this.linkVisuals = [];
     this.nodeEls = [];
 
     this.W = 0;
@@ -93,6 +94,8 @@ class GraphEngine {
     this.wheelRenderHoldUntil = 0;
     this.cameraFollow = null;
     this._cameraRenderMode = 'transform';
+    this._linkPixelRatio = 1;
+    this._linkPalette = null;
     this.raf = 0;
     this.running = false;
     this.labelFrame = 0;
@@ -218,6 +221,7 @@ class GraphEngine {
   }
 
   refreshStyles() {
+    this._linkPalette = null;
     this._renderStyles();
     return this;
   }
@@ -323,7 +327,9 @@ class GraphEngine {
     const changed = width !== this.W || height !== this.H;
     this.W = width;
     this.H = height;
+    this._resizeLinkCanvas();
     this.applyCamera();
+    this._renderLinks();
 
     if (this.nodes.length && !this.nodes[0].initialized) {
       this._initializeNodePositions();
@@ -684,41 +690,13 @@ class GraphEngine {
       'graph-engine-world'
     );
 
-    this.linksSvg =
-      document.createElementNS(
-        'http://www.w3.org/2000/svg',
-        'svg'
-      );
-
-    this.linksSvg.classList.add(
-      'graph-engine-svg',
-      'graph-engine-links-svg'
-    );
-
-    this.linksSvg.setAttribute(
-      'aria-hidden',
-      'true'
-    );
-
-    this.linkWorld =
-      document.createElementNS(
-        'http://www.w3.org/2000/svg',
-        'g'
-      );
-
-    this.linkWorld.classList.add(
-      'graph-engine-world'
-    );
-
-    this.gLinks =
-      document.createElementNS(
-        'http://www.w3.org/2000/svg',
-        'g'
-      );
-
-    this.gLinks.classList.add(
-      'graph-engine-links'
-    );
+    this.linksCanvas = document.createElement('canvas');
+    this.linksCanvas.classList.add('graph-engine-links-canvas');
+    this.linksCanvas.setAttribute('aria-hidden', 'true');
+    this.linkContext = this.linksCanvas.getContext('2d', {
+      alpha: true,
+      desynchronized: true,
+    });
 
     this.gNodes =
       document.createElementNS(
@@ -730,16 +708,8 @@ class GraphEngine {
       'graph-engine-nodes'
     );
 
-    this.linkWorld.appendChild(
-      this.gLinks
-    );
-
     this.world.appendChild(
       this.gNodes
-    );
-
-    this.linksSvg.appendChild(
-      this.linkWorld
     );
 
     this.svg.append(
@@ -748,7 +718,7 @@ class GraphEngine {
     );
 
     this.host.append(
-      this.linksSvg,
+      this.linksCanvas,
       this.svg
     );
 
@@ -799,34 +769,14 @@ class GraphEngine {
   _renderGraphDOM() {
     const buildStartedAt = performance.now();
     this.defs.replaceChildren();
-    this.gLinks.replaceChildren();
     this.gNodes.replaceChildren();
-    const linkFragment = document.createDocumentFragment();
     const nodeFragment = document.createDocumentFragment();
 
-    this.linkEls =
-      this.links.map(link => {
-        const el =
-          document.createElementNS(
-            'http://www.w3.org/2000/svg',
-            'line'
-          );
-
-        el.classList.add(
-          'graph-engine-link'
-        );
-
-        if (link.kind) {
-          el.classList.add(
-            `kind-${this._safeClass(link.kind)}`
-          );
-        }
-
-        linkFragment.appendChild(el);
-
-        return el;
-      });
-    this.gLinks.appendChild(linkFragment);
+    this.linkVisuals = this.links.map(link => ({
+      active: false,
+      muted: false,
+      affinity: link.kind === 'affinity',
+    }));
 
     this.nodeEls =
       this.nodes.map((node, i) => {
@@ -1223,17 +1173,11 @@ class GraphEngine {
           !!related &&
           !active;
 
-        this.linkEls[i]
-          ?.setAttribute(
-            'class',
-            `graph-engine-link${link.kind ? ` kind-${this._safeClass(link.kind)}` : ''}${
-              active
-                ? ' active'
-                : muted
-                  ? ' muted'
-                  : ''
-            }`
-          );
+        this.linkVisuals[i] = {
+          active,
+          muted,
+          affinity: link.kind === 'affinity',
+        };
       }
     );
 
@@ -1279,49 +1223,17 @@ class GraphEngine {
           );
       }
     );
+
+    this._renderLinks();
   }
 
-  _renderPositions() {
-    this.links.forEach(
-      (link, i) => {
-        const A =
-          this.byId.get(
-            link.source
-          );
+  _renderPositions({ links = true, nodes = true } = {}) {
+    if (links) this._renderLinks();
+    if (nodes) this._renderNodePositions();
+  }
 
-        const B =
-          this.byId.get(
-            link.target
-          );
-
-        const el =
-          this.linkEls[i];
-
-        if (
-          !A ||
-          !B ||
-          !el
-        ) {
-          return;
-        }
-
-        const x1 = A.x.toFixed(2);
-        const y1 = A.y.toFixed(2);
-        const x2 = B.x.toFixed(2);
-        const y2 = B.y.toFixed(2);
-        const signature = `${x1},${y1},${x2},${y2}`;
-        if (el._graphPosition !== signature) {
-          el._graphPosition = signature;
-          el.setAttribute('x1', x1);
-          el.setAttribute('y1', y1);
-          el.setAttribute('x2', x2);
-          el.setAttribute('y2', y2);
-        }
-      }
-    );
-
-    this.nodes.forEach(
-      (node, i) => {
+  _renderNodePositions() {
+    this.nodes.forEach((node, i) => {
       const el = this.nodeEls[i];
       if (!el) return;
       const transform = `translate(${node.x.toFixed(2)}px, ${node.y.toFixed(2)}px)`;
@@ -1329,8 +1241,89 @@ class GraphEngine {
         el._graphPosition = transform;
         el.style.transform = transform;
       }
-      }
-    );
+    });
+  }
+
+  _resizeLinkCanvas() {
+    if (!this.linksCanvas || !(this.W > 0) || !(this.H > 0)) return;
+    const maxRatio = Math.max(1, Number(this.options.maxLinkPixelRatio) || 2);
+    const pixelRatio = Math.min(maxRatio, Math.max(1, Number(window.devicePixelRatio) || 1));
+    const width = Math.max(1, Math.round(this.W * pixelRatio));
+    const height = Math.max(1, Math.round(this.H * pixelRatio));
+    this._linkPixelRatio = pixelRatio;
+    if (this.linksCanvas.width !== width) this.linksCanvas.width = width;
+    if (this.linksCanvas.height !== height) this.linksCanvas.height = height;
+  }
+
+  _resolveLinkPalette() {
+    if (this._linkPalette) return this._linkPalette;
+    const styles = typeof window.getComputedStyle === 'function'
+      ? window.getComputedStyle(this.host)
+      : null;
+    this._linkPalette = {
+      base: styles?.getPropertyValue('--border-c').trim() || '#2a2a2a',
+      active: styles?.getPropertyValue('--text-2').trim() || '#a3a3a3',
+    };
+    return this._linkPalette;
+  }
+
+  _renderLinks() {
+    const context = this.linkContext;
+    if (!context || !(this.W > 0) || !(this.H > 0)) return;
+    const pixelRatio = this._linkPixelRatio || 1;
+    context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+    context.clearRect(0, 0, this.W, this.H);
+
+    const scale = this.camera.scale;
+    const offsetX = this.camera.x;
+    const offsetY = this.camera.y;
+    const palette = this._resolveLinkPalette();
+    const buckets = new Map();
+
+    this.links.forEach((link, index) => {
+      const A = this.byId.get(link.source);
+      const B = this.byId.get(link.target);
+      if (!A || !B) return;
+      const x1 = A.x * scale + offsetX;
+      const y1 = A.y * scale + offsetY;
+      const x2 = B.x * scale + offsetX;
+      const y2 = B.y * scale + offsetY;
+      if (
+        (x1 < -2 && x2 < -2) ||
+        (x1 > this.W + 2 && x2 > this.W + 2) ||
+        (y1 < -2 && y2 < -2) ||
+        (y1 > this.H + 2 && y2 > this.H + 2)
+      ) return;
+
+      const visual = this.linkVisuals[index] || {};
+      const alpha = visual.active
+        ? visual.affinity ? 0.8 : 1
+        : visual.muted
+          ? 0.18
+          : visual.affinity ? 0.34 : 1;
+      const color = visual.active ? palette.active : palette.base;
+      const dashed = visual.affinity;
+      const key = `${color}\u0000${alpha}\u0000${dashed ? 1 : 0}`;
+      const bucket = buckets.get(key);
+      const segment = [x1, y1, x2, y2];
+      if (bucket) bucket.segments.push(segment);
+      else buckets.set(key, { color, alpha, dashed, segments: [segment] });
+    });
+
+    context.lineWidth = 1;
+    buckets.forEach(bucket => {
+      context.strokeStyle = bucket.color;
+      context.globalAlpha = bucket.alpha;
+      context.setLineDash(bucket.dashed ? [2, 4] : []);
+      context.beginPath();
+      bucket.segments.forEach(([x1, y1, x2, y2]) => {
+        context.moveTo(x1, y1);
+        context.lineTo(x2, y2);
+      });
+      context.stroke();
+    });
+    context.globalAlpha = 1;
+    context.setLineDash([]);
   }
 
   // ---------------------------------------------------------------------------
@@ -1380,13 +1373,12 @@ class GraphEngine {
         this.H / scale,
       ].map(value => value.toFixed(3)).join(' ');
 
-      [this.svg, this.linksSvg].filter(Boolean).forEach(layer => {
-        if (layer._graphViewBox === viewBox) return;
-        layer._graphViewBox = viewBox;
-        layer.setAttribute('viewBox', viewBox);
-      });
+      if (this.svg && this.svg._graphViewBox !== viewBox) {
+        this.svg._graphViewBox = viewBox;
+        this.svg.setAttribute('viewBox', viewBox);
+      }
 
-      [this.linkWorld, this.world].filter(Boolean).forEach(layer => {
+      [this.world].filter(Boolean).forEach(layer => {
         if (layer._graphCamera === 'none') return;
         layer._graphCamera = 'none';
         layer.style.transform = 'none';
@@ -1395,14 +1387,13 @@ class GraphEngine {
     }
 
     const baseViewBox = `0 0 ${this.W} ${this.H}`;
-    [this.svg, this.linksSvg].filter(Boolean).forEach(layer => {
-      if (layer._graphViewBox === baseViewBox) return;
-      layer._graphViewBox = baseViewBox;
-      layer.setAttribute('viewBox', baseViewBox);
-    });
+    if (this.svg && this.svg._graphViewBox !== baseViewBox) {
+      this.svg._graphViewBox = baseViewBox;
+      this.svg.setAttribute('viewBox', baseViewBox);
+    }
 
     const transform = `translate(${this.camera.x}px, ${this.camera.y}px) scale(${this.camera.scale})`;
-    [this.linkWorld, this.world].filter(Boolean).forEach(layer => {
+    [this.world].filter(Boolean).forEach(layer => {
       if (layer._graphCamera === transform) return;
       layer._graphCamera = transform;
       layer.style.transform = transform;
@@ -2665,14 +2656,13 @@ class GraphEngine {
 
       physicsMs = performance.now() - tickStartedAt;
       const cameraOnlyFrame = this._shouldDeferPositionRender(tickStartedAt);
+      const renderStartedAt = performance.now();
+      this._renderPositions({ nodes: !cameraOnlyFrame });
       if (cameraOnlyFrame) {
         this._performance.zoomDeferredRenders++;
         if (this._performanceCapture) this._performanceCapture.deferredRenders++;
-      } else {
-        const renderStartedAt = performance.now();
-        this._renderPositions();
-        renderMs = performance.now() - renderStartedAt;
       }
+      renderMs = performance.now() - renderStartedAt;
     }
 
     const measuredAt = performance.now();
