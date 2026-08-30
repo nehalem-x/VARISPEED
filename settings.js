@@ -951,7 +951,8 @@ window.Settings = (() => {
     const capturedAt = report.capturedAt
       ? new Date(report.capturedAt).toLocaleString('pt-BR')
       : '—';
-    const zoomUsed = Number(zoom.latency?.samples) > 0;
+    const wheelUsed = Number(zoom.latency?.samples) > 0;
+    const cameraUsed = wheelUsed || Number(zoom.camera?.samples) > 0 || Number(zoom.programmaticFrames) > 0;
     return [
       'VARISPEED · DIAGNÓSTICO DO GRAFO',
       `Captura: ${capturedAt}`,
@@ -964,13 +965,16 @@ window.Settings = (() => {
       `Frame médio / p95 / máx: ${graphMetric(report.frame)}`,
       `Física média / p95 / máx: ${graphMetric(report.physics)}`,
       `Render médio / p95 / máx: ${graphMetric(report.render)}`,
-      zoomUsed
+      wheelUsed
         ? `Zoom entrada média / p95 / máx: ${graphMetric(zoom.latency)}`
-        : 'Zoom: não exercitado durante a captura',
-      ...(zoomUsed ? [
-        `Zoom intervalo médio / p95 / máx: ${graphMetric(zoom.frame)}`,
-        `Zoom câmera média / p95 / máx: ${graphMetric(zoom.camera)}`,
-        `Zoom resposta média / p95 / máx: ${graphMetric(zoom.settle)}`,
+        : cameraUsed
+          ? 'Zoom entrada: câmera acionada por foco ou controles, sem roda/trackpad'
+          : 'Zoom: não exercitado durante a captura',
+      ...(cameraUsed ? [
+        `Câmera intervalo médio / p95 / máx: ${graphMetric(zoom.frame)}`,
+        `Câmera custo médio / p95 / máx: ${graphMetric(zoom.camera)}`,
+        ...(wheelUsed ? [`Zoom resposta média / p95 / máx: ${graphMetric(zoom.settle)}`] : []),
+        `Câmera programática: ${zoom.programmaticFrames || 0} quadros`,
         `Zoom renders consolidados: ${zoom.deferredRenders || 0}`,
       ] : []),
     ].join('\n');
