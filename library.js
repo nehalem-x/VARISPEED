@@ -506,8 +506,6 @@
       },
       shouldNodeOpenOnClick: () => true,
       onNodeClick: (node) => {
-        selectedId = node.id;
-        refreshDetails();
         focusNodeInVisibleViewport(node.id);
       },
       onSelectionChange: (id) => {

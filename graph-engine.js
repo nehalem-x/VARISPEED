@@ -207,7 +207,10 @@ class GraphEngine {
   }
 
   setSelected(nodeId = '') {
-    this.selected = nodeId && this.byId.has(nodeId) ? nodeId : '';
+    const nextSelected = nodeId && this.byId.has(nodeId) ? nodeId : '';
+    if (this.selected === nextSelected) return this;
+
+    this.selected = nextSelected;
     this._renderStyles();
     this.options.onSelectionChange?.(
       this.selected || null,
@@ -1883,11 +1886,6 @@ class GraphEngine {
       return;
     }
 
-    /* Um gesto manual sempre assume o controle. Sem cancelar o follow aqui,
-       a câmera continua perseguindo o nó enquanto ele é arrastado e os dois
-       movimentos parecem se anular. Isto não altera a simulação física. */
-    this.stopCameraAnimation();
-
     event.stopPropagation();
 
     this.dragging = {
@@ -1969,6 +1967,10 @@ class GraphEngine {
 
       this.dragging.type =
         'node';
+
+      /* O clique simples preserva o acompanhamento vigente. A câmera só perde
+         o controle quando o gesto realmente cruza o limiar de arraste. */
+      this.stopCameraAnimation();
 
       delete this.dragging.node._graphDragRecovery;
 
@@ -2115,9 +2117,15 @@ class GraphEngine {
     node,
     event
   ) {
-    this.setSelected(
-      node.id
-    );
+    const selectionChanged = this.selected !== node.id;
+
+    if (selectionChanged) {
+      this.setSelected(
+        node.id
+      );
+    } else if (this.cameraFollow?.nodeId === node.id) {
+      return;
+    }
 
     this.options
       .onNodeClick?.(

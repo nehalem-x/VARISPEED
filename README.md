@@ -208,7 +208,7 @@ Uma verificação adicional no teto estrutural usou `200` músicas, `64` categor
 - depois de clicar em um botão com mouse/toque, `Espaço` continua sendo o atalho global de Play/Pause; controles alcançados por `Tab`, campos, sliders, menus e Configurações preservam a semântica nativa do teclado;
 - ícones semanticamente idênticos, como Fechar, usam símbolos SVG centrais; um símbolo não deve ser reaproveitado para outra função apenas por semelhança visual;
 - músicas começam sem pré-seleção; clique, Enter ou Espaço selecionam o nó e abrem o painel lateral;
-- ao selecionar um nó, a câmera usa `focusNode()`, aproxima até pelo menos `1.35×` e centraliza suavemente no viewport útil; blocos visíveis marcados com `data-graph-viewport-block` são descontados pela lateral correspondente. Enquanto o painel permanece aberto, a câmera acompanha a flutuação do nó; fechar o painel restaura o enquadramento geral suavemente;
+- ao selecionar um nó, a câmera usa `focusNode()`, aproxima até pelo menos `1.35×` e centraliza suavemente no viewport útil; blocos visíveis marcados com `data-graph-viewport-block` são descontados pela lateral correspondente. Enquanto o painel permanece aberto, a câmera acompanha a flutuação do nó; cliques repetidos no mesmo nó não reconstroem o painel nem reiniciam esse acompanhamento, e fechar o painel restaura o enquadramento geral suavemente;
 - `Abrir música`/`Voltar à música` usa o mesmo estado ocupado, pulso e varredura do botão `Exportar WAV`;
 - Blobs importados são mantidos no IndexedDB e continuam disponíveis após F5 ou reabertura do app;
 - links antigos sem Blob persistido ainda podem ser obtidos novamente pelo backend;
