@@ -7,7 +7,7 @@ const GITHUB_URL = 'https://github.com/nehalem-x/VARISPEED';
 const MARQUEE_FACTS = [
   {
     direction: 'right',
-    items: ['25–400% DE VELOCIDADE', 'PITCH E TEMPO SE MOVEM JUNTOS', 'VARISPEED'],
+    items: ['VARISPEED', '25–400% DE VELOCIDADE', 'VARISPEED', 'PITCH E TEMPO SE MOVEM JUNTOS', 'VARISPEED'],
   },
   {
     direction: 'left',
@@ -116,8 +116,8 @@ export default function Home() {
             <div className="numbers-track">
               {[0, 1].map((copy) => (
                 <div className="numbers-group" key={copy}>
-                  {row.items.map((item) => (
-                    <span className={item === 'VARISPEED' ? 'numbers-brand-word' : undefined} key={item}>
+                  {row.items.map((item, itemIndex) => (
+                    <span className={item === 'VARISPEED' ? 'numbers-brand-word' : undefined} key={`${item}-${itemIndex}`}>
                       {item === 'VARISPEED' ? (
                         <>
                           <span className="numbers-brand-fixed">VARI</span>
@@ -126,6 +126,8 @@ export default function Home() {
                             <span className="numbers-speed-typeface numbers-speed-mono">SPEED</span>
                             <span className="numbers-speed-typeface numbers-speed-serif">SPEED</span>
                             <span className="numbers-speed-typeface numbers-speed-condensed">SPEED</span>
+                            <span className="numbers-speed-typeface numbers-speed-wide">SPEED</span>
+                            <span className="numbers-speed-typeface numbers-speed-courier">SPEED</span>
                           </span>
                         </>
                       ) : item}
