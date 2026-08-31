@@ -7,7 +7,7 @@ const GITHUB_URL = 'https://github.com/nehalem-x/VARISPEED';
 const MARQUEE_FACTS = [
   {
     direction: 'right',
-    items: ['VARISPEED', '25–400% DE VELOCIDADE', 'VARISPEED', 'PITCH E TEMPO SE MOVEM JUNTOS', 'VARISPEED'],
+    items: ['25–400% DE VELOCIDADE', 'VARISPEED', 'PITCH E TEMPO SE MOVEM JUNTOS'],
   },
   {
     direction: 'left',
