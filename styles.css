@@ -1567,6 +1567,7 @@ button, input { font: inherit; color: inherit; }
   color: var(--text-3);
   overflow: hidden;
 }
+[data-view='library'] .sbar { border-top-color: transparent; }
 .sbar__msg { color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sbar__lead { color: var(--text-3); }
 .sbar__msg .ch { color: var(--text); }
