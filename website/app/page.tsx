@@ -1,4 +1,4 @@
-import { ArrowDown, ArrowRight, ArrowUpRight } from 'lucide-react';
+import { ArrowDown, ArrowRight } from 'lucide-react';
 import { LibraryGraph } from './components/library-graph';
 import { LiquidDots } from './components/liquid-dots';
 
@@ -34,10 +34,6 @@ export default function Home() {
           <nav aria-label="Navegação principal">
             <a href="#sistema">Sistema</a>
             <a href="#biblioteca">Biblioteca</a>
-            <a className="nav-github" href={GITHUB_URL} target="_blank" rel="noreferrer">
-              GitHub
-              <ArrowUpRight aria-hidden="true" />
-            </a>
           </nav>
         </header>
 
