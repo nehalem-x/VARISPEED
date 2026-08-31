@@ -117,7 +117,19 @@ export default function Home() {
               {[0, 1].map((copy) => (
                 <div className="numbers-group" key={copy}>
                   {row.items.map((item) => (
-                    <span key={item}>{item}</span>
+                    <span className={item === 'VARISPEED' ? 'numbers-brand-word' : undefined} key={item}>
+                      {item === 'VARISPEED' ? (
+                        <>
+                          <span className="numbers-brand-fixed">VARI</span>
+                          <span className="numbers-speed-cycle">
+                            <span className="numbers-speed-typeface numbers-speed-sans">SPEED</span>
+                            <span className="numbers-speed-typeface numbers-speed-mono">SPEED</span>
+                            <span className="numbers-speed-typeface numbers-speed-serif">SPEED</span>
+                            <span className="numbers-speed-typeface numbers-speed-condensed">SPEED</span>
+                          </span>
+                        </>
+                      ) : item}
+                    </span>
                   ))}
                 </div>
               ))}
