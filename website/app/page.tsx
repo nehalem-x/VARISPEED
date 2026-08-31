@@ -117,7 +117,10 @@ export default function Home() {
               {[0, 1].map((copy) => (
                 <div className="numbers-group" key={copy}>
                   {row.items.map((item, itemIndex) => (
-                    <span className={item === 'VARISPEED' ? 'numbers-brand-word' : undefined} key={`${item}-${itemIndex}`}>
+                    <span
+                      className={item === 'VARISPEED' ? 'numbers-brand-word' : item === 'FORMAS DE ORGANIZAR ∞' ? 'numbers-infinity-word' : undefined}
+                      key={`${item}-${itemIndex}`}
+                    >
                       {item === 'VARISPEED' ? (
                         <>
                           <span className="numbers-brand-fixed">VARI</span>
@@ -128,6 +131,17 @@ export default function Home() {
                             <span className="numbers-speed-typeface numbers-speed-condensed">SPEED</span>
                             <span className="numbers-speed-typeface numbers-speed-wide">SPEED</span>
                             <span className="numbers-speed-typeface numbers-speed-courier">SPEED</span>
+                          </span>
+                        </>
+                      ) : item === 'FORMAS DE ORGANIZAR ∞' ? (
+                        <>
+                          <span>FORMAS DE ORGANIZAR</span>
+                          <span className="numbers-infinity-cycle">
+                            <span className="numbers-infinity-typeface numbers-infinity-symbol">∞</span>
+                            <span className="numbers-infinity-typeface numbers-infinity-georgia">∞</span>
+                            <span className="numbers-infinity-typeface numbers-infinity-times">∞</span>
+                            <span className="numbers-infinity-typeface numbers-infinity-math">∞</span>
+                            <span className="numbers-infinity-typeface numbers-infinity-courier">∞</span>
                           </span>
                         </>
                       ) : item}

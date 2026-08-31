@@ -122,6 +122,18 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .numbers-speed-condensed { font-family: Impact, 'Arial Narrow', sans-serif; font-size: .92em; font-weight: 800; letter-spacing: -.02em; transform: skewX(-12deg) scaleX(.92); }
 .numbers-speed-wide { font-family: 'Trebuchet MS', Arial, sans-serif; font-size: .9em; font-style: italic; font-weight: 700; letter-spacing: -.06em; transform: skewX(-10deg) scaleX(.91); }
 .numbers-speed-courier { font-family: 'Courier New', Courier, monospace; font-size: .88em; font-style: italic; font-weight: 700; letter-spacing: -.12em; transform: skewX(-7deg) scaleX(.9); }
+.numbers-group > .numbers-infinity-word { align-items: baseline; }
+.numbers-infinity-cycle { position: relative; display: inline-grid; grid-template-areas: 'infinity'; align-items: baseline; flex: none; width: 1.08em; height: 1em; margin-left: .18em; line-height: .95; vertical-align: baseline; }
+.numbers-infinity-typeface { grid-area: infinity; align-self: baseline; opacity: 0; line-height: .95; transform-origin: center bottom; animation: numbers-speed-type-cycle 1.6s linear infinite; }
+.numbers-infinity-typeface:nth-child(2) { animation-delay: -.32s; }
+.numbers-infinity-typeface:nth-child(3) { animation-delay: -.64s; }
+.numbers-infinity-typeface:nth-child(4) { animation-delay: -.96s; }
+.numbers-infinity-typeface:nth-child(5) { animation-delay: -1.28s; }
+.numbers-infinity-symbol { font-family: 'Segoe UI Symbol', sans-serif; font-size: .94em; font-weight: 600; }
+.numbers-infinity-georgia { font-family: Georgia, serif; font-size: .96em; font-style: italic; font-weight: 700; transform: scaleX(.9); }
+.numbers-infinity-times { font-family: 'Times New Roman', serif; font-size: 1em; font-weight: 700; transform: scaleX(.92); }
+.numbers-infinity-math { font-family: 'Cambria Math', serif; font-size: .96em; font-weight: 700; transform: skewX(-8deg) scaleX(.94); }
+.numbers-infinity-courier { font-family: 'Courier New', monospace; font-size: .9em; font-weight: 700; transform: scaleX(.88); }
 
 @keyframes numbers-marquee-left { from { transform: translateX(0); } to { transform: translateX(-50%); } }
 @keyframes numbers-marquee-right { from { transform: translateX(-50%); } to { transform: translateX(0); } }
@@ -244,6 +256,6 @@ button, a { -webkit-tap-highlight-color: transparent; }
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
   .reveal { animation: none; }
   .numbers-track { animation: none; transform: translateX(-12%); }
-  .numbers-speed-typeface { animation: none; opacity: 0; filter: none; }
-  .numbers-speed-typeface:first-child { opacity: 1; }
+  .numbers-speed-typeface, .numbers-infinity-typeface { animation: none; opacity: 0; filter: none; }
+  .numbers-speed-typeface:first-child, .numbers-infinity-typeface:first-child { opacity: 1; }
 }
