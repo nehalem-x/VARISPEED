@@ -809,6 +809,63 @@
   requestAnimationFrame(tick);
 
   /* ── rate ───────────────────────────────────────────── */
+  const RATE_SMOOTH_TAU_MS = 72;
+  const RATE_SMOOTH_MAX_MS = 320;
+  const RATE_SMOOTH_EPSILON = 0.0005;
+  let rateSmoothFrame = 0;
+  let rateSmoothTarget = 1;
+  let rateSmoothLastAt = 0;
+  let rateSmoothTargetAt = 0;
+
+  function writePlaybackRate(rate) {
+    try { state.audio.playbackRate = rate; } catch (e) { /* noop */ }
+  }
+
+  function settlePlaybackRate(target = state.rate / 100) {
+    if (rateSmoothFrame) cancelAnimationFrame(rateSmoothFrame);
+    rateSmoothFrame = 0;
+    rateSmoothTarget = target;
+    rateSmoothLastAt = 0;
+    writePlaybackRate(target);
+  }
+
+  function stepPlaybackRate(ts) {
+    rateSmoothFrame = 0;
+    if (!state.playing) {
+      settlePlaybackRate(rateSmoothTarget);
+      return;
+    }
+
+    const current = Number.isFinite(state.audio.playbackRate)
+      ? state.audio.playbackRate
+      : rateSmoothTarget;
+    const elapsed = Math.max(0, ts - rateSmoothTargetAt);
+    const delta = rateSmoothTarget - current;
+    if (Math.abs(delta) <= RATE_SMOOTH_EPSILON || elapsed >= RATE_SMOOTH_MAX_MS) {
+      writePlaybackRate(rateSmoothTarget);
+      return;
+    }
+
+    const dt = Math.min(48, Math.max(0, ts - rateSmoothLastAt));
+    const blend = 1 - Math.exp(-dt / RATE_SMOOTH_TAU_MS);
+    writePlaybackRate(current + delta * blend);
+    rateSmoothLastAt = ts;
+    rateSmoothFrame = requestAnimationFrame(stepPlaybackRate);
+  }
+
+  function smoothPlaybackRate(target) {
+    rateSmoothTarget = target;
+    rateSmoothTargetAt = performance.now();
+    if (!state.playing) {
+      settlePlaybackRate(target);
+      return;
+    }
+    if (!rateSmoothFrame) {
+      rateSmoothLastAt = rateSmoothTargetAt;
+      rateSmoothFrame = requestAnimationFrame(stepPlaybackRate);
+    }
+  }
+
   function setRate(v, opts = {}) {
     const val = clamp(Math.round(v * 10) / 10, rateMin(), rateMax());
     const prev = state.rate;
@@ -817,7 +874,7 @@
     state.audio.preservesPitch = false;
     state.audio.mozPreservesPitch = false;
     state.audio.webkitPreservesPitch = false;
-    try { state.audio.playbackRate = val / 100; } catch (e) { /* noop */ }
+    smoothPlaybackRate(val / 100);
     if (!opts.fromInput) el.rateInput.value = rateText(val);
     el.rateSlider.value = String(val);
     // microinteração: só em passos discretos, nunca em arraste contínuo
@@ -924,6 +981,7 @@
   function pause() {
     state.audio.pause();
     state.playing = false;
+    settlePlaybackRate();
     syncPlayback();
     dot('ready');
     flash('Pausado');
