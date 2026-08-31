@@ -1557,6 +1557,12 @@ button, input { font: inherit; color: inherit; }
 
 /* ═══ status bar ══════════════════════════════════════════ */
 .sbar {
+  position: fixed;
+  z-index: 12;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: var(--sbar-h);
   display: flex;
   align-items: center;
   gap: var(--space-4);
