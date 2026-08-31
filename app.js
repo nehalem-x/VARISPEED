@@ -809,8 +809,7 @@
   requestAnimationFrame(tick);
 
   /* ── rate ───────────────────────────────────────────── */
-  const RATE_SMOOTH_TAU_MS = 72;
-  const RATE_SMOOTH_MAX_MS = 320;
+  const RATE_SMOOTH_TAU_RATIO = 120 / 520;
   const RATE_SMOOTH_EPSILON = 0.0005;
   let rateSmoothFrame = 0;
   let rateSmoothTarget = 1;
@@ -841,13 +840,15 @@
       : rateSmoothTarget;
     const elapsed = Math.max(0, ts - rateSmoothTargetAt);
     const delta = rateSmoothTarget - current;
-    if (Math.abs(delta) <= RATE_SMOOTH_EPSILON || elapsed >= RATE_SMOOTH_MAX_MS) {
+    const duration = Math.max(0, Number(cfg('rate.smoothing')) || 0);
+    if (Math.abs(delta) <= RATE_SMOOTH_EPSILON || elapsed >= duration) {
       writePlaybackRate(rateSmoothTarget);
       return;
     }
 
     const dt = Math.min(48, Math.max(0, ts - rateSmoothLastAt));
-    const blend = 1 - Math.exp(-dt / RATE_SMOOTH_TAU_MS);
+    const tau = Math.max(1, duration * RATE_SMOOTH_TAU_RATIO);
+    const blend = 1 - Math.exp(-dt / tau);
     writePlaybackRate(current + delta * blend);
     rateSmoothLastAt = ts;
     rateSmoothFrame = requestAnimationFrame(stepPlaybackRate);
@@ -856,7 +857,7 @@
   function smoothPlaybackRate(target) {
     rateSmoothTarget = target;
     rateSmoothTargetAt = performance.now();
-    if (!state.playing) {
+    if (!state.playing || !(Number(cfg('rate.smoothing')) > 0)) {
       settlePlaybackRate(target);
       return;
     }
