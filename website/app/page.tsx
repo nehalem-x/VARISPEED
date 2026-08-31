@@ -122,7 +122,7 @@ export default function Home() {
                         <>
                           <span className="numbers-brand-fixed">VARI</span>
                           <span className="numbers-speed-cycle">
-                            <span className="numbers-speed-typeface numbers-speed-sans">SPEED</span>
+                            <span className="numbers-speed-typeface numbers-speed-black">SPEED</span>
                             <span className="numbers-speed-typeface numbers-speed-mono">SPEED</span>
                             <span className="numbers-speed-typeface numbers-speed-serif">SPEED</span>
                             <span className="numbers-speed-typeface numbers-speed-condensed">SPEED</span>
