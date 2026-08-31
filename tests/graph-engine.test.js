@@ -45,6 +45,46 @@ function performanceState() {
   };
 }
 
+test('seleção idêntica não repinta estilos nem repete o callback', () => {
+  let renders = 0;
+  let changes = 0;
+  const node = { id: 'track' };
+  const graph = Object.create(GraphEngine.prototype);
+  Object.assign(graph, {
+    selected: node.id,
+    byId: new Map([[node.id, node]]),
+    _renderStyles() { renders++; },
+    options: { onSelectionChange() { changes++; } },
+  });
+
+  graph.setSelected(node.id);
+
+  assert.equal(renders, 0);
+  assert.equal(changes, 0);
+});
+
+test('clique repetido preserva o follow ativo e só refoca após cancelamento', () => {
+  let clicks = 0;
+  let selections = 0;
+  const node = { id: 'track' };
+  const graph = Object.create(GraphEngine.prototype);
+  Object.assign(graph, {
+    selected: node.id,
+    cameraFollow: { nodeId: node.id, until: Infinity },
+    setSelected() { selections++; },
+    options: { onNodeClick() { clicks++; } },
+  });
+
+  graph._activateNode(node, {});
+  assert.equal(selections, 0);
+  assert.equal(clicks, 0);
+
+  graph.cameraFollow = null;
+  graph._activateNode(node, {});
+  assert.equal(selections, 0);
+  assert.equal(clicks, 1);
+});
+
 test('setData reutiliza o SVG quando o grafo é idêntico', () => {
   let builds = 0;
   const graph = Object.create(GraphEngine.prototype);
