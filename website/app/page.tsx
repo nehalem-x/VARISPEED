@@ -29,12 +29,7 @@ export default function Home() {
         <header className="site-header shell">
           <a className="brand" href="#inicio" aria-label="VARISPEED — início">
             <span>VARISPEED</span>
-            <span className="version">1.0</span>
           </a>
-          <nav aria-label="Navegação principal">
-            <a href="#sistema">Sistema</a>
-            <a href="#biblioteca">Biblioteca</a>
-          </nav>
         </header>
 
         <div className="hero-copy shell">
@@ -60,6 +55,24 @@ export default function Home() {
         </div>
 
         <div className="hero-fade" aria-hidden="true" />
+      </section>
+
+      <section className="mascot-intro title-grid-section" id="conhecer" aria-labelledby="mascot-intro-title">
+        <div className="shell mascot-intro-grid">
+          <div className="mascot-intro-copy">
+            <h2 id="mascot-intro-title">Vamos<br />conhecer o<br />VARISPEED.</h2>
+            <p>
+              Um editor local que transforma velocidade, pitch e organização em
+              uma experiência direta, visual e construída ao redor da sua escuta.
+            </p>
+          </div>
+          <img
+            className="mascot-intro-visual reveal"
+            src="/cat-intro-varispeed.png?v=20260831"
+            alt="Gato mascote de corpo inteiro do VARISPEED"
+            loading="lazy"
+          />
+        </div>
       </section>
 
       <section className="manifesto title-grid-section" id="sistema" aria-labelledby="manifesto-title">
