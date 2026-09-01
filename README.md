@@ -1589,16 +1589,18 @@ Os valores de `Servidor`, `Rede local` e `Porta` permanecem alinhados à direita
 
 O botão só é habilitado quando a interface foi aberta pelo próprio computador via loopback. Em clientes LAN ele fica indisponível. Um novo clique no atalho VARISPEED inicia o backend novamente.
 
-# 24. Site de apresentação local
+# 24. Site de apresentação
 
-O site de apresentação fica em `website/` e é executado separadamente, somente
-no computador local:
+O site de apresentação é mantido no repositório independente
+[nehalem-x/VARISPEED-site](https://github.com/nehalem-x/VARISPEED-site) e pode
+ser executado localmente:
 
 ```powershell
-cd website
+git clone https://github.com/nehalem-x/VARISPEED-site.git
+cd VARISPEED-site
 npm ci
 npm run dev
 ```
 
 Abra o endereço informado pelo servidor de desenvolvimento, normalmente
-`http://localhost:3000`. A pasta não contém configuração de hospedagem.
+`http://localhost:3000`. O repositório não contém configuração de hospedagem.
