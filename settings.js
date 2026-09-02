@@ -193,7 +193,9 @@ window.Settings = (() => {
         ['graphZoomCamera', 'Custo da câmera'],
         ['graphZoomSettle', 'Resposta completa do zoom'],
         ['graphZoomDropped', 'Frames tardios no zoom'],
-        ['graphZoomDeferred', 'Renders consolidados no zoom'],
+        ['graphInputDelay', 'Atraso de entrada do grafo'],
+        ['graphMissedFrames', 'Quadros estimados perdidos'],
+        ['graphLongTasks', 'Long tasks durante a captura'],
         ['motion', 'Animações efetivas'],
         ['store', 'Preferências'],
       ],
@@ -951,6 +953,8 @@ window.Settings = (() => {
   function formatGraphCapture(report) {
     const viewport = report.viewport || {};
     const zoom = report.zoom || {};
+    const missed = report.missedFrameMultiples || {};
+    const cadence = report.physicsCadence || {};
     const capturedAt = report.capturedAt
       ? new Date(report.capturedAt).toLocaleString('pt-BR')
       : '—';
@@ -964,9 +968,12 @@ window.Settings = (() => {
       `Cadência estimada: ${report.refreshHz || '—'} Hz · orçamento ${(Number(report.frameBudgetMs) || 0).toFixed(2)} ms`,
       `FPS observado: ${(Number(report.fps) || 0).toFixed(1)}`,
       `Frames tardios: ${report.lateFrames || 0} (${(Number(report.lateFramePercent) || 0).toFixed(1)}%)`,
+      `Quadros estimados perdidos: ${missed.estimated || 0} · 2× ${missed.double || 0} · 3× ${missed.triple || 0} · 4×+ ${missed.fourPlus || 0}`,
       `Frame médio / p95 / máx: ${graphMetric(report.frame)}`,
-      `Física média / p95 / máx: ${graphMetric(report.physics)}`,
+      `Física ${cadence.activeHz || 60}/${cadence.restingHz || 30} Hz média / p95 / máx: ${graphMetric(report.physics)}`,
       `Render médio / p95 / máx: ${graphMetric(report.render)}`,
+      `Atraso de entrada médio / p95 / máx: ${graphMetric(report.inputDelay)}`,
+      `Long tasks: ${report.longTasks?.samples || 0} · ${(Number(report.longTasks?.total) || 0).toFixed(2)} ms no total · máx ${(Number(report.longTasks?.max) || 0).toFixed(2)} ms`,
       zoomUsed
         ? `Zoom entrada média / p95 / máx: ${graphMetric(zoom.latency)}`
         : 'Zoom: não exercitado durante a captura',
@@ -974,7 +981,6 @@ window.Settings = (() => {
         `Zoom intervalo médio / p95 / máx: ${graphMetric(zoom.frame)}`,
         `Zoom câmera média / p95 / máx: ${graphMetric(zoom.camera)}`,
         `Zoom resposta média / p95 / máx: ${graphMetric(zoom.settle)}`,
-        `Zoom renders consolidados: ${zoom.deferredRenders || 0}`,
       ] : []),
     ].join('\n');
   }

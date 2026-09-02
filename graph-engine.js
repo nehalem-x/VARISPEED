@@ -26,9 +26,11 @@ class GraphEngine {
       categoryRecoveryTimeoutMs: 12000,
       floatForce: 0.018,
       floatSpeed: 0.00042,
-      cameraEaseMs: 82,
-      wheelResponse: 0.62,
-      wheelRenderHoldMs: 72,
+      cameraSpringMs: 150,
+      physicsHz: 60,
+      restingPhysicsHz: 30,
+      restingPhysicsAlpha: 0.065,
+      maxPhysicsDeltaMs: 50,
       vectorCameraEnterScale: 1.16,
       vectorCameraExitScale: 1.04,
       maxLinkPixelRatio: 2,
@@ -82,8 +84,9 @@ class GraphEngine {
 
     this.camera = { x: 0, y: 0, scale: this.options.initialZoom };
     this.zoomTarget = { ...this.camera };
-    this.zoomFrame = 0;
+    this.cameraActive = false;
     this.zoomLastTime = 0;
+    this.cameraVelocity = { x: 0, y: 0, scale: 0 };
     this.wheelDelta = 0;
     this.wheelClientX = 0;
     this.wheelClientY = 0;
@@ -91,13 +94,16 @@ class GraphEngine {
     this.wheelInteractionStartedAt = 0;
     this.wheelLastFrameAt = 0;
     this.wheelSettlePending = false;
-    this.wheelRenderHoldUntil = 0;
     this.cameraFollow = null;
+    this._cameraDirty = false;
     this._cameraRenderMode = 'transform';
     this._linkPixelRatio = 1;
     this._linkPalette = null;
     this.raf = 0;
     this.running = false;
+    this.lastTickTime = 0;
+    this.physicsAccumulator = 0;
+    this.physicsStepMs = 1000 / this.options.physicsHz;
     this.labelFrame = 0;
     this.instanceId = ++graphInstanceSequence;
     this._dataSignature = '';
@@ -114,7 +120,10 @@ class GraphEngine {
       zoomCameraMs: 0,
       zoomSettleMs: 0,
       zoomDroppedFrames: 0,
-      zoomDeferredRenders: 0,
+      inputDelayMs: 0,
+      missedFrameSlots: 0,
+      longTaskMs: 0,
+      longTaskCount: 0,
       skippedDataUpdates: 0,
       sampleFrames: 0,
       sampleStartedAt: performance.now(),
@@ -233,17 +242,19 @@ class GraphEngine {
     this.cancelInteraction();
     this.stopCameraAnimation();
     this.wheelDelta = 0;
-    this.wheelRenderHoldUntil = 0;
     if (!this.running) return this;
     this.running = false;
     cancelAnimationFrame(this.raf);
     this.raf = 0;
+    this.lastTickTime = 0;
+    this.physicsAccumulator = 0;
     return this;
   }
 
   resume() {
     if (this.running) return this;
     this.running = true;
+    this.lastTickTime = 0;
     this.raf = requestAnimationFrame(this._tick);
     return this;
   }
@@ -297,11 +308,26 @@ class GraphEngine {
       zoomFrameMs: [],
       zoomCameraMs: [],
       zoomSettleMs: [],
-      deferredRenders: 0,
+      inputDelayMs: [],
+      longTaskMs: [],
+      observers: [],
       resolve: resolveCapture,
       promise,
       timer: 0,
     };
+
+    const PerformanceObserverClass = globalThis.PerformanceObserver;
+    if (typeof PerformanceObserverClass === 'function') {
+      try {
+        const longTaskObserver = new PerformanceObserverClass(list => {
+          list.getEntries().forEach(entry => {
+            if (Number.isFinite(entry.duration)) capture.longTaskMs.push(entry.duration);
+          });
+        });
+        longTaskObserver.observe({ type: 'longtask', buffered: false });
+        capture.observers.push(longTaskObserver);
+      } catch (_) { /* Long Tasks ainda não é exposto por todos os navegadores. */ }
+    }
 
     capture.timer = setTimeout(() => this._finishPerformanceCapture(), duration);
     this._performanceCapture = capture;
@@ -332,6 +358,7 @@ class GraphEngine {
     this.H = height;
     this._resizeLinkCanvas();
     this.applyCamera();
+    this._cameraDirty = false;
     this._renderLinks();
 
     if (this.nodes.length && !this.nodes[0].initialized) {
@@ -553,14 +580,9 @@ class GraphEngine {
   }
 
   stopCameraAnimation() {
-    if (this.zoomFrame) {
-      cancelAnimationFrame(
-        this.zoomFrame
-      );
-    }
-
-    this.zoomFrame = 0;
+    this.cameraActive = false;
     this.zoomLastTime = 0;
+    this.cameraVelocity = { x: 0, y: 0, scale: 0 };
     this.wheelDelta = 0;
     this.wheelQueuedAt = 0;
     this.wheelInteractionStartedAt = 0;
@@ -1230,22 +1252,30 @@ class GraphEngine {
     this._renderLinks();
   }
 
-  _renderPositions({ links = true, nodes = true } = {}) {
-    if (nodes) this._renderNodePositions();
+  _renderPositions({ links = true, nodes = true, interpolation = 1 } = {}) {
+    if (nodes) this._renderNodePositions(interpolation);
     if (links) this._renderLinks();
   }
 
-  _renderNodePositions() {
+  _renderNodePositions(interpolation = 1) {
+    const amount = this._clamp(Number(interpolation) || 0, 0, 1);
     this.nodes.forEach((node, i) => {
       const el = this.nodeEls[i];
       if (!el) return;
-      const transform = `translate(${node.x.toFixed(2)}px, ${node.y.toFixed(2)}px)`;
+      const immediate = node.fx != null || !Number.isFinite(node._graphPreviousX);
+      const x = immediate
+        ? node.x
+        : node._graphPreviousX + (node.x - node._graphPreviousX) * amount;
+      const y = immediate
+        ? node.y
+        : node._graphPreviousY + (node.y - node._graphPreviousY) * amount;
+      const transform = `translate(${x.toFixed(2)}px, ${y.toFixed(2)}px)`;
       if (el._graphPosition !== transform) {
         el._graphPosition = transform;
         el.style.transform = transform;
       }
-      node._graphRenderedX = node.x;
-      node._graphRenderedY = node.y;
+      node._graphRenderedX = x;
+      node._graphRenderedY = y;
     });
   }
 
@@ -1500,138 +1530,95 @@ class GraphEngine {
   }
 
   _startSmoothCamera() {
-    if (this.zoomFrame) {
-      return;
+    if (!this.cameraActive) {
+      this.cameraVelocity = { x: 0, y: 0, scale: 0 };
+      this.zoomLastTime = performance.now();
+    }
+    this.cameraActive = true;
+    if (this.running === false) this.resume();
+  }
+
+  _stepCamera(frameTime) {
+    if (!this.cameraActive && !this.wheelDelta && !this.cameraFollow) return false;
+
+    const wheelZoomed = this._consumeWheelZoom(frameTime);
+    this._refreshFollowTarget();
+
+    const previous = this.zoomLastTime || frameTime;
+    const dtMs = Math.min(32, Math.max(0, frameTime - previous));
+    this.zoomLastTime = frameTime;
+    const cameraStartedAt = performance.now();
+
+    if (this.options.reduceMotion?.() === true) {
+      this.camera = { ...this.zoomTarget };
+      this.cameraVelocity = { x: 0, y: 0, scale: 0 };
+    } else {
+      const settleSeconds = Math.max(0.06, Number(this.options.cameraSpringMs) / 1000 || 0.15);
+      const omega = 4.75 / settleSeconds;
+      const dt = dtMs / 1000;
+      const advance = (value, target, velocity) => {
+        const displacement = value - target;
+        const decay = Math.exp(-omega * dt);
+        const coupling = (velocity + omega * displacement) * dt;
+        return {
+          value: target + (displacement + coupling) * decay,
+          velocity: (velocity - omega * coupling) * decay,
+        };
+      };
+      const x = advance(this.camera.x, this.zoomTarget.x, this.cameraVelocity.x);
+      const y = advance(this.camera.y, this.zoomTarget.y, this.cameraVelocity.y);
+      const scale = advance(this.camera.scale, this.zoomTarget.scale, this.cameraVelocity.scale);
+      this.camera = { x: x.value, y: y.value, scale: scale.value };
+      this.cameraVelocity = { x: x.velocity, y: y.velocity, scale: scale.velocity };
     }
 
-    this.zoomLastTime = performance.now();
-
-    const animate =
-      time => {
-        const wheelZoomed = this._consumeWheelZoom(performance.now());
-        const finishingWheel = !wheelZoomed && this.wheelSettlePending;
-        this._refreshFollowTarget();
-
-        const previous =
-          this.zoomLastTime ||
-          time;
-
-        const dt = Math.min(
-          32,
-          Math.max(
-            0,
-            time - previous
-          )
-        );
-
-        this.zoomLastTime =
-          time;
-
-        const timedEase =
-          1 -
-          Math.exp(
-            -dt /
-            this.options
-              .cameraEaseMs
-          );
-
-        const ease = finishingWheel
-          ? 1
-          : wheelZoomed
-            ? Math.max(timedEase, this.options.wheelResponse)
-            : timedEase;
-
-        const cameraStartedAt = performance.now();
-        this._moveCameraTowardTarget(ease);
-        const cameraMs = performance.now() - cameraStartedAt;
-
-        if (wheelZoomed || finishingWheel) {
-          this._recordZoomFrame(time, cameraMs);
-        }
-
-        if (wheelZoomed) {
-          this.wheelSettlePending = true;
-        } else if (finishingWheel) {
-          this.wheelSettlePending = false;
-          if (this._performance && this.wheelInteractionStartedAt) {
-            const settleMs = Math.max(
-              0,
-              performance.now() - this.wheelInteractionStartedAt
-            );
-            this._performance.zoomSettleMs = settleMs;
-            this._capturePerformanceMetric('zoomSettleMs', settleMs);
-          }
-          this.wheelInteractionStartedAt = 0;
-          this.wheelLastFrameAt = 0;
-        }
-
-        const settled =
-          Math.abs(
-            this.camera.x -
-            this.zoomTarget.x
-          ) < 0.02 &&
-
-          Math.abs(
-            this.camera.y -
-            this.zoomTarget.y
-          ) < 0.02 &&
-
-          Math.abs(
-            this.camera.scale -
-            this.zoomTarget.scale
-          ) < 0.00015 &&
-
-          this.wheelDelta === 0;
-
-        if (
-          settled &&
-          !this.cameraFollow
-        ) {
-          this.camera = {
-            ...this.zoomTarget
-          };
-
-          this.applyCamera();
-
-          this.zoomFrame = 0;
-          this.zoomLastTime = 0;
-
-          return;
-        }
-
-        this.zoomFrame =
-          requestAnimationFrame(
-            animate
-          );
-      };
-
-    this.zoomFrame =
-      requestAnimationFrame(
-        animate
-      );
-  }
-
-  _moveCameraTowardTarget(ease) {
-    const amount = this._clamp(Number(ease) || 0, 0, 1);
-    this.camera = {
-      x: this.camera.x + (this.zoomTarget.x - this.camera.x) * amount,
-      y: this.camera.y + (this.zoomTarget.y - this.camera.y) * amount,
-      scale: this.camera.scale + (this.zoomTarget.scale - this.camera.scale) * amount,
-    };
     this.applyCamera();
+    this._cameraDirty = false;
+    const cameraMs = performance.now() - cameraStartedAt;
+    if (wheelZoomed || this.wheelSettlePending) this._recordZoomFrame(frameTime, cameraMs);
+    if (wheelZoomed) this.wheelSettlePending = true;
+
+    const settled =
+      Math.abs(this.camera.x - this.zoomTarget.x) < 0.02 &&
+      Math.abs(this.camera.y - this.zoomTarget.y) < 0.02 &&
+      Math.abs(this.camera.scale - this.zoomTarget.scale) < 0.00015 &&
+      Math.abs(this.cameraVelocity.x) < 0.02 &&
+      Math.abs(this.cameraVelocity.y) < 0.02 &&
+      Math.abs(this.cameraVelocity.scale) < 0.00015 &&
+      this.wheelDelta === 0;
+
+    if (settled && !this.cameraFollow) {
+      this.camera = { ...this.zoomTarget };
+      this.cameraVelocity = { x: 0, y: 0, scale: 0 };
+      this.applyCamera();
+      this.cameraActive = false;
+      this.zoomLastTime = 0;
+      if (this.wheelSettlePending) {
+        this.wheelSettlePending = false;
+        if (this._performance && this.wheelInteractionStartedAt) {
+          const settleMs = Math.max(0, frameTime - this.wheelInteractionStartedAt);
+          this._performance.zoomSettleMs = settleMs;
+          this._capturePerformanceMetric('zoomSettleMs', settleMs);
+        }
+        this.wheelInteractionStartedAt = 0;
+        this.wheelLastFrameAt = 0;
+      }
+    }
+
+    return true;
   }
 
-  _queueWheelZoom(deltaY, clientX, clientY) {
+  _queueWheelZoom(deltaY, clientX, clientY, eventTimeStamp = 0) {
     const delta = Number(deltaY);
     if (!Number.isFinite(delta) || delta === 0) return;
     const queuedAt = performance.now();
     if (!this.wheelDelta) this.wheelQueuedAt = queuedAt;
     if (!this.wheelInteractionStartedAt) this.wheelInteractionStartedAt = queuedAt;
-    const renderHoldMs = Math.max(0, Number(this.options.wheelRenderHoldMs) || 0);
-    this.wheelRenderHoldUntil = Math.max(
-      this.wheelRenderHoldUntil,
-      queuedAt + renderHoldMs
-    );
+    const inputDelay = queuedAt - Number(eventTimeStamp);
+    if (Number(eventTimeStamp) > 0 && inputDelay >= 0 && inputDelay < 10000) {
+      this._performance.inputDelayMs = this._blendMetric(this._performance.inputDelayMs, inputDelay, 0.2);
+      this._capturePerformanceMetric('inputDelayMs', inputDelay);
+    }
     this.wheelDelta += delta;
     this.wheelClientX = clientX;
     this.wheelClientY = clientY;
@@ -1864,7 +1851,8 @@ class GraphEngine {
         this._queueWheelZoom(
           event.deltaY,
           event.clientX,
-          event.clientY
+          event.clientY,
+          event.timeStamp
         );
       },
       {
@@ -1938,8 +1926,7 @@ class GraphEngine {
       this.zoomTarget = {
         ...this.camera
       };
-
-      this.applyCamera();
+      this._cameraDirty = true;
 
       return;
     }
@@ -2214,17 +2201,50 @@ class GraphEngine {
     return candidates;
   }
 
-  _tick() {
+  _tick(frameTime = performance.now()) {
     const tickStartedAt = performance.now();
+    const tickTime = Number.isFinite(frameTime) ? frameTime : tickStartedAt;
+    const basePhysicsStepMs = 1000 / Math.max(1, Number(this.options.physicsHz) || 60);
+    const elapsedMs = this.lastTickTime
+      ? Math.min(100, Math.max(0, tickTime - this.lastTickTime))
+      : basePhysicsStepMs;
+    this.lastTickTime = tickTime;
+    this.physicsAccumulator = Math.min(
+      (Number(this.physicsAccumulator) || 0) + elapsedMs,
+      Math.max(basePhysicsStepMs, Number(this.options.maxPhysicsDeltaMs) || 50)
+    );
+
+    const cameraStepped = this._stepCamera(tickTime);
+    if (!cameraStepped && this._cameraDirty) {
+      this.applyCamera();
+      this._cameraDirty = false;
+    }
+
     let physicsMs = 0;
     let renderMs = 0;
-    if (
-      this.nodes.length
-    ) {
+    const physicsActive =
+      this.alpha > (Number(this.options.restingPhysicsAlpha) || 0.065) ||
+      this.dragging?.type === 'node' ||
+      this.nodes.some(node => node._graphDragRecovery);
+    const physicsHz = physicsActive
+      ? Math.max(1, Number(this.options.physicsHz) || 60)
+      : Math.max(1, Number(this.options.restingPhysicsHz) || 30);
+    const physicsStepMs = 1000 / physicsHz;
+    this.physicsStepMs = physicsStepMs;
+    const shouldStepPhysics = this.nodes.length && this.physicsAccumulator >= physicsStepMs;
+    const stepScale = physicsStepMs / basePhysicsStepMs;
+
+    if (shouldStepPhysics) {
+      this.physicsAccumulator = Math.max(0, this.physicsAccumulator - physicsStepMs);
+      this.nodes.forEach(node => {
+        node._graphPreviousX = node.x;
+        node._graphPreviousY = node.y;
+      });
+      const physicsStartedAt = performance.now();
       const recoveringCategory = this.nodes.some((node) => {
         const recovery = node._graphDragRecovery;
         if (!recovery) return false;
-        if (tickStartedAt < recovery.until) {
+        if (tickTime < recovery.until) {
           recovery.maxChildError = 0;
           return true;
         }
@@ -2240,7 +2260,7 @@ class GraphEngine {
             ? this.options.categoryRecoveryAlpha
             : 0,
           this.alpha
-        );
+        ) * stepScale;
 
       // -----------------------------------------------------------------------
       // MANY-BODY / REPULSÃO
@@ -2582,8 +2602,7 @@ class GraphEngine {
       // MOVIMENTO CONTÍNUO
       // -----------------------------------------------------------------------
 
-      const now =
-        performance.now();
+      const now = tickTime;
 
       this.nodes.forEach(
         (
@@ -2610,7 +2629,8 @@ class GraphEngine {
             ) *
             this.options
               .floatForce *
-            multiplier;
+            multiplier *
+            stepScale;
 
           node.vy +=
             Math.cos(
@@ -2623,11 +2643,13 @@ class GraphEngine {
             ) *
             this.options
               .floatForce *
-            multiplier;
+            multiplier *
+            stepScale;
 
           // velocityDecay equivalente a ~0.40
-          node.vx *= 0.60;
-          node.vy *= 0.60;
+          const velocityRetention = Math.pow(0.60, stepScale);
+          node.vx *= velocityRetention;
+          node.vy *= velocityRetention;
 
           const recovery = node._graphDragRecovery;
           if (recovery) {
@@ -2645,7 +2667,7 @@ class GraphEngine {
 
             recovery.stableFrames =
               parentSettled && linkedTracksSettled && speedSettled
-                ? recovery.stableFrames + 1
+                ? recovery.stableFrames + stepScale
                 : 0;
 
             if (
@@ -2657,10 +2679,10 @@ class GraphEngine {
           }
 
           node.x +=
-            node.vx;
+            node.vx * stepScale;
 
           node.y +=
-            node.vy;
+            node.vy * stepScale;
         }
       );
 
@@ -2670,16 +2692,17 @@ class GraphEngine {
             .restingAlpha -
           this.alpha
         ) *
-        0.055;
+        (1 - Math.pow(1 - 0.055, stepScale));
 
-      physicsMs = performance.now() - tickStartedAt;
-      const cameraOnlyFrame = this._shouldDeferPositionRender(tickStartedAt);
+      physicsMs = performance.now() - physicsStartedAt;
+    }
+
+    if (this.nodes.length) {
+      const interpolation = this.dragging?.type === 'node'
+        ? 1
+        : this._clamp(this.physicsAccumulator / physicsStepMs, 0, 1);
       const renderStartedAt = performance.now();
-      this._renderPositions({ nodes: !cameraOnlyFrame });
-      if (cameraOnlyFrame) {
-        this._performance.zoomDeferredRenders++;
-        if (this._performanceCapture) this._performanceCapture.deferredRenders++;
-      }
+      this._renderPositions({ interpolation });
       renderMs = performance.now() - renderStartedAt;
     }
 
@@ -2687,9 +2710,11 @@ class GraphEngine {
     const blend = (previous, current) => previous
       ? previous * 0.90 + current * 0.10
       : current;
-    this._performance.physicsMs = blend(this._performance.physicsMs, physicsMs);
+    if (shouldStepPhysics) {
+      this._performance.physicsMs = blend(this._performance.physicsMs, physicsMs);
+    }
     this._performance.renderMs = blend(this._performance.renderMs, renderMs);
-    this._recordPerformanceCaptureFrame(measuredAt, physicsMs, renderMs);
+    this._recordPerformanceCaptureFrame(tickTime, physicsMs, renderMs, shouldStepPhysics);
     this._performance.sampleFrames++;
     const sampleElapsed = measuredAt - this._performance.sampleStartedAt;
     if (sampleElapsed >= 500) {
@@ -2718,11 +2743,7 @@ class GraphEngine {
     capture[name].push(Math.max(0, value));
   }
 
-  _shouldDeferPositionRender(frameTime = performance.now()) {
-    return frameTime < this.wheelRenderHoldUntil && this.dragging?.type !== 'node';
-  }
-
-  _recordPerformanceCaptureFrame(frameTime, physicsMs, renderMs) {
+  _recordPerformanceCaptureFrame(frameTime, physicsMs, renderMs, physicsStepped = true) {
     const capture = this._performanceCapture;
     if (!capture) return;
     if (capture.lastFrameAt) {
@@ -2730,7 +2751,7 @@ class GraphEngine {
       if (Number.isFinite(interval) && interval >= 0) capture.frameMs.push(interval);
     }
     capture.lastFrameAt = frameTime;
-    if (Number.isFinite(physicsMs)) capture.physicsMs.push(Math.max(0, physicsMs));
+    if (physicsStepped && Number.isFinite(physicsMs)) capture.physicsMs.push(Math.max(0, physicsMs));
     if (Number.isFinite(renderMs)) capture.renderMs.push(Math.max(0, renderMs));
   }
 
@@ -2752,6 +2773,7 @@ class GraphEngine {
     if (!capture) return null;
     this._performanceCapture = null;
     clearTimeout(capture.timer);
+    capture.observers?.forEach(observer => observer.disconnect?.());
 
     const endedAt = performance.now();
     const elapsedMs = Math.max(0, endedAt - capture.startedAt);
@@ -2765,8 +2787,26 @@ class GraphEngine {
     const refreshHz = medianFrameMs > 0 ? Math.round(1000 / medianFrameMs) : 0;
     const lateThresholdMs = medianFrameMs > 0 ? medianFrameMs * 1.5 : 25;
     const lateFrames = capture.frameMs.filter(value => value > lateThresholdMs).length;
+    const missedFrameMultiples = capture.frameMs.reduce((summary, interval) => {
+      if (!(medianFrameMs > 0) || !(interval > lateThresholdMs)) return summary;
+      const multiple = Math.max(2, Math.round(interval / medianFrameMs));
+      summary.estimated += multiple - 1;
+      summary.worst = Math.max(summary.worst, multiple);
+      if (multiple === 2) summary.double++;
+      else if (multiple === 3) summary.triple++;
+      else summary.fourPlus++;
+      return summary;
+    }, { estimated: 0, double: 0, triple: 0, fourPlus: 0, worst: 1 });
+    const inputDelay = this._performanceMetricSummary(capture.inputDelayMs);
+    const longTasks = this._performanceMetricSummary(capture.longTaskMs);
+    const longTaskTotalMs = capture.longTaskMs.reduce((sum, value) => sum + value, 0);
+    if (this._performance) {
+      this._performance.missedFrameSlots = missedFrameMultiples.estimated;
+      this._performance.longTaskCount = longTasks.samples;
+      this._performance.longTaskMs = longTaskTotalMs;
+    }
     const report = {
-      version: 1,
+      version: 2,
       cancelled: Boolean(cancelled),
       capturedAt: new Date().toISOString(),
       durationMs: elapsedMs,
@@ -2784,15 +2824,24 @@ class GraphEngine {
       lateFramePercent: capture.frameMs.length
         ? lateFrames * 100 / capture.frameMs.length
         : 0,
+      missedFrameMultiples,
       frame,
       physics: this._performanceMetricSummary(capture.physicsMs),
+      physicsCadence: {
+        activeHz: Math.max(1, Number(this.options?.physicsHz) || 60),
+        restingHz: Math.max(1, Number(this.options?.restingPhysicsHz) || 30),
+      },
       render: this._performanceMetricSummary(capture.renderMs),
+      inputDelay,
+      longTasks: {
+        ...longTasks,
+        total: longTaskTotalMs,
+      },
       zoom: {
         latency: this._performanceMetricSummary(capture.zoomLatencyMs),
         frame: this._performanceMetricSummary(capture.zoomFrameMs),
         camera: this._performanceMetricSummary(capture.zoomCameraMs),
         settle: this._performanceMetricSummary(capture.zoomSettleMs),
-        deferredRenders: capture.deferredRenders,
       },
     };
 
