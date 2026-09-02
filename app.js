@@ -2419,7 +2419,9 @@
         graphZoomCamera: graphPerf ? `${graphPerf.zoomCameraMs.toFixed(3)} ms` : '—',
         graphZoomSettle: graphPerf ? `${graphPerf.zoomSettleMs.toFixed(1)} ms` : '—',
         graphZoomDropped: graphPerf ? String(graphPerf.zoomDroppedFrames) : '—',
-        graphZoomDeferred: graphPerf ? String(graphPerf.zoomDeferredRenders) : '—',
+        graphInputDelay: graphPerf ? `${graphPerf.inputDelayMs.toFixed(2)} ms` : '—',
+        graphMissedFrames: graphPerf ? String(graphPerf.missedFrameSlots) : '—',
+        graphLongTasks: graphPerf ? `${graphPerf.longTaskCount} · ${graphPerf.longTaskMs.toFixed(1)} ms` : '—',
         motion: window.Motion.reduced() ? 'reduzido' : cfg('motion.level') === 'discreet' ? 'discreto' : 'completo',
       };
     },

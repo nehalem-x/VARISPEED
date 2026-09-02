@@ -38,7 +38,10 @@ function performanceState() {
     zoomCameraMs: 0,
     zoomSettleMs: 0,
     zoomDroppedFrames: 0,
-    zoomDeferredRenders: 0,
+    inputDelayMs: 0,
+    missedFrameSlots: 0,
+    longTaskMs: 0,
+    longTaskCount: 0,
     skippedDataUpdates: 0,
     sampleFrames: 0,
     sampleStartedAt: performance.now(),
@@ -391,13 +394,11 @@ test('foco combina zoom solicitado com o centro do viewport útil', () => {
   assert.equal(graph.cameraFollow.until, Infinity);
 });
 
-test('eventos de roda compartilham o frame da câmera e fazem uma única escrita', () => {
-  let frameCallback = null;
+test('eventos de roda são consumidos pelo RAF principal com uma única escrita de câmera', () => {
   let frameRequests = 0;
   const WheelGraphEngine = loadGraphEngine({
     requestAnimationFrame(callback) {
       frameRequests++;
-      frameCallback = callback;
       return 7;
     },
   });
@@ -414,7 +415,8 @@ test('eventos de roda compartilham o frame da câmera e fazem uma única escrita
   const graph = Object.create(WheelGraphEngine.prototype);
   Object.assign(graph, {
     dragging: null,
-    zoomFrame: 0,
+    running: true,
+    cameraActive: false,
     zoomLastTime: 0,
     wheelDelta: 0,
     wheelClientX: 0,
@@ -423,8 +425,8 @@ test('eventos de roda compartilham o frame da câmera e fazem uma única escrita
     camera: { x: 0, y: 0, scale: 1 },
     zoomTarget: { x: 0, y: 0, scale: 1 },
     options: {
-      cameraEaseMs: 82,
-      wheelResponse: 0.42,
+      cameraSpringMs: 150,
+      reduceMotion: () => false,
       minZoom: 0.48,
       maxZoom: 2.35,
       initialZoom: 1,
@@ -441,34 +443,27 @@ test('eventos de roda compartilham o frame da câmera e fazem uma única escrita
 
   graph._queueWheelZoom(10, 110, 220);
   graph._queueWheelZoom(20, 130, 260);
-  assert.equal(frameRequests, 1);
+  assert.equal(frameRequests, 0);
   assert.equal(rectReads, 0);
 
-  frameCallback(graph.zoomLastTime + 16);
+  graph._stepCamera(graph.zoomLastTime + 16);
   assert.equal(rectReads, 0);
   const scale = Math.exp(-0.03);
   assert.ok(Math.abs(graph.zoomTarget.scale - scale) < 1e-12);
   assert.ok(Math.abs(graph.zoomTarget.x - 120 * (1 - scale)) < 1e-12);
   assert.ok(Math.abs(graph.zoomTarget.y - 240 * (1 - scale)) < 1e-12);
   assert.equal(cameraWrites, 1);
-  assert.equal(frameRequests, 2);
+  assert.equal(frameRequests, 0);
 });
 
-test('zoom pela roda encerra a cauda no primeiro quadro sem nova entrada', () => {
-  let frameCallback = null;
-  let frameRequests = 0;
+test('zoom pela roda converge sem salto por uma mola criticamente amortecida', () => {
   let cameraWrites = 0;
-  const WheelGraphEngine = loadGraphEngine({
-    requestAnimationFrame(callback) {
-      frameRequests++;
-      frameCallback = callback;
-      return frameRequests;
-    },
-  });
+  const WheelGraphEngine = loadGraphEngine();
   const graph = Object.create(WheelGraphEngine.prototype);
   Object.assign(graph, {
     dragging: null,
-    zoomFrame: 0,
+    running: true,
+    cameraActive: false,
     zoomLastTime: 0,
     wheelDelta: 0,
     wheelClientX: 0,
@@ -482,8 +477,8 @@ test('zoom pela roda encerra a cauda no primeiro quadro sem nova entrada', () =>
     zoomTarget: { x: 0, y: 0, scale: 1 },
     _performance: performanceState(),
     options: {
-      cameraEaseMs: 82,
-      wheelResponse: 0.62,
+      cameraSpringMs: 150,
+      reduceMotion: () => false,
       minZoom: 0.48,
       maxZoom: 2.35,
       initialZoom: 1,
@@ -502,18 +497,22 @@ test('zoom pela roda encerra a cauda no primeiro quadro sem nova entrada', () =>
 
   graph._queueWheelZoom(120, 100, 100);
   const startedAt = graph.zoomLastTime;
-  frameCallback(startedAt + 16);
+  const scales = [];
+  graph._stepCamera(startedAt + 16);
   assert.notEqual(graph.camera.scale, graph.zoomTarget.scale);
-  assert.equal(cameraWrites, 1);
-
-  frameCallback(startedAt + 32);
+  scales.push(graph.camera.scale);
+  for (let frame = 2; frame <= 60 && graph.cameraActive; frame++) {
+    graph._stepCamera(startedAt + frame * 16);
+    scales.push(graph.camera.scale);
+  }
   assert.equal(graph.camera.scale, graph.zoomTarget.scale);
   assert.equal(graph.camera.x, graph.zoomTarget.x);
   assert.equal(graph.camera.y, graph.zoomTarget.y);
-  assert.equal(graph.zoomFrame, 0);
-  assert.equal(cameraWrites, 2);
+  assert.equal(graph.cameraActive, false);
+  assert.ok(cameraWrites > 2);
+  assert.ok(scales.slice(1).every((scale, index) => scale <= scales[index]));
   assert.ok(graph._performance.zoomLatencyMs >= 0);
-  assert.equal(graph._performance.zoomFrameMs, 16);
+  assert.ok(Math.abs(graph._performance.zoomFrameMs - 16) < 1e-9);
   assert.ok(graph._performance.zoomCameraMs >= 0);
   assert.ok(graph._performance.zoomSettleMs >= 0);
 });
@@ -811,7 +810,7 @@ test('soltar categoria reduz o pico e devolve influência às músicas gradualme
   assert.equal(category.fx, null);
   assert.ok(category._graphDragRecovery);
 
-  graph._tick();
+  graph._tick(1000 / 60);
 
   assert.equal(category._graphDragRecovery.childInfluence, 0.24);
   assert.ok(Math.hypot(category.vx, category.vy) > 0);
@@ -825,7 +824,7 @@ test('recuperação longa desacelera continuamente sem patamar de velocidade art
   const influences = [];
 
   for (let frame = 0; frame < 210; frame++) {
-    graph._tick();
+    graph._tick((frame + 1) * 1000 / 60);
     speeds.push(Math.hypot(category.vx, category.vy));
     distances.push(Math.hypot(category.x - root.x, category.y - root.y));
     influences.push(category._graphDragRecovery?.childInfluence ?? 1);
@@ -847,13 +846,34 @@ test('arraste curto não injeta impulso mínimo nem cria retorno brusco', () => 
   let peakSpeed = 0;
 
   for (let frame = 0; frame < 120; frame++) {
-    graph._tick();
+    graph._tick((frame + 1) * 1000 / 60);
     peakSpeed = Math.max(peakSpeed, Math.hypot(category.vx, category.vy));
   }
 
   const finalError = Math.abs(Math.hypot(category.x - root.x, category.y - root.y) - 520);
   assert.ok(peakSpeed < 1.4);
   assert.ok(finalError < initialError);
+});
+
+test('física usa cadência fixa e reduz trabalho quando o grafo repousa', () => {
+  const { graph, category } = recoveryFixture({ dragX: 1450, dragY: 120 });
+  let physicsSteps = 0;
+  const buildCollisionGrid = graph._buildCollisionGrid.bind(graph);
+  graph._buildCollisionGrid = () => {
+    physicsSteps++;
+    return buildCollisionGrid();
+  };
+
+  for (let frame = 1; frame <= 144; frame++) graph._tick(frame * 1000 / 144);
+  assert.ok(physicsSteps >= 59 && physicsSteps <= 61);
+
+  physicsSteps = 0;
+  delete category._graphDragRecovery;
+  graph.alpha = graph.options.restingAlpha;
+  graph.lastTickTime = 0;
+  graph.physicsAccumulator = 0;
+  for (let frame = 1; frame <= 144; frame++) graph._tick(frame * 1000 / 144);
+  assert.ok(physicsSteps >= 29 && physicsSteps <= 31);
 });
 
 test('física preserva dois agrupamentos depois de estabilizar', () => {
@@ -977,17 +997,20 @@ test('applyCamera troca ampliação por viewBox com histerese no zoom próximo',
   assert.equal(viewBoxes.at(-1), '0 0 1200 600');
 });
 
-test('zoom consolida somente a pintura e nunca interrompe o arraste de um nó', () => {
+test('interpolação mantém o movimento suave sem atrasar o nó arrastado', () => {
+  const transforms = [];
+  const node = { x: 10, y: 20, fx: null, _graphPreviousX: 0, _graphPreviousY: 0 };
   const graph = Object.create(GraphEngine.prototype);
   Object.assign(graph, {
-    wheelRenderHoldUntil: 172,
-    dragging: null,
+    nodes: [node],
+    nodeEls: [{ style: { set transform(value) { transforms.push(value); } } }],
   });
 
-  assert.equal(graph._shouldDeferPositionRender(140), true);
-  assert.equal(graph._shouldDeferPositionRender(180), false);
-  graph.dragging = { type: 'node' };
-  assert.equal(graph._shouldDeferPositionRender(140), false);
+  graph._renderNodePositions(0.5);
+  assert.equal(transforms.at(-1), 'translate(5.00px, 10.00px)');
+  node.fx = 10;
+  graph._renderNodePositions(0.5);
+  assert.equal(transforms.at(-1), 'translate(10.00px, 20.00px)');
 });
 
 test('captura de desempenho resume frames, física, render e zoom sem alterar a simulação', async () => {
@@ -997,6 +1020,8 @@ test('captura de desempenho resume frames, física, render e zoom sem alterar a 
     links: [{ source: 'root', target: 'track' }],
     W: 1280,
     H: 720,
+    options: { physicsHz: 60, restingPhysicsHz: 30 },
+    _performance: performanceState(),
     _performanceCapture: null,
   });
 
@@ -1009,7 +1034,8 @@ test('captura de desempenho resume frames, física, render e zoom sem alterar a 
   graph._capturePerformanceMetric('zoomFrameMs', 7);
   graph._capturePerformanceMetric('zoomCameraMs', 0.08);
   graph._capturePerformanceMetric('zoomSettleMs', 14);
-  graph._performanceCapture.deferredRenders = 3;
+  graph._capturePerformanceMetric('inputDelayMs', 2.5);
+  graph._performanceCapture.longTaskMs.push(58);
 
   const report = graph._finishPerformanceCapture();
   const resolved = await pending;
@@ -1024,7 +1050,9 @@ test('captura de desempenho resume frames, física, render e zoom sem alterar a 
   assert.equal(report.render.samples, 4);
   assert.equal(report.zoom.latency.samples, 1);
   assert.equal(report.zoom.latency.max, 3.5);
-  assert.equal(report.zoom.deferredRenders, 3);
+  assert.equal(report.inputDelay.max, 2.5);
+  assert.equal(report.longTasks.samples, 1);
+  assert.equal(report.missedFrameMultiples.estimated, 1);
   assert.equal(report.cancelled, false);
   assert.equal(graph._performanceCapture, null);
 });
@@ -1033,6 +1061,7 @@ test('captura de desempenho ativa é reutilizada e pode ser cancelada com segura
   const graph = Object.create(GraphEngine.prototype);
   Object.assign(graph, {
     nodes: [], links: [], W: 0, H: 0, _performanceCapture: null,
+    options: {}, _performance: performanceState(),
   });
 
   const first = graph.startPerformanceCapture({ durationMs: 3000 });
