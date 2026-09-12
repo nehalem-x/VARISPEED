@@ -2308,6 +2308,8 @@
        permanece, preservando a navegação acessível e o comportamento nativo. */
     if (e.detail === 0 || !(e.target instanceof Element)) return;
     const control = e.target.closest('button, [role="button"]');
+    // A lista é um seletor navegável: um clique deve manter as setas disponíveis.
+    if (control?.getAttribute('role') === 'option') return;
     if (control && document.activeElement === control) control.blur();
   });
 

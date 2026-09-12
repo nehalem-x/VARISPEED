@@ -133,6 +133,7 @@
     <header class="library__bar">
       <div class="library__heading">
         <h1 class="library__title">Biblioteca</h1>
+        <span class="library__total mono" id="librarySummary">SUA ESCUTA, ORGANIZADA</span>
       </div>
       <button class="btn btn--ghost library__category-create" id="libraryCategoryCreate" type="button" title="Criar categoria">
         <svg width="14" height="14" aria-hidden="true"><use href="#ui-icon-category-add"/></svg>
@@ -150,12 +151,44 @@
     </header>
 
     <div class="library__workspace">
-      <div class="library__graph graph-engine-host" id="libraryGraph" role="region" aria-label="Mapa das músicas importadas"></div>
+      <div class="library__map-nav">
+        <label class="sr-only" for="libraryCategoryNav">Abrir categoria</label>
+        <select class="sel" id="libraryCategoryNav"><option value="">Mapa de categorias</option></select>
+        <span class="mono">SELECIONE UM PONTO PARA EXPLORAR</span>
+      </div>
+      <div class="library__graph graph-engine-host" id="libraryGraph" role="region" aria-label="Mapa de categorias"></div>
       <div class="library__empty" id="libraryEmpty" hidden>
         <strong id="libraryEmptyTitle">Biblioteca vazia</strong>
         <span class="mono" id="libraryEmptyHint">IMPORTE UMA MÚSICA E ADICIONE À BIBLIOTECA</span>
       </div>
-      <aside class="library__details" id="libraryDetails" data-graph-viewport-block="auto" aria-label="Detalhes da seleção" aria-live="polite" hidden>
+      <section class="library__browser" id="libraryBrowser" aria-labelledby="libraryBrowserTitle" hidden>
+        <header class="library__browser-head">
+          <button class="btn btn--ghost btn--icon" id="libraryBrowserClose" type="button" aria-label="Voltar ao mapa" title="Voltar ao mapa">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m9 3-5 5 5 5M4 8h10" stroke="currentColor" stroke-width="1.4"/></svg>
+          </button>
+          <div><span class="library__browser-kicker mono">COLEÇÃO / <span id="libraryBrowserCount" role="status"></span></span><h2 id="libraryBrowserTitle" tabindex="-1">Biblioteca</h2></div>
+          <div class="library__category-actions" id="libraryCategoryActions" hidden>
+            <button class="btn btn--ghost btn--icon" id="libraryCategoryRename" type="button" aria-label="Renomear categoria" title="Renomear categoria"><svg width="14" height="14" aria-hidden="true"><use href="#ui-icon-edit"/></svg></button>
+            <button class="btn btn--ghost btn--icon" id="libraryCategoryRemove" type="button" aria-label="Excluir categoria" title="Excluir categoria"><svg width="14" height="14" aria-hidden="true"><use href="#ui-icon-trash"/></svg></button>
+          </div>
+        </header>
+        <div class="library__list-toolbar">
+          <span class="mono">FAIXAS</span>
+          <label for="librarySort">Ordenar</label>
+          <select class="sel" id="librarySort">
+            <option value="recent">Adicionadas recentemente</option><option value="title">Título A–Z</option>
+            <option value="played">Últimas abertas</option><option value="duration">Duração</option>
+          </select>
+        </div>
+        <div class="library__tracks" id="libraryTracks" role="listbox" aria-label="Faixas da categoria" aria-describedby="libraryListHelp"></div>
+        <div class="library__list-empty" id="libraryListEmpty" hidden>
+          <strong id="libraryListEmptyTitle">Este espaço está esperando sua música.</strong>
+          <p id="libraryListEmptyHint"></p>
+          <button class="btn" id="libraryListEmptyAction" type="button">Ver todas as faixas</button>
+        </div>
+        <footer class="library__list-help mono" id="libraryListHelp"><span>↑ ↓ SELECIONAR</span><span>ENTER ABRIR</span><span>ESC VOLTAR</span></footer>
+      </section>
+      <aside class="library__details" id="libraryDetails" aria-label="Detalhes da faixa selecionada" hidden>
         <header class="library__detail-bar">
           <div class="library__detail-heading">
             <span class="library__detail-source mono" id="libraryDetailSource">—</span>
@@ -190,12 +223,7 @@
               <span>Categoria</span>
               <select class="sel" id="libraryCategorySelect"></select>
             </label>
-            <p class="library__organization-hint">A música orbita a categoria escolhida no grafo.</p>
-          </section>
-          <section class="library__category-summary" id="libraryCategorySummary" hidden>
-            <span class="library__category-kicker mono" id="libraryCategoryKind">Categoria</span>
-            <strong id="libraryCategoryCount">0 músicas</strong>
-            <p id="libraryCategoryDescription">As músicas vinculadas formam um agrupamento ao redor desta categoria.</p>
+            <p class="library__organization-hint">A faixa aparece na lista desta categoria e continua acessível em Biblioteca.</p>
           </section>
         </div>
         <footer class="library__detail-actions" id="libraryMusicActions">
@@ -206,16 +234,6 @@
             <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m8 1.8 1.86 3.77 4.16.6-3.01 2.94.71 4.14L8 11.3l-3.72 1.95.71-4.14-3.01-2.94 4.16-.6L8 1.8Z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="miter"/></svg>
           </button>
           <button class="btn btn--ghost library__remove" id="libraryRemove" type="button">Remover</button>
-        </footer>
-        <footer class="library__category-actions" id="libraryCategoryActions" hidden>
-          <button class="btn btn--primary" id="libraryCategoryRename" type="button">
-            <svg width="13" height="13" aria-hidden="true"><use href="#ui-icon-edit"/></svg>
-            Renomear categoria
-          </button>
-          <button class="btn btn--ghost library__category-remove" id="libraryCategoryRemove" type="button">
-            <svg width="13" height="13" aria-hidden="true"><use href="#ui-icon-trash"/></svg>
-            Excluir categoria
-          </button>
         </footer>
       </aside>
       <div class="library__category-dialog-layer" id="libraryCategoryDialogLayer" hidden>
@@ -261,7 +279,7 @@
             <path d="M360 210 305 116M360 210 444 136M360 210 282 282M360 210 438 310"/>
             <circle cx="305" cy="116" r="6"/><circle cx="444" cy="136" r="6"/>
             <circle cx="282" cy="282" r="6"/><circle cx="438" cy="310" r="6"/>
-            <text class="library-tutorial__node-label" x="305" y="96" text-anchor="middle">MÚSICA</text>
+            <text class="library-tutorial__node-label" x="305" y="96" text-anchor="middle">CATEGORIA</text>
           </g>
           <g class="library-tutorial__stage library-tutorial__stage--categories">
             <path d="M360 210 174 176M360 210 548 244"/>
@@ -515,6 +533,7 @@
 <script src="remote-import.js"></script>
 <script src="settings.js"></script>
 <script src="graph-engine.js"></script>
+<script src="library-model.js"></script>
 <script src="library.js"></script>
 <script src="app.js"></script>
 </body>

@@ -2,7 +2,7 @@
    VARISPEED — biblioteca visual de mídias
    Metadados ficam no localStorage e os bytes de áudio no IndexedDB. Na
    inicialização, apenas entradas que ainda possuem uma fonte válida voltam
-   ao grafo.
+   à lista. O grafo projeta somente categorias, nunca arquivos individuais.
    ═════════════════════════════════════════════════════════ */
 (() => {
   'use strict';
@@ -16,36 +16,33 @@
   const CATEGORY_LIMIT = 64;
   const ROOT_ID = 'category:library';
   const FAVORITES_ID = 'category:favorites';
-  const CATEGORY_LINK_DISTANCE = 520;
-  const CATEGORY_LINK_STRENGTH = 0.52;
-  const TRACK_LINK_DISTANCE = 198;
-  const TRACK_LINK_STRENGTH = 0.44;
+  const model = window.LibraryModel;
   const SELECTED_NODE_ZOOM = 1.35;
   const TUTORIAL_EXIT_MS = 420;
   const TUTORIAL_STEPS = Object.freeze([
     {
       kicker: 'A memória da sua escuta',
       title: 'Sua biblioteca deixa rastros.',
-      body: 'Isto não é apenas uma lista. Cada música adicionada ocupa um lugar em um mapa que pertence somente a você.',
-      signal: 'UM ARQUIVO · UM PRIMEIRO PONTO',
+      body: 'Suas músicas ficam neste computador. O mapa reúne as categorias; dentro de cada uma, uma lista guarda suas faixas e seus ajustes.',
+      signal: 'UM MAPA · SUA ESCUTA',
     },
     {
-      kicker: 'Cada música é um nó',
-      title: 'Ouvir também é construir.',
-      body: 'Ao importar uma faixa, nasce um novo nó. Aos poucos, suas escolhas deixam de ser arquivos isolados e começam a formar uma memória visual.',
-      signal: 'MÚSICA → NÓ',
+      kicker: 'Cada categoria é um ponto',
+      title: 'Um mapa para se encontrar.',
+      body: 'Clique em uma categoria para abrir suas músicas. Biblioteca reúne todas as faixas, e Favoritas acompanha as que você marcou com uma estrela.',
+      signal: 'CATEGORIA → LISTA DE FAIXAS',
     },
     {
       kicker: 'Categorias criam territórios',
       title: 'Organize sem apagar a complexidade.',
-      body: 'Crie categorias e vincule músicas a elas. Cada categoria se torna um novo centro, aproximando o que faz sentido permanecer junto.',
+      body: 'Crie uma categoria e escolha as músicas que pertencem a ela pelo painel de detalhes. Sua organização muda sem duplicar arquivos.',
       signal: 'CATEGORIA → NOVO CENTRO',
     },
     {
       kicker: 'Um mapa impossível de copiar',
-      title: 'O grafo cresce com você.',
-      body: 'Com o tempo, músicas, categorias e conexões formam um aglomerado de neurônios: complexo, vivo e organizado pela história da sua escuta.',
-      signal: 'TEMPO + ESCUTA → UMA REDE ÚNICA',
+      title: 'Encontre. Escolha. Ouça.',
+      body: 'Use a busca e a ordenação para encontrar uma faixa. As setas percorrem a lista; Enter abre a seleção no editor. Escape retorna um nível.',
+      signal: 'MAPA → FAIXA → EDITOR',
     },
   ]);
   const cache = new Map();
@@ -55,6 +52,9 @@
   let activeId = '';
   let playbackPlaying = false;
   let selectedId = '';
+  let browseCategoryId = '';
+  let listSignature = '';
+  let opening = false;
   let engine = null;
   let resizeTimer = 0;
   let focusFrame = 0;
@@ -78,6 +78,7 @@
 
   const $ = (id) => document.getElementById(id);
   const el = {};
+  const compactList = window.matchMedia('(max-width: 720px)');
   const now = () => Date.now();
   const uid = () => (crypto.randomUUID ? crypto.randomUUID() : `media-${now()}-${Math.random().toString(36).slice(2)}`);
   const categoryUid = () => `category:custom:${uid()}`;
@@ -233,7 +234,10 @@
     items.unshift(item);
     items = items.slice(0, LIMIT);
     activeId = item.id;
-    if (mounted && !el.view.hidden) selectedId = item.id;
+    if (mounted && !el.view.hidden) {
+      selectedId = item.id;
+      browseCategoryId = item.categoryId || ROOT_ID;
+    }
     if (blob instanceof Blob) cache.set(item.id, blob);
     write();
     refresh();
@@ -305,16 +309,6 @@
     return `${mins}:${String(secs).padStart(2, '0')}`;
   }
 
-  function filteredItems() {
-    const query = text(el.search && el.search.value).toLocaleLowerCase('pt-BR');
-    if (!query) return items;
-    return items.filter((item) => {
-      const category = categoryForId(item.categoryId);
-      const searchable = `${item.title} ${item.byline} ${item.sourceLabel} ${category?.name || ''} ${item.favorite ? 'Favoritas' : ''}`;
-      return searchable.toLocaleLowerCase('pt-BR').includes(query);
-    });
-  }
-
   function musicCountLabel(count) {
     return `${count} ${count === 1 ? 'MÚSICA' : 'MÚSICAS'}`;
   }
@@ -326,93 +320,152 @@
   }
 
   function categoryItemCount(id, source = items) {
-    if (id === ROOT_ID) return source.filter((item) => !categoryForId(item.categoryId) && !item.favorite).length;
-    if (id === FAVORITES_ID) return source.filter((item) => item.favorite).length;
-    return source.filter((item) => item.categoryId === id).length;
+    return source.filter((item) => model.belongs(item, id)).length;
   }
 
   function graphData() {
-    const visible = filteredItems();
-    const query = text(el.search && el.search.value).toLocaleLowerCase('pt-BR');
-    const favorites = visible.filter((item) => item.favorite);
-    const visibleCategories = categories.filter((category) => !query ||
-      category.name.toLocaleLowerCase('pt-BR').includes(query) ||
-      visible.some((item) => item.categoryId === category.id));
-    const showFavorites = favorites.length > 0;
-    if (!visible.length && !visibleCategories.length) return { nodes: [], links: [] };
-    const visibleCategoryIds = new Set(visibleCategories.map((category) => category.id));
-    const categoryNodes = [
-      ...(showFavorites ? [{
-        id: FAVORITES_ID,
-        title: 'Favoritas',
-        label: 'Favoritas',
-        countLabel: musicCountLabel(favorites.length),
-        role: 'category',
-        isCategory: true,
-        fixed: true,
-      }] : []),
-      ...visibleCategories.map((category) => ({
-        ...category,
-        title: category.name,
-        label: category.name,
-        countLabel: musicCountLabel(categoryItemCount(category.id, visible)),
-        role: 'category',
-        isCategory: true,
-      })),
-    ];
-    const categoryLinks = categoryNodes.map((category) => ({
-      source: ROOT_ID,
-      target: category.id,
-      distance: CATEGORY_LINK_DISTANCE,
-      strength: CATEGORY_LINK_STRENGTH,
-      kind: 'hierarchy',
-    }));
-    const trackLinks = visible.flatMap((item) => {
-      const customParent = visibleCategoryIds.has(item.categoryId) ? item.categoryId : '';
-      const primaryParent = customParent || (item.favorite && showFavorites ? FAVORITES_ID : ROOT_ID);
-      const links = [];
-      if (customParent && item.favorite && showFavorites) {
-        links.push({
-          source: FAVORITES_ID,
-          target: item.id,
-          kind: 'affinity',
-          layout: false,
-          physics: false,
-        });
-      }
-      links.push({
-        source: primaryParent,
-        target: item.id,
-        distance: TRACK_LINK_DISTANCE,
-        strength: TRACK_LINK_STRENGTH,
-        kind: 'membership',
-      });
-      return links;
+    return model.graph(items, categories, el.search?.value);
+  }
+
+  function currentTracks() {
+    return model.tracks(items, categories, {
+      categoryId: browseCategoryId || ROOT_ID, query: el.search.value, sort: el.sort.value,
     });
-    return {
-      nodes: [
-        {
-          id: ROOT_ID,
-          title: 'Biblioteca',
-          label: 'Biblioteca',
-          countLabel: musicCountLabel(visible.length),
-          role: 'root',
-          isCategory: true,
-          fixed: true,
-        },
-        ...categoryNodes,
-        ...visible.map((item) => ({
-          ...item,
-          label: item.title,
-          countLabel: `${formatTime(item.duration)} · ${Math.round(item.rate)}%`,
-          role: 'track',
-        })),
-      ],
-      links: [
-        ...categoryLinks,
-        ...trackLinks,
-      ],
-    };
+  }
+
+  function openCategory(id, { focus = true } = {}) {
+    if (!categoryForId(id)) return;
+    if (browseCategoryId !== id) selectedId = '';
+    browseCategoryId = id;
+    refresh();
+    engine?.resize();
+    focusNodeInVisibleViewport(id);
+    if (focus) (el.tracks.querySelector('[tabindex="0"]') || el.browserTitle).focus({ preventScroll: true });
+  }
+
+  function closeBrowser() {
+    browseCategoryId = '';
+    selectedId = '';
+    refresh();
+    engine?.resize();
+    scheduleGraphFit();
+    el.categoryNav.focus({ preventScroll: true });
+  }
+
+  function selectTrack(id, { focus = false } = {}) {
+    if (opening || !currentTracks().some((item) => item.id === id)) return;
+    selectedId = id;
+    refreshBrowser();
+    refreshDetails();
+    if (compactList.matches) { el.detailClose.focus({ preventScroll: true }); return; }
+    if (focus) {
+      const row = [...el.tracks.children].find((entry) => entry.dataset.id === id);
+      row?.focus({ preventScroll: true });
+      row?.scrollIntoView({ block: 'nearest' });
+    }
+  }
+
+  function refreshBrowser() {
+    if (!mounted) return;
+    const category = categoryForId(browseCategoryId);
+    el.browser.hidden = !category;
+    el.view.classList.toggle('is-browsing', Boolean(category));
+    el.total.textContent = `${musicCountLabel(items.length)} / ${categories.length + 2} CATEGORIAS`;
+    // Native select keeps every category reachable by keyboard and on narrow screens.
+    const groups = [categoryForId(ROOT_ID), categoryForId(FAVORITES_ID), ...categories];
+    const navKey = JSON.stringify(groups.map((entry) => [entry.id, entry.name]));
+    if (el.categoryNav.dataset.key !== navKey) {
+      el.categoryNav.replaceChildren(new Option('Mapa de categorias', ''));
+      groups.forEach((entry) => el.categoryNav.add(new Option(entry.name, entry.id)));
+      el.categoryNav.dataset.key = navKey;
+    }
+    el.categoryNav.value = browseCategoryId;
+    el.categoryActions.hidden = !category || category.fixed;
+    if (!category) return;
+    const rows = currentTracks();
+    if (selectedId && !rows.some((item) => item.id === selectedId)) selectedId = '';
+    el.browserTitle.textContent = category.name;
+    el.browserCount.textContent = `${rows.length} de ${categoryItemCount(category.id)} faixas`;
+    el.listEmpty.hidden = rows.length > 0;
+    const searching = Boolean(text(el.search.value));
+    el.listEmptyTitle.textContent = searching ? 'Nenhuma faixa encontrada.' : 'Este espaço está esperando sua música.';
+    el.listEmptyHint.textContent = searching ? 'Tente outro termo ou explore todas as faixas.'
+      : category.id === FAVORITES_ID ? 'Marque a estrela nos detalhes de uma faixa para encontrá-la aqui.'
+        : category.id === ROOT_ID ? 'Abra um áudio no editor e use Adicionar à Biblioteca.'
+          : 'Abra os detalhes de uma faixa em Biblioteca e escolha esta categoria.';
+    el.listEmptyAction.textContent = searching ? 'Limpar busca' : category.id === ROOT_ID ? 'Ir ao editor' : 'Ver todas as faixas';
+    const signature = JSON.stringify(rows.map((item) => [item.id, item.title, item.byline, item.sourceLabel, item.thumbnail, item.duration, item.rate, item.favorite]));
+    if (signature !== listSignature) {
+      const focusedId = document.activeElement?.dataset.id;
+      const scrollTop = el.tracks.scrollTop;
+      const fragment = document.createDocumentFragment();
+      rows.forEach((item, index) => {
+        const row = document.createElement('button');
+        row.type = 'button';
+        row.className = 'library__track';
+        row.dataset.id = item.id;
+        row.setAttribute('role', 'option');
+        const part = (className, value) => {
+          const span = document.createElement('span');
+          span.className = className;
+          span.textContent = value;
+          return span;
+        };
+        const number = part('library__track-number mono', String(index + 1).padStart(2, '0'));
+        number.setAttribute('aria-hidden', 'true');
+        const art = part('library__track-art', '');
+        art.setAttribute('aria-hidden', 'true');
+        if (item.thumbnail) {
+          const img = document.createElement('img');
+          img.alt = ''; img.loading = 'lazy'; img.decoding = 'async'; img.referrerPolicy = 'no-referrer';
+          img.src = item.thumbnail;
+          img.addEventListener('error', () => img.remove(), { once: true });
+          art.append(img);
+        }
+        const info = part('library__track-info', '');
+        info.append(part('library__track-title', item.title), part('library__track-byline', item.byline || item.sourceLabel));
+        const status = part('library__track-state mono', '');
+        const meta = part('library__track-meta mono', `${formatTime(item.duration)} · ${Math.round(item.rate)}%`);
+        row.append(number, art, info, status, meta);
+        row.title = `${item.title} — clique para detalhes; Enter ou duplo clique para abrir`;
+        row.addEventListener('click', () => selectTrack(item.id));
+        row.addEventListener('dblclick', () => { selectTrack(item.id); openSelected(); });
+        fragment.append(row);
+      });
+      el.tracks.replaceChildren(fragment);
+      listSignature = signature;
+      el.tracks.scrollTop = scrollTop;
+      if (focusedId) [...el.tracks.children].find((row) => row.dataset.id === focusedId)?.focus({ preventScroll: true });
+    }
+    [...el.tracks.children].forEach((row, index) => {
+      const item = rows[index];
+      const selected = item.id === selectedId;
+      const active = item.id === activeId;
+      row.setAttribute('aria-selected', String(selected));
+      row.tabIndex = selected || (!selectedId && index === 0) ? 0 : -1;
+      row.classList.toggle('is-active', active);
+      row.querySelector('.library__track-state').textContent = active
+        ? playbackPlaying ? 'TOCANDO' : 'NO EDITOR' : item.favorite ? '★' : '';
+    });
+  }
+
+  function onTrackKey(event) {
+    if (event.altKey || event.ctrlKey || event.metaKey) return;
+    const rows = currentTracks();
+    const index = rows.findIndex((item) => item.id === event.target.dataset.id);
+    if (index < 0) return;
+    const delta = event.key === 'ArrowDown' ? 1 : event.key === 'ArrowUp' ? -1 : 0;
+    if (delta || event.key === 'Home' || event.key === 'End') {
+      event.preventDefault();
+      event.stopPropagation();
+      const next = event.key === 'Home' ? 0 : event.key === 'End' ? rows.length - 1 : Math.max(0, Math.min(rows.length - 1, index + delta));
+      selectTrack(rows[next].id, { focus: true });
+    } else if (event.key === 'Enter') {
+      event.preventDefault(); event.stopPropagation();
+      selectTrack(rows[index].id); openSelected();
+    } else if (event.key === ' ') {
+      event.stopPropagation();
+    }
   }
 
   function graphViewportInsets() {
@@ -462,7 +515,7 @@
       focusFrame = 0;
       focusSettleFrame = requestAnimationFrame(() => {
         focusSettleFrame = 0;
-        if (!engine || el.view.hidden || selectedId !== nodeId || !engine.getNode(nodeId)) return;
+        if (!engine || el.view.hidden || browseCategoryId !== nodeId || !engine.getNode(nodeId)) return;
         const currentScale = engine.getCamera().scale;
         engine.focusNode(nodeId, {
           followViewport: true,
@@ -494,23 +547,19 @@
       getNodeTitle: (node) => node.isCategory
         ? `${node.title} — ${node.countLabel.toLocaleLowerCase('pt-BR')}`
         : `${node.title} — ${node.sourceLabel}`,
-      isNodePlaying: (node) => playbackPlaying && node.id === activeId,
+      isNodePlaying: (node) => playbackPlaying && items.some((item) => item.id === activeId && model.belongs(item, node.id)),
       getViewportInsets: graphViewportInsets,
       onResize: () => {
         clearTimeout(resizeTimer);
         resizeTimer = setTimeout(() => {
           if (!engine || el.view.hidden) return;
-          if (selectedId && engine.getNode(selectedId)) focusNodeInVisibleViewport(selectedId);
+          if (browseCategoryId && engine.getNode(browseCategoryId)) focusNodeInVisibleViewport(browseCategoryId);
           else scheduleGraphFit();
         }, 90);
       },
       shouldNodeOpenOnClick: () => true,
       onNodeClick: (node) => {
-        focusNodeInVisibleViewport(node.id);
-      },
-      onSelectionChange: (id) => {
-        selectedId = id || '';
-        refreshDetails();
+        openCategory(node.id);
       },
     });
 
@@ -521,10 +570,9 @@
     const data = graphData();
     engine.setData(data);
     if (reset) engine.resetLayout();
-    if (selectedId && data.nodes.some((node) => node.id === selectedId)) {
-      engine.setSelected(selectedId);
-    } else if (selectedId) {
-      selectedId = '';
+    if (browseCategoryId && data.nodes.some((node) => node.id === browseCategoryId)) {
+      engine.setSelected(browseCategoryId);
+    } else {
       engine.clearSelection();
     }
     if (fit && data.nodes.length) scheduleGraphFit();
@@ -618,14 +666,18 @@
       items[assignIndex] = normalize({ ...items[assignIndex], categoryId: category.id, id: items[assignIndex].id });
       selectedId = items[assignIndex].id;
     } else {
-      selectedId = category.id;
+      selectedId = '';
     }
+
+    browseCategoryId = category.id;
 
     write();
     closeCategoryDialog({ restoreFocus: false });
     refresh({ fit: !renamed });
     if (assignIndex >= 0) notifyChange();
-    if (assignIndex >= 0) focusNodeInVisibleViewport(selectedId);
+    engine?.resize();
+    focusNodeInVisibleViewport(browseCategoryId);
+    (assignIndex >= 0 ? el.categorySelect : el.browserTitle).focus({ preventScroll: true });
     document.dispatchEvent(new CustomEvent('varispeed:status', {
       detail: { text: renamed ? `Categoria renomeada · ${category.name}` : `Categoria criada · ${category.name}` },
     }));
@@ -641,10 +693,10 @@
     items[index] = normalize({ ...items[index], categoryId, id: items[index].id });
     const item = items[index];
     write();
-    refreshGraph();
-    refreshDetails();
+    browseCategoryId = categoryId || ROOT_ID;
+    refresh();
     notifyChange();
-    focusNodeInVisibleViewport(item.id);
+    focusNodeInVisibleViewport(browseCategoryId);
     const category = categories.find((entry) => entry.id === categoryId);
     document.dispatchEvent(new CustomEvent('varispeed:status', {
       detail: { text: category ? `Movida para ${category.name} · ${item.title}` : `Movida para Biblioteca · ${item.title}` },
@@ -654,34 +706,18 @@
   function refreshDetails() {
     if (!mounted) return;
     const item = items.find((entry) => entry.id === selectedId);
-    const category = item ? null : categoryForId(selectedId);
-    el.details.hidden = !item && !category;
-    if (!item && !category) return;
+    el.details.hidden = !item;
+    el.browser.inert = compactList.matches && Boolean(item);
+    if (engine && !el.view.hidden) {
+      if (item || (compactList.matches && browseCategoryId)) engine.pause();
+      else engine.resume();
+    }
+    el.view.classList.toggle('has-track', Boolean(item));
+    if (!item) return;
     el.detailArtwork.hidden = !item || !item.thumbnail;
     el.detailRows.hidden = !item;
     el.organization.hidden = !item;
-    el.categorySummary.hidden = !category;
     el.musicActions.hidden = !item;
-    el.categoryActions.hidden = !category || category.fixed;
-
-    if (category) {
-      const count = category.id === ROOT_ID ? items.length : categoryItemCount(category.id);
-      el.detailSource.textContent = category.fixed
-        ? category.id === ROOT_ID ? 'CATEGORIA PRINCIPAL' : 'CATEGORIA FIXA'
-        : 'CATEGORIA PERSONALIZADA';
-      el.detailTitle.textContent = category.name;
-      el.detailTitle.title = category.name;
-      el.categoryKind.textContent = category.fixed ? 'Estrutura do grafo' : 'Organização pessoal';
-      el.categoryCount.textContent = musicCountLabel(count).toLocaleLowerCase('pt-BR');
-      el.categoryDescription.textContent = category.id === ROOT_ID
-        ? 'Todas as categorias partem daqui e expandem a história visual da sua biblioteca.'
-        : category.id === FAVORITES_ID
-          ? 'A estrela mantém esta categoria sincronizada com suas músicas favoritas.'
-          : count
-            ? 'As músicas vinculadas formam um agrupamento próprio ao redor desta categoria.'
-            : 'Categoria vazia. Vincule uma música pelo painel de detalhes para iniciar este agrupamento.';
-      return;
-    }
 
     el.detailTitle.textContent = item.title;
     el.detailTitle.title = item.title;
@@ -720,7 +756,6 @@
 
   function refresh({ fit = false, reset = false } = {}) {
     if (!mounted) return;
-    const visible = filteredItems();
     const data = graphData();
     el.trigger.hidden = !el.view.hidden;
     el.empty.hidden = data.nodes.length !== 0;
@@ -732,6 +767,7 @@
         : 'TENTE OUTRO TERMO DE BUSCA';
     }
     if (engine) refreshGraph({ fit, reset });
+    refreshBrowser();
     refreshDetails();
   }
 
@@ -875,7 +911,7 @@
     engine?.pause();
     selectedId = '';
     if (engine) engine.clearSelection();
-    else refreshDetails();
+    refreshDetails();
     el.view.hidden = true;
     el.editor.hidden = false;
     el.trigger.hidden = false;
@@ -901,6 +937,7 @@
   }
 
   async function openSelected() {
+    if (opening) return;
     const item = items.find((entry) => entry.id === selectedId);
     if (!item || typeof options.onOpen !== 'function') return;
 
@@ -927,12 +964,16 @@
         write();
         hide();
       }
+    } catch (_) {
+      document.dispatchEvent(new CustomEvent('varispeed:status', { detail: { text: 'Não foi possível abrir esta faixa. Tente novamente.' } }));
     } finally {
       setOpenBusy(false);
     }
   }
 
   function setOpenBusy(on, label = '') {
+    opening = Boolean(on);
+    el.tracks.setAttribute('aria-busy', String(opening));
     el.open.disabled = on;
     const sweep = window.Settings?.get('motion.sweep') !== false && !window.Motion?.reduced?.();
     el.open.classList.toggle('is-busy', on && sweep);
@@ -1006,7 +1047,7 @@
   }
 
   function removeSelectedCategory() {
-    const category = categories.find((entry) => entry.id === selectedId);
+    const category = categories.find((entry) => entry.id === browseCategoryId);
     if (!category) return;
     const count = categoryItemCount(category.id);
     const impact = count
@@ -1019,6 +1060,7 @@
       ? normalize({ ...item, categoryId: '', id: item.id })
       : item);
     selectedId = '';
+    browseCategoryId = ROOT_ID;
     write();
     refresh({ fit: true });
     notifyChange();
@@ -1034,21 +1076,19 @@
     items[index] = normalize({ ...items[index], favorite, id: items[index].id });
     const item = items[index];
     write();
-    refreshGraph();
-    refreshDetails();
+    refresh();
     notifyChange();
-    focusNodeInVisibleViewport(item.id);
     document.dispatchEvent(new CustomEvent('varispeed:status', {
       detail: { text: favorite ? `Adicionada às Favoritas · ${item.title}` : `Removida das Favoritas · ${item.title}` },
     }));
   }
 
   function closeDetails() {
+    const previous = selectedId;
     selectedId = '';
-    if (engine) engine.clearSelection();
-    else refreshDetails();
-    scheduleGraphFit();
-    el.search.focus({ preventScroll: true });
+    refreshBrowser();
+    refreshDetails();
+    ([...el.tracks.children].find((row) => row.dataset.id === previous) || el.tracks.querySelector('[tabindex="0"]') || el.browserTitle).focus({ preventScroll: true });
   }
 
   function mount(opts = {}) {
@@ -1056,6 +1096,11 @@
     options = opts;
     Object.assign(el, {
       view: $('libraryView'), editor: $('editorMain'), trigger: $('btnLibrary'),
+      browser: $('libraryBrowser'), browserTitle: $('libraryBrowserTitle'), browserCount: $('libraryBrowserCount'),
+      browserClose: $('libraryBrowserClose'), tracks: $('libraryTracks'), sort: $('librarySort'),
+      total: $('librarySummary'), categoryNav: $('libraryCategoryNav'),
+      listEmpty: $('libraryListEmpty'), listEmptyTitle: $('libraryListEmptyTitle'),
+      listEmptyHint: $('libraryListEmptyHint'), listEmptyAction: $('libraryListEmptyAction'),
       close: $('libraryClose'), graph: $('libraryGraph'), search: $('librarySearch'),
       empty: $('libraryEmpty'), emptyTitle: $('libraryEmptyTitle'), emptyHint: $('libraryEmptyHint'),
       details: $('libraryDetails'),
@@ -1067,8 +1112,6 @@
       detailArtwork: $('libraryDetailArtwork'), detailArtworkImage: $('libraryDetailArtworkImage'),
       detailRows: $('libraryDetailRows'),
       organization: $('libraryOrganization'), categorySelect: $('libraryCategorySelect'),
-      categorySummary: $('libraryCategorySummary'), categoryKind: $('libraryCategoryKind'),
-      categoryCount: $('libraryCategoryCount'), categoryDescription: $('libraryCategoryDescription'),
       open: $('libraryOpen'), openLabel: $('libraryOpenLabel'),
       favorite: $('libraryFavorite'),
       remove: $('libraryRemove'), relink: $('libraryRelink'),
@@ -1094,14 +1137,29 @@
     el.trigger.addEventListener('click', show);
     el.close.addEventListener('click', hide);
     el.search.addEventListener('input', () => {
+      if (text(el.search.value) && !browseCategoryId) browseCategoryId = ROOT_ID;
       refresh({ fit: true });
+    });
+    el.categoryNav.addEventListener('change', () => el.categoryNav.value ? openCategory(el.categoryNav.value) : closeBrowser());
+    el.browserClose.addEventListener('click', closeBrowser);
+    el.sort.addEventListener('change', () => { refreshBrowser(); refreshDetails(); });
+    el.tracks.addEventListener('keydown', onTrackKey);
+    compactList.addEventListener('change', () => {
+      refreshDetails();
+      if (compactList.matches && selectedId) el.detailClose.focus({ preventScroll: true });
+      engine?.resize();
+    });
+    el.listEmptyAction.addEventListener('click', () => {
+      if (text(el.search.value)) { el.search.value = ''; refresh({ fit: true }); el.search.focus(); }
+      else if (browseCategoryId === ROOT_ID) { hide(); el.trigger.focus(); }
+      else openCategory(ROOT_ID);
     });
     el.open.addEventListener('click', openSelected);
     el.favorite.addEventListener('click', toggleFavorite);
     el.categorySelect.addEventListener('change', assignSelectedCategory);
     el.categoryCreate.addEventListener('click', () => openCategoryDialog());
     el.categoryCreateInline.addEventListener('click', () => openCategoryDialog({ assignId: selectedId }));
-    el.categoryRename.addEventListener('click', () => openCategoryDialog({ categoryId: selectedId }));
+    el.categoryRename.addEventListener('click', () => openCategoryDialog({ categoryId: browseCategoryId }));
     el.categoryRemove.addEventListener('click', removeSelectedCategory);
     el.categoryDialog.addEventListener('submit', saveCategory);
     el.categoryDialogClose.addEventListener('click', () => closeCategoryDialog());
@@ -1118,7 +1176,7 @@
     el.remove.addEventListener('click', removeSelected);
     el.relink.addEventListener('change', onRelink);
     document.addEventListener('keydown', (event) => {
-      if (el.view.hidden) return;
+      if (el.view.hidden || window.Settings?.isOpen?.()) return;
       if (!el.tutorial.hidden) {
         if (event.key === 'Tab') {
           const focusable = [...el.tutorial.querySelectorAll('button:not([disabled]):not([hidden])')];
@@ -1162,6 +1220,8 @@
         closeCategoryDialog();
         return;
       }
+      if (selectedId) { closeDetails(); return; }
+      if (browseCategoryId) { closeBrowser(); return; }
       hide();
       el.trigger.focus({ preventScroll: true });
     });
@@ -1180,11 +1240,13 @@
     setActive(id = '') {
       activeId = items.some((item) => item.id === id) ? id : '';
       engine?.refreshStyles();
+      refreshBrowser();
       refreshDetails();
     },
     setPlaybackState(playing = false) {
       playbackPlaying = Boolean(playing);
       engine?.refreshStyles();
+      refreshBrowser();
     },
     get ready() { return readyPromise; },
     get activeId() { return activeId; },
