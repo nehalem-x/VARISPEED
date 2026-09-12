@@ -123,6 +123,7 @@ PUBLIC_FILES = {
     "remote-import.js",
     "graph-engine.js",
     "library.js",
+    "library-model.js",
     "app.js",
     "assets/cat-brand-light.png",
     "assets/cat-brand-dark.png",

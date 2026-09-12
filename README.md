@@ -153,18 +153,20 @@ A fronteira importante é `ingest()` em `app.js`: tanto arquivos locais quanto �
 
 Uma faixa carregada no editor e uma faixa salva na Biblioteca são estados independentes. Por padrão, a importação apenas carrega o áudio; **Adicionar à Biblioteca** cria o nó e persiste a mídia. A opção **Biblioteca → Adicionar importações automaticamente** restaura o fluxo automático quando desejado.
 
-Na primeira entrada, `#libraryTutorial` apresenta a ideia da Biblioteca em quatro atos: memória visual, músicas como nós, categorias como territórios e crescimento semelhante a neurônios e conexões. Cada ato reenquadra a mesma rede, revela rótulos semânticos nos nós e acrescenta um sinal conceitual curto; a trilha segmentada mostra o crescimento sem automatizar o ritmo de leitura. A rede exibida é uma ilustração SVG e nunca altera os dados reais. `Explorar biblioteca` encerra o último ato com uma transição curta que revela o grafo por baixo; pular, usar `Escape`, sair da Biblioteca ou ativar movimento reduzido continuam fechando imediatamente. Concluir, pular ou pressionar `Escape` grava `varispeed.library.tutorial.v1`; sair da Biblioteca por outro fluxo antes de concluir não grava a etapa. A preferência `library.alwaysShowGuide`, em Configurações → Biblioteca, ignora essa marca enquanto estiver ativa e reabre o guia em toda entrada. O tutorial oferece voltar/avançar, setas do teclado, foco modal e uma versão sem transições quando movimento reduzido está ativo.
+Na primeira entrada, `#libraryTutorial` apresenta a Biblioteca em quatro atos: memória local, categorias como pontos do mapa, organização e navegação até o editor. Cada ato reenquadra a mesma rede, revela rótulos semânticos nos nós e acrescenta um sinal conceitual curto; a trilha segmentada mostra o avanço sem automatizar o ritmo de leitura. A rede exibida é uma ilustração SVG e nunca altera os dados reais. `Explorar biblioteca` encerra o último ato com uma transição curta que revela o grafo por baixo; pular, usar `Escape`, sair da Biblioteca ou ativar movimento reduzido continuam fechando imediatamente. Concluir, pular ou pressionar `Escape` grava `varispeed.library.tutorial.v1`; sair da Biblioteca por outro fluxo antes de concluir não grava a etapa. A preferência `library.alwaysShowGuide`, em Configurações → Biblioteca, ignora essa marca enquanto estiver ativa e reabre o guia em toda entrada. O tutorial oferece voltar/avançar, setas do teclado, foco modal e uma versão sem transições quando movimento reduzido está ativo.
 
 - `graph-engine.js` é uma adaptação de carregamento de `GraphEngine.txt`; o corpo da engine e seus parâmetros físicos permanecem idênticos ao original;
 - `library.js` mantém metadados, velocidade, última posição e vínculo organizacional em `localStorage` (`varispeed.library.v1`), categorias personalizadas em `varispeed.library.categories.v1` e os bytes de áudio no IndexedDB (`varispeed.media.v1`);
 - o botão **Biblioteca** permanece disponível no editor mesmo quando não há músicas;
-- sem músicas e sem categorias o grafo apresenta um estado vazio contextual; categorias personalizadas vazias permanecem visíveis para poderem ser renomeadas e receber músicas;
-- o nó `Biblioteca` usa o papel físico `root` já existente na engine e cada música se conecta diretamente a ele;
-- `Favoritas` continua sendo uma categoria especial e fixa; categorias pessoais podem ser criadas no cabeçalho da Biblioteca, renomeadas ao selecionar seu nó e escolhidas no painel de cada música;
-- cada música possui uma categoria organizacional principal: sem escolha ela orbita `Biblioteca`; ao ser vinculada, passa a orbitar a categoria pessoal. Uma música favorita dentro de uma categoria pessoal mantém uma conexão secundária apenas visual com `Favoritas`: ela não participa do grau, do spawn ou das molas físicas;
+- o grafo exibe somente categorias; músicas individuais ficam em uma lista dedicada, aberta ao selecionar um ponto do mapa;
+- `Biblioteca` reúne todas as faixas, `Favoritas` é uma visão especial sobre as músicas marcadas e categorias personalizadas filtram por vínculo organizacional;
+- a lista aceita busca global, ordenação por inclusão, título, última abertura ou duração, navegação por setas e abertura por `Enter`;
+- sem músicas, cada categoria apresenta um estado vazio contextual; categorias personalizadas vazias permanecem no mapa para poderem ser renomeadas e receber músicas;
+- o nó `Biblioteca` usa o papel físico `root` já existente na engine e se conecta somente às categorias;
+- cada música possui uma categoria organizacional principal. Sem escolha, ela continua disponível em `Biblioteca`; ao ser vinculada, também aparece na lista da categoria pessoal;
 - categorias pessoais podem ser excluídas pelo próprio painel. As músicas vinculadas voltam para `Biblioteca`, preservando áudio, metadados e estado de favorita;
 - categorias são persistidas por ordem de criação e nunca são ocultadas ou consolidadas automaticamente: o crescimento e a complexidade legível do grafo fazem parte da identidade da Biblioteca;
-- ao soltar uma categoria arrastada, a recuperação reduz o pico de energia e devolve progressivamente às músicas sua influência sobre o hub; não existe velocidade mínima injetada, limite rígido nem frenagem radial, portanto a aproximação desacelera de maneira contínua;
+- ao soltar uma categoria arrastada, a recuperação reduz o pico de energia sem velocidade mínima injetada, limite rígido ou frenagem radial, portanto a aproximação desacelera de maneira contínua;
 - entrar na Biblioteca não pausa nem reinicia a reprodução atual;
 - quando há uma faixa carregada, o cabeçalho da Biblioteca reutiliza o padrão visual do transporte do editor — play/pause, parar, repetição, tempo atual, timeline e duração — sempre sincronizado com o mesmo áudio;
 - Play/Pause, Stop, Loop e o grupo de scrub da Biblioteca são clonados dos controles oficiais no startup da interface; o modo foco faz o mesmo com os passos de velocidade;
@@ -175,10 +177,8 @@ Na primeira entrada, `#libraryTutorial` apresenta a ideia da Biblioteca em quatr
 
 A simulação física permanece contínua, com colisões, `alpha`, amortecimento e movimento flutuante ativos. O perfil atual adapta a intenção visual do grafo do Obsidian à escala do VARISPEED: repulsão mais presente, coesão central moderada e ligações mais espaçosas, sem copiar números incompatíveis entre engines.
 
-- músicas usam distância `198` e força `0,44`, acompanhando diretamente a referência semântica do Obsidian;
-- categorias preservam seu papel hierárquico com distância `520` e força `0,52`, mantendo os aglomerados separados da Biblioteca;
-- cargas internas são `420` para Biblioteca, `250` para categorias e `175` para músicas; a atração central continua ponderada por papel para não colapsar os clusters;
-- durante a recuperação de uma categoria, a influência das músicas cresce suavemente de `24%` até `100%` conforme o hub se aproxima de sua distância estrutural;
+- categorias preservam seu papel hierárquico com distância `380` e força `0,52`, mantendo um mapa compacto ao redor de `Biblioteca`;
+- cargas internas são `420` para Biblioteca e `250` para categorias; a atração central continua ponderada por papel para não colapsar o mapa;
 
 - a distribuição inicial é dirigida pela topologia: cada categoria nasce na distância de repouso de sua ligação e cada música nasce em um anel ao redor da categoria à qual pertence; anéis adicionais continuam escalonados, sem congelar posições;
 - ao criar uma categoria com o grafo já desenvolvido, sua posição inicial usa o maior setor angular disponível e a folga real até músicas e hubs existentes para desempatar. Categorias preservadas viram as âncoras reais de novas músicas, impedindo que expansões incrementais nasçam sobre outro aglomerado;
@@ -221,7 +221,7 @@ Uma verificação adicional no teto estrutural usou `200` músicas, `64` categor
 - a simulação é pausada enquanto a Biblioteca está oculta e retomada ao reabrir, sem alterar os parâmetros da física;
 - medições `0 × 0` emitidas enquanto a Biblioteca está oculta não substituem o último viewport válido; nós novos aguardam a próxima medição visível antes de receber posição;
 - câmera, foco e enquadramento rejeitam coordenadas não finitas e restauram um estado seguro, impedindo que `translate(NaN NaN)` bloqueie pan e arraste;
-- nomes de músicas usam marquee horizontal apenas quando ultrapassam a largura disponível: cabeçalho, detalhe da Biblioteca e `Fonte → Arquivo` medem overflow real, enquanto o grafo recorta o título completo em uma janela fixa sob o nó;
+- nomes de músicas usam marquee horizontal apenas quando ultrapassam a largura disponível: cabeçalho, detalhe da Biblioteca e `Fonte → Arquivo` medem overflow real; na lista, títulos longos são truncados sem invadir estado e duração;
 - o marquee espera antes de mover, revela o final e retorna ao início; nomes curtos permanecem estáticos, hover pausa o movimento e a preferência de movimento reduzido é respeitada;
 - atalhos globais não interceptam teclas usadas em campos, botões, links, sliders ou outros controles interativos.
 
