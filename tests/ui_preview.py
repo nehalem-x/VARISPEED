@@ -4,16 +4,18 @@ Never uses the production origin/storage. Synthetic tracks reset on each reload.
 The real backend and frontend are served, with one test-only bootstrap script.
 """
 import os
-from pathlib import Path
 import sys
+from importlib import import_module
+from pathlib import Path
+
+import uvicorn
+from fastapi.responses import FileResponse, HTMLResponse
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 os.environ['VARISPEED_PORT'] = '8767'
 
-from fastapi.responses import HTMLResponse, FileResponse
-from server.main import app
-import uvicorn
+app = import_module('server.main').app
 
 
 @app.middleware('http')
