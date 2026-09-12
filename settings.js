@@ -1049,8 +1049,13 @@ window.Settings = (() => {
 
   function buildGroup(g) {
     const sec = h('section', 'cfg__group');
+    sec.id = `settings-section-${g.id}`;
+    sec.setAttribute('aria-labelledby', `settings-heading-${g.id}`);
     const head = h('div', 'cfg__head');
-    head.appendChild(h('h3', 'panel__title', g.title));
+    const heading = h('h3', 'panel__title', g.title);
+    heading.id = `settings-heading-${g.id}`;
+    heading.tabIndex = -1;
+    head.appendChild(heading);
     if (g.test) {
       const b = h('button', 'btn btn--ghost cfg__test', 'Testar');
       b.type = 'button';
@@ -1315,7 +1320,26 @@ window.Settings = (() => {
       });
     };
 
-    appendGroups(body, GROUPS.filter((g) => !ADVANCED_GROUPS.has(g.id)));
+    const order = ['rate', 'timeline', 'scope', 'export', 'load', 'library', 'ui', 'motion', 'remote', 'keys', 'diag', 'system'];
+    const ordered = [...GROUPS].sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id));
+    const navigator = h('nav', 'cfg__navigator');
+    navigator.setAttribute('aria-label', 'Seções de configurações');
+    const navLabel = h('label', null, 'IR PARA');
+    navLabel.htmlFor = 'cfgSectionNav';
+    const navSelect = h('select', 'sel');
+    navSelect.id = 'cfgSectionNav';
+    navSelect.appendChild(new Option('Escolha uma seção', ''));
+    ordered.forEach((g) => navSelect.appendChild(new Option(g.title, g.id)));
+    navSelect.addEventListener('change', () => {
+      if (!navSelect.value) return;
+      if (ADVANCED_GROUPS.has(navSelect.value)) advancedDisclosure.open = true;
+      const target = document.getElementById(`settings-heading-${navSelect.value}`);
+      document.getElementById(`settings-section-${navSelect.value}`)?.scrollIntoView({ block: 'start', behavior: 'auto' });
+      target?.focus({ preventScroll: true });
+    });
+    navigator.append(navLabel, navSelect);
+    body.appendChild(navigator);
+    appendGroups(body, ordered.filter((g) => !ADVANCED_GROUPS.has(g.id)));
 
     const advanced = h('details', 'cfg__advanced');
     advancedDisclosure = advanced;
@@ -1324,7 +1348,7 @@ window.Settings = (() => {
     advancedSummary.appendChild(h('span', 'cfg__advanced-chevron mono', '+'));
     advanced.appendChild(advancedSummary);
     const advancedBody = h('div', 'cfg__advanced-body');
-    appendGroups(advancedBody, GROUPS.filter((g) => ADVANCED_GROUPS.has(g.id)));
+    appendGroups(advancedBody, ordered.filter((g) => ADVANCED_GROUPS.has(g.id)));
     advanced.appendChild(advancedBody);
     body.appendChild(h('div', 'hr'));
     body.appendChild(advanced);

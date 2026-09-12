@@ -357,7 +357,9 @@
           <canvas id="wave" class="cv cv--wave"></canvas>
           <div class="playhead" id="playhead" hidden><span class="playhead__cap"></span></div>
           <div class="empty" id="empty">
-            <p class="empty__title">Arraste um arquivo de áudio</p>
+            <span class="empty__index mono">01 / SUA PRÓXIMA ESCUTA</span>
+            <p class="empty__title">Dê outro tempo<br>à sua música.</p>
+            <p class="empty__description">Arraste um áudio para começar<br>ou escolha <strong>Importar</strong> acima.</p>
             <p class="empty__hint mono">WAV · MP3 · FLAC · OGG · M4A</p>
           </div>
           <div class="loading" id="loading" hidden><span class="loading__bar"></span></div>
@@ -397,7 +399,7 @@
     <aside class="insp" aria-label="Controles e informações do áudio">
 
       <section class="panel panel--rate">
-        <h2 class="panel__title">Velocidade</h2>
+        <h2 class="panel__title" data-index="01">Velocidade</h2>
         <div class="rate">
           <div class="rate__read">
             <span class="rate__field">
@@ -430,7 +432,7 @@
       <div class="hr" aria-hidden="true"></div>
 
       <section class="panel panel--result">
-        <h2 class="panel__title">Resultado</h2>
+        <h2 class="panel__title" data-index="02">Resultado</h2>
         <dl class="rows">
           <div class="row"><dt>Pitch</dt><dd class="mono" id="rPitch">0.00 st</dd></div>
           <div class="row"><dt>Frequência</dt><dd class="mono" id="rFreq">1.000×</dd></div>
@@ -442,7 +444,7 @@
       <div class="hr" aria-hidden="true"></div>
 
       <section class="panel panel--source">
-        <h2 class="panel__title">Fonte</h2>
+        <h2 class="panel__title" data-index="03">Fonte</h2>
         <figure class="library__detail-artwork panel-source__artwork" id="sourceArtwork" hidden>
           <img id="sourceArtworkImage" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==" alt="" draggable="false" referrerpolicy="no-referrer" />
           <span class="library__detail-artwork-fallback mono" aria-hidden="true">AUDIO</span>
