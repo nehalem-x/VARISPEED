@@ -422,11 +422,22 @@
           img.addEventListener('error', () => img.remove(), { once: true });
           art.append(img);
         }
+        const wash = part('library__track-wash', '');
+        wash.setAttribute('aria-hidden', 'true');
+        if (item.thumbnail) {
+          const washImg = document.createElement('img');
+          washImg.alt = ''; washImg.loading = 'lazy'; washImg.decoding = 'async'; washImg.referrerPolicy = 'no-referrer';
+          washImg.src = item.thumbnail;
+          washImg.addEventListener('error', () => wash.remove(), { once: true });
+          wash.append(washImg);
+        } else {
+          wash.hidden = true;
+        }
         const info = part('library__track-info', '');
         info.append(part('library__track-title', item.title), part('library__track-byline', item.byline || item.sourceLabel));
         const status = part('library__track-state mono', '');
         const meta = part('library__track-meta mono', `${formatTime(item.duration)} · ${Math.round(item.rate)}%`);
-        row.append(number, art, info, status, meta);
+        row.append(wash, number, art, info, status, meta);
         row.title = `${item.title} — clique para detalhes; Enter ou duplo clique para abrir`;
         row.addEventListener('click', () => selectTrack(item.id));
         row.addEventListener('dblclick', () => { selectTrack(item.id); openSelected(); });
@@ -464,6 +475,7 @@
       event.preventDefault(); event.stopPropagation();
       selectTrack(rows[index].id); openSelected();
     } else if (event.key === ' ') {
+      event.preventDefault();
       event.stopPropagation();
     }
   }
