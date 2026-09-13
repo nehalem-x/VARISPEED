@@ -2303,14 +2303,29 @@
 
   /* ── atalhos ────────────────────────────────────────── */
   document.addEventListener('click', (e) => {
-    /* Clique de ponteiro não deve deixar um botão armado para o próximo Espaço.
+    /* Clique de ponteiro não deve deixar uma ação armada para o próximo Espaço.
        `detail === 0` identifica ativações de teclado/programáticas: nelas o foco
-       permanece, preservando a navegação acessível e o comportamento nativo. */
+       permanece, preservando a navegação acessível e o comportamento nativo.
+       Campos editáveis e sliders ficam fora desta política porque dependem do
+       foco para digitação e ajuste contínuo. */
     if (e.detail === 0 || !(e.target instanceof Element)) return;
-    const control = e.target.closest('button, [role="button"]');
-    // A lista é um seletor navegável: um clique deve manter as setas disponíveis.
-    if (control?.getAttribute('role') === 'option') return;
-    if (control && document.activeElement === control) control.blur();
+    const actionSelector = [
+      'button',
+      'a[href]',
+      'summary',
+      '[role="button"]',
+      '[role="option"]',
+      '[role="menuitem"]',
+      '[role="checkbox"]',
+      '[role="radio"]',
+      '[role="tab"]',
+      '[tabindex]:not([tabindex="-1"])',
+    ].join(', ');
+    if (!e.target.closest(actionSelector)) return;
+    const active = document.activeElement;
+    if (!(active instanceof HTMLElement) || !active.matches(actionSelector)) return;
+    if (active.matches('input, textarea, select, [contenteditable="true"], [role="slider"]')) return;
+    active.blur();
   });
 
   document.addEventListener('keydown', (e) => {
