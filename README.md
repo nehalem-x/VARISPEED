@@ -4,7 +4,7 @@ Editor web de velocidade de áudio que não preserva o pitch. Reduzir a velocida
 
 Quase tudo roda no navegador. O backend local (Python + FastAPI) existe para importar áudio por link com `yt-dlp`, servir a interface e responder às rotas de sistema.
 
-O estado técnico completo e o histórico das revisões estão em [docs/HANDOFF.md](docs/HANDOFF.md). As medidas da interface estão em [docs/PADRAO_UI.md](docs/PADRAO_UI.md), a origem dos ícones em [docs/REVISAO_ICONES.md](docs/REVISAO_ICONES.md) e as mudanças recentes no [CHANGELOG.md](CHANGELOG.md).
+O funcionamento interno, as regras de manutenção e os testes estão em [docs/HANDOFF.md](docs/HANDOFF.md). As medidas da interface estão em [docs/PADRAO_UI.md](docs/PADRAO_UI.md), a origem dos ícones em [docs/REVISAO_ICONES.md](docs/REVISAO_ICONES.md) e as mudanças recentes no [CHANGELOG.md](CHANGELOG.md).
 
 ## Regra central
 

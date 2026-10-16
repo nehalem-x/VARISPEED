@@ -382,7 +382,7 @@ test('CONTRATO · clampView nunca deixa a janela passar do fim da mídia', () =>
 });
 
 test('CONTRATO · backing store erra no máximo meio device pixel', () => {
-  /* Invariante declarado no HANDOFF (REV 6). */
+  /* Invariante declarado no HANDOFF (seção 11.2). */
   for (const rawDpr of DPRS) {
     const dpr = Core.dprClamp(rawDpr);
     for (const cssW of CSS_SIZES) {
