@@ -123,7 +123,7 @@ A ajuda Sobre cada item é um painel contextual, com título e explicação. O p
 
 Velocidade é a leitura principal; Resultado destaca a duração de saída e a compara à original. Usar tipografia e superfície para definir os grupos, sem numeração ou bordas completas em cada informação.
 
-Arquivo original é um bloco sempre visível ao carregar áudio, com nome completo e metadados em duas colunas. A thumbnail conserva a proporção e ocupa a largura disponível, sem moldura ou recuo interno. O blur fica atrás de todo o bloco, com máscara vertical que o dissolve antes dos dados inferiores, seguindo a linguagem do detalhe da Biblioteca. A exportação permanece agrupada com o resumo do arquivo e acompanha o estado confirmado da operação.
+Arquivo original é um bloco sempre visível ao carregar áudio, com nome completo e metadados em duas colunas. A thumbnail conserva a proporção e ocupa a largura disponível, sem moldura ou recuo interno. O blur fica atrás de todo o bloco, com máscara vertical que o dissolve antes dos dados inferiores, seguindo a linguagem do detalhe da Biblioteca. A exportação permanece agrupada com o resumo do arquivo e acompanha o estado confirmado da operação. Os blocos do painel têm o mesmo fundo e são separados por uma divisória; acima de 900 px, o rodapé de exportação fica preso à base do painel para que Exportar esteja sempre visível.
 
 
 ## Busca da Biblioteca
@@ -133,4 +133,4 @@ O estado inicial mostra apenas a lupa, junto dos filtros e da criação de categ
 Abrir move o foco para o campo; Escape e limpar/fechar recolhem a busca, removem o filtro e devolvem o foco à lupa. Ctrl/Cmd+F é a entrada de teclado da busca quando a Biblioteca está ativa e nenhum modal de categoria está aberto. Manter Explorar e Ordenar separados por função; retorno ao editor acompanha a identificação da página em layouts menores.
 
 
-Ações independentes como Nova categoria, Analisar link, Salvar preset e Copiar podem usar contorno discreto. Importar carregado é secundário e usa esse tratamento; no editor vazio, conserva o contraste primário. Não combinar contorno do grupo com contornos de todos os controles internos. Presets e tokens usam texto e espaçamento, sem caixas preenchidas permanentes em cada item. No campo de busca expandido, o foco usa a borda do wrapper e o contraste do ícone, sem acrescentar moldura aos botões internos.
+Ações independentes como Nova categoria, Analisar link, Salvar preset e Copiar podem usar contorno discreto. O Importar do cabeçalho é sempre secundário e usa esse tratamento; no editor vazio, a ação principal é o botão do centro. Não combinar contorno do grupo com contornos de todos os controles internos. Presets e tokens usam texto e espaçamento, sem caixas preenchidas permanentes em cada item. No campo de busca expandido, o foco usa a borda do wrapper e o contraste do ícone, sem acrescentar moldura aos botões internos.
