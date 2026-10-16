@@ -11,11 +11,38 @@ A interface acompanha a decisão do usuário: adquirir o áudio, ouvir e ajustar
 | Exportação | Nome e formato junto ao botão | Normalização; etapa em andamento | Opções completas em Configurações |
 | Biblioteca | Encontrar e abrir música | Categoria, organização e transporte da sessão | Metadados no detalhe da seleção |
 | Modo foco | Reproduzir/pausar e posição | Velocidade | Retorno ao editor pelo botão ou Escape |
-| Configurações | Grupo e campo em edição | Valor e explicação | Diagnóstico no disclosure avançado existente |
+| Configurações | Grupo e campo em edição | Valor e explicação | Diagnóstico em seção própria |
+
+## Tipografia
+
+Todo tamanho, peso e espaçamento de letra vem de um token de `styles.css`. Não usar valores em pixel soltos.
+
+| Token | Tamanho | Uso |
+| --- | --- | --- |
+| `--text-xs` | 12 px | rótulos, texto de apoio, etiquetas |
+| `--text-sm` | 13 px | controles e texto corrido |
+| `--text-md` | 14 px | títulos de bloco e itens de lista |
+| `--text-lg` | 16 px | títulos de painel |
+| `--text-title` | 20 px | títulos de página, de detalhe e valores em destaque |
+| `--text-heading` | 24 a 36 px | título da lista de uma categoria |
+| `--text-xl` | 32 a 48 px | valor da velocidade |
+| `--text-display` | 28 a 56 px | título do estado vazio e do guia da Biblioteca |
+
+Fonte: a de interface vale para todo texto, inclusive rótulos, títulos, botões e mensagens. A monoespaçada fica para valores: tempos, durações, velocidade, frequência, tamanhos, nomes de arquivo de saída, teclas e campos técnicos.
+
+Caixa: títulos, rótulos, botões e mensagens usam só a primeira letra maiúscula. A caixa alta é reservada para etiquetas curtas de origem e de estado (`LINK`, `ARQUIVO LOCAL`, `TOCANDO`, `NO EDITOR`), sempre em mono, `--text-xs` e `--tr-wide`. A tela de inicialização mantém sua linha de estado própria.
+
+Peso: 400 para texto, 500 para controles, rótulos e títulos grandes, 600 para títulos de bloco e de página.
+
+Espaçamento entre letras: zero no texto comum, `--tr-wide` só nas etiquetas e `--tr-tight` só nos tamanhos `--text-heading` e `--text-display`.
+
+Cor: títulos de bloco usam `--text`, rótulos e apoio usam `--text-2` ou `--text-3`. Não diferenciar blocos do mesmo nível pela cor do título.
+
+As fontes são locais, sem imports remotos.
 
 ## Base compartilhada
 
-Usar os tokens de `styles.css`, com espaçamento em múltiplos de 4 px. Textos auxiliares usam `--text-xs` (12 px), controles usam `--text-sm` (13 px), títulos de seção usam `--text-md` (14 px). Reservar `--text-lg` (16 px) para a comparação de duração e `--text-xl` para velocidade. Usar a fonte de interface para rótulos e a monoespaçada para números e nomes técnicos. As fontes são locais; os imports remotos de fontes que não eram usadas foram removidos.
+Usar os tokens de `styles.css`, com espaçamento em múltiplos de 4 px.
 
 Controles normais usam `--ctl-h`: 36 px na densidade compacta, 40 px na confortável e 44 px em dispositivos de toque. Os passos de velocidade usam `--ctl-step`: 32/36/44 px. Ações auxiliares (ajuda, remover preset, inserir token e desfazer) usam `--ctl-subtle`: 28/32/44 px. Switches usam desenho fixo de 36 × 20 px, com área de clique de 36 × 28 px no desktop e 44 × 44 px no toque. Os botões de organização e do grafo usam a medida normal. A barra da timeline tem sua própria altura, calculada a partir dos controles; a altura da régua permanece independente.
 

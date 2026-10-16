@@ -36,7 +36,7 @@
       .map((category) => {
         const count = visible.filter((item) => belongs(item, category.id)).length;
         return { ...category, title: category.name, label: category.name,
-          countLabel: `${count} ${count === 1 ? 'MÚSICA' : 'MÚSICAS'}`,
+          countLabel: `${count} ${count === 1 ? 'música' : 'músicas'}`,
           role: category.id === ROOT_ID ? 'root' : 'category', isCategory: true };
       });
     return { nodes, links: nodes.filter((node) => node.id !== ROOT_ID).map((node) => ({

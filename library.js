@@ -24,25 +24,25 @@
       kicker: 'A memória da sua escuta',
       title: 'Sua biblioteca deixa rastros.',
       body: 'Suas músicas ficam neste computador. O mapa reúne as categorias; dentro de cada uma, uma lista guarda suas faixas e seus ajustes.',
-      signal: 'UM MAPA · SUA ESCUTA',
+      signal: 'Um mapa · sua escuta',
     },
     {
       kicker: 'Cada categoria é um ponto',
       title: 'Um mapa para se encontrar.',
       body: 'Clique em uma categoria para abrir suas músicas. Biblioteca reúne todas as faixas, e Favoritas acompanha as que você marcou com uma estrela.',
-      signal: 'CATEGORIA → LISTA DE FAIXAS',
+      signal: 'Categoria → lista de faixas',
     },
     {
       kicker: 'Categorias criam territórios',
       title: 'Organize sem apagar a complexidade.',
       body: 'Crie uma categoria e escolha as músicas que pertencem a ela pelo painel de detalhes. Sua organização muda sem duplicar arquivos.',
-      signal: 'CATEGORIA → NOVO CENTRO',
+      signal: 'Categoria → novo centro',
     },
     {
       kicker: 'Um mapa impossível de copiar',
       title: 'Encontre. Escolha. Ouça.',
       body: 'Use a busca e a ordenação para encontrar uma faixa. As setas percorrem a lista; Enter abre a seleção no editor. Escape retorna um nível.',
-      signal: 'MAPA → FAIXA → EDITOR',
+      signal: 'Mapa → faixa → editor',
     },
   ]);
   const cache = new Map();
@@ -310,7 +310,7 @@
   }
 
   function musicCountLabel(count) {
-    return `${count} ${count === 1 ? 'MÚSICA' : 'MÚSICAS'}`;
+    return `${count} ${count === 1 ? 'música' : 'músicas'}`;
   }
 
   function categoryForId(id) {
@@ -797,8 +797,8 @@
       const isEmpty = items.length === 0;
       el.emptyTitle.textContent = isEmpty ? 'Biblioteca vazia' : 'Nenhuma música encontrada';
       el.emptyHint.textContent = isEmpty
-        ? 'IMPORTE UMA MÚSICA E ADICIONE À BIBLIOTECA'
-        : 'TENTE OUTRO TERMO DE BUSCA';
+        ? 'Importe uma música e adicione à Biblioteca'
+        : 'Tente outro termo de busca';
     }
     if (engine) refreshGraph({ fit, reset });
     refreshBrowser();

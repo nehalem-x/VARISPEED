@@ -11,10 +11,10 @@ const items = [
 test('graph contains categories only, including empty and favorite categories', () => {
   const data = graph(items, categories);
   assert.deepEqual(data.nodes.map(n => n.id), [ROOT_ID, FAVORITES_ID, 'ambient', 'empty']);
-  assert.equal(data.nodes[0].countLabel, '3 MÚSICAS');
-  assert.equal(data.nodes[1].countLabel, '1 MÚSICA');
-  assert.equal(data.nodes[2].countLabel, '2 MÚSICAS');
-  assert.equal(data.nodes[3].countLabel, '0 MÚSICAS');
+  assert.equal(data.nodes[0].countLabel, '3 músicas');
+  assert.equal(data.nodes[1].countLabel, '1 música');
+  assert.equal(data.nodes[2].countLabel, '2 músicas');
+  assert.equal(data.nodes[3].countLabel, '0 músicas');
   assert.ok(data.nodes.every(n => n.isCategory));
   assert.ok(data.links.every(l => l.source === ROOT_ID && data.nodes.some(n => n.id === l.target)));
 });
@@ -43,6 +43,6 @@ test('empty libraries and filtered graphs retain a navigable root', () => {
   assert.equal(graph([], []).nodes.length, 2);
   const data = graph(items, categories, 'zzzz');
   assert.deepEqual(data.nodes.map(n => n.id), [ROOT_ID]);
-  assert.equal(data.nodes[0].countLabel, '0 MÚSICAS');
+  assert.equal(data.nodes[0].countLabel, '0 músicas');
   assert.equal(graph(items, categories, 'silencio').nodes.at(-1).id, 'empty');
 });

@@ -815,7 +815,7 @@ window.Settings = (() => {
     document.body.innerHTML = `
       <main class="shutdown-screen" role="status" aria-live="polite">
         <img src="assets/favicon.png" width="56" height="56" alt="" draggable="false">
-        <strong>VARISPEED DESLIGADO</strong>
+        <strong>VARISPEED desligado</strong>
         <span>Pode fechar esta aba.</span>
       </main>`;
   }
@@ -1223,7 +1223,7 @@ window.Settings = (() => {
     media.appendChild(dark);
 
     const copy = h('div', 'cfg__credits-copy');
-    copy.appendChild(h('span', 'cfg__credits-eyebrow mono', 'CRIADOR DO VARISPEED'));
+    copy.appendChild(h('span', 'cfg__credits-eyebrow mono', 'Criador do VARISPEED'));
     copy.appendChild(h('strong', 'cfg__credits-title', 'Gaspar'));
     copy.appendChild(h('span', 'cfg__credits-line', 'Design e desenvolvimento'));
 
@@ -1414,7 +1414,7 @@ window.Settings = (() => {
     };
     const navigator = h('nav', 'cfg__navigator');
     navigator.setAttribute('aria-label', 'Seções de configurações');
-    const navLabel = h('label', null, 'SEÇÃO');
+    const navLabel = h('label', null, 'Seção');
     navLabel.htmlFor = 'cfgSectionNav';
     sectionNav = h('select', 'sel');
     sectionNav.id = 'cfgSectionNav';
