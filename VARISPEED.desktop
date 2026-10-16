@@ -1,0 +1,13 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=VARISPEED
+Comment=Editor de velocidade e tom de áudio
+Exec=/usr/bin/python3 /home/gaspar/.config/VARISPEED/launcher.py
+TryExec=/usr/bin/python3
+Path=/home/gaspar/.config/VARISPEED
+Icon=/home/gaspar/.config/VARISPEED/assets/favicon.png
+Terminal=false
+Categories=AudioVideo;Audio;AudioVideoEditing;
+Keywords=audio;music;musica;velocidade;pitch;varispeed;
+StartupNotify=false

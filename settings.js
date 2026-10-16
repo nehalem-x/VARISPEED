@@ -77,7 +77,7 @@ window.Settings = (() => {
       fields: [
         { k: 'export.bits', t: 'select', label: 'Profundidade', d: '16',
           opts: [['16', '16 bits PCM'], ['24', '24 bits PCM'], ['32f', '32 bits float']] },
-        { k: 'export.sampleRate', t: 'select', label: 'Sample rate', d: 'source',
+        { k: 'export.sampleRate', t: 'select', label: 'Amostragem', d: 'source',
           opts: [['source', 'Igual à fonte'], ['44100', '44 100 Hz'], ['48000', '48 000 Hz'], ['96000', '96 000 Hz']] },
         { k: 'export.normalize', t: 'bool', label: 'Normalizar pico', d: false },
         { k: 'export.ceiling', t: 'range', label: 'Teto', d: -0.3, min: -6, max: 0, step: 0.1,
@@ -130,7 +130,7 @@ window.Settings = (() => {
       id: 'library', title: 'Biblioteca',
       fields: [
         { k: 'library.autoAdd', t: 'bool', label: 'Adicionar importações automaticamente', d: false,
-          help: 'Quando desligado, a música permanece no editor até você usar “Adicionar à Biblioteca”.' },
+          help: 'Quando desligado, a música permanece no editor até você usar “Salvar na biblioteca”.' },
         { k: 'library.alwaysShowGuide', t: 'bool', label: 'Sempre mostrar guia de apresentação', d: false,
           help: 'Reabre o guia cinematográfico sempre que você entra na Biblioteca. Desligado, ele aparece somente na primeira visita.' },
       ],
@@ -206,7 +206,6 @@ window.Settings = (() => {
      primeiro; runtime, atalhos e diagnóstico permanecem disponíveis em uma
      área avançada recolhível, sem competir com as preferências principais. */
   const GROUP_ORDER = ['ui', 'rate', 'export', 'library', 'remote', 'timeline', 'scope', 'motion', 'load', 'system', 'keys', 'diag'];
-  const ADVANCED_GROUPS = new Set(['system', 'keys', 'diag']);
   GROUPS.sort((a, b) => GROUP_ORDER.indexOf(a.id) - GROUP_ORDER.indexOf(b.id));
 
   /* A ajuda de cada preferência fica centralizada aqui. O schema pode
@@ -228,7 +227,7 @@ window.Settings = (() => {
     'export.normalize': 'Ajusta o ganho do arquivo exportado para que o maior pico alcance o teto definido, sem alterar a dinâmica relativa.',
     'export.name': 'Define o modelo do nome do WAV. Os tokens abaixo são substituídos pelas informações atuais durante a exportação.',
     'load.confirmExit': 'Exibe um aviso ao tentar fechar ou recarregar a página enquanto uma exportação ainda está em andamento.',
-    'library.autoAdd': 'Quando desligado, a música permanece no editor até você usar “Adicionar à Biblioteca”.',
+    'library.autoAdd': 'Quando desligado, a música permanece no editor até você usar “Salvar na biblioteca”.',
     'library.alwaysShowGuide': 'Reabre o guia cinematográfico sempre que você entra na Biblioteca. Desligado, ele aparece somente na primeira visita.',
     'remote.authBrowser': 'O modo automático procura os navegadores instalados e valida cada sessão no link solicitado. Chromium precisa estar fechado para liberar o banco local. A sessão dedicada contorna esse bloqueio com uma janela isolada. Nenhum cookie é enviado ao frontend. Prefira uma conta secundária.',
     'tl.ruler': 'Tempo de saída acompanha a velocidade; tempo da fonte mantém a duração original na régua.',
@@ -393,7 +392,11 @@ window.Settings = (() => {
   const testButtons = new Map();
   let systemShutdownBtn = null, systemCopyBtn = null;
   let graphCaptureProvider = null, graphCaptureButton = null, graphCaptureCopyButton = null;
-  let graphCaptureOutput = null, graphCaptureReport = null, advancedDisclosure = null;
+  let graphCaptureOutput = null, graphCaptureReport = null;
+  const sectionElements = new Map();
+  let sectionNav = null;
+  let activeSection = 'rate';
+  let activeHelp = null;
   let authSessionStatus = null, authSessionPrimary = null, authSessionSecondary = null, authSessionHint = null;
   let authSessionBusy = false;
   let authSessionState = { available: false, connected: false, login_open: false, validation: 'missing' };
@@ -458,6 +461,18 @@ window.Settings = (() => {
     }
   }
 
+  function uiIcon(name, small = false) {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('class', `ui-icon${small ? ' ui-icon--small' : ''}`);
+    svg.setAttribute('viewBox', '0 0 24 24');
+    svg.setAttribute('focusable', 'false');
+    svg.setAttribute('aria-hidden', 'true');
+    const use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
+    use.setAttribute('href', `#ui-icon-${name}`);
+    svg.appendChild(use);
+    return svg;
+  }
+
   function h(tag, cls, txt) {
     const n = document.createElement(tag);
     if (cls) n.className = cls;
@@ -508,28 +523,48 @@ window.Settings = (() => {
     panelFeedback('Restauração desfeita');
   }
 
+  function closeHelp() {
+    if (!activeHelp) return;
+    const { button, panel: helpPanel } = activeHelp;
+    helpPanel.hidden = true;
+    button.setAttribute('aria-expanded', 'false');
+    activeHelp = null;
+  }
+
   function buildField(f) {
     const id = `cfg-${f.k.replace(/\./g, '-')}`;
     const row = h('div', 'cfg__row');
     const lab = h('label', 'cfg__label', f.label);
     const labelLine = h('div', 'cfg__label-line');
     labelLine.appendChild(lab);
-    let helpText = null;
+    let helpText = null, helpPanel = null;
     const fieldHelp = f.help || FIELD_HELP[f.k];
     if (fieldHelp) {
-      const helpBtn = h('button', 'cfg__help-toggle mono', '?');
+      const helpBtn = h('button', 'btn btn--ghost cfg__help-toggle');
+      helpBtn.appendChild(uiIcon('help'));
       helpBtn.type = 'button';
       helpBtn.setAttribute('aria-label', `Sobre ${f.label}`);
       helpBtn.title = `Sobre ${f.label}`;
       helpBtn.setAttribute('aria-expanded', 'false');
-      helpBtn.setAttribute('aria-controls', `${id}-help`);
+      helpBtn.setAttribute('aria-controls', `${id}-help-panel`);
+      helpPanel = h('div', 'cfg__help-panel');
+      helpPanel.id = `${id}-help-panel`;
+      helpPanel.hidden = true;
+      helpPanel.setAttribute('role', 'region');
+      helpPanel.setAttribute('aria-labelledby', `${id}-help-title`);
+      const helpTitle = h('h4', 'cfg__help-title', `Sobre ${f.label}`);
+      helpTitle.id = `${id}-help-title`;
       helpText = h('p', 'cfg__help-text', fieldHelp);
       helpText.id = `${id}-help`;
-      helpText.hidden = true;
+      helpPanel.append(helpTitle, helpText);
       helpBtn.addEventListener('click', () => {
-        const open = helpText.hidden;
-        helpText.hidden = !open;
-        helpBtn.setAttribute('aria-expanded', String(open));
+        const open = helpPanel.hidden;
+        closeHelp();
+        if (open) {
+          helpPanel.hidden = false;
+          helpBtn.setAttribute('aria-expanded', 'true');
+          activeHelp = { button: helpBtn, panel: helpPanel };
+        }
       });
       labelLine.appendChild(helpBtn);
     }
@@ -544,7 +579,7 @@ window.Settings = (() => {
       input.appendChild(h('span', 'sw__knob'));
       input.addEventListener('click', () => set(f.k, !get(f.k)));
       row.appendChild(input);
-      row.classList.add('cfg__row--inline');
+      row.classList.add('cfg__row--inline', 'cfg__row--switch');
     } else if (f.t === 'select') {
       input = h('select', 'sel mono');
       f.opts.forEach(([id, label]) => {
@@ -585,13 +620,32 @@ window.Settings = (() => {
       chips.setAttribute('role', 'group');
       chips.setAttribute('aria-label', 'Presets configurados');
       const addRow = h('div', 'cfg__preset-add');
+      const error = h('p', 'field-error');
+      error.id = `${id}-error`;
+      error.setAttribute('role', 'alert');
+      error.hidden = true;
       input = h('input', 'txt mono');
       input.type = 'text';
       input.inputMode = 'decimal';
       input.placeholder = 'novo valor';
       input.maxLength = 12;
       input.spellcheck = false;
-      const addBtn = h('button', 'btn cfg__preset-add-btn', '+');
+      input.setAttribute('aria-describedby', `${helpText ? `${id}-help ` : ''}${error.id}`);
+      const clearError = () => {
+        input.removeAttribute('aria-invalid');
+        error.hidden = true;
+        error.textContent = '';
+      };
+      const showError = (message) => {
+        input.setAttribute('aria-invalid', 'true');
+        error.textContent = message;
+        error.hidden = false;
+        input.focus();
+        input.select();
+      };
+      input.addEventListener('input', clearError);
+      const addBtn = h('button', 'btn cfg__preset-add-btn');
+      addBtn.appendChild(uiIcon('plus'));
       addBtn.type = 'button';
       addBtn.setAttribute('aria-label', 'Adicionar preset');
 
@@ -606,13 +660,16 @@ window.Settings = (() => {
         const current = list();
         if (!current.length) chips.appendChild(h('span', 'cfg__preset-empty', 'Nenhum preset'));
         current.forEach((value) => {
-          const chip = h('button', 'cfg__preset-chip mono');
+          const chip = h('button', 'btn cfg__preset-chip mono');
           chip.type = 'button';
           chip.setAttribute('aria-label', `Remover preset ${value}%`);
           chip.appendChild(h('span', null, String(value)));
-          chip.appendChild(h('span', 'cfg__preset-remove', '×'));
+          const removeIcon = uiIcon('close', true);
+          removeIcon.classList.add('cfg__preset-remove');
+          chip.appendChild(removeIcon);
           chip.addEventListener('click', () => {
             set(f.k, current.filter((n) => n !== value).join(', '));
+            clearError();
             panelFeedback(`Preset ${value}% removido`);
           });
           chips.appendChild(chip);
@@ -620,24 +677,24 @@ window.Settings = (() => {
       };
 
       const add = () => {
-        const value = parseFloat(input.value.trim().replace(',', '.'));
+        const text = input.value.trim().replace(',', '.');
+        const value = text ? Number(text) : NaN;
         const current = list();
         if (!Number.isFinite(value) || value < get('rate.min') || value > get('rate.max')) {
-          panelFeedback(`Use um valor entre ${get('rate.min')}% e ${get('rate.max')}%`, { kind: 'err', hold: 3000 });
-          input.select();
+          showError(`Use um valor entre ${get('rate.min')}% e ${get('rate.max')}%.`);
           return;
         }
         if (current.includes(value)) {
-          panelFeedback(`${value}% já está nos presets`, { kind: 'err' });
-          input.select();
+          showError(`${value}% já está nos presets. Escolha outro valor.`);
           return;
         }
         if (current.length >= 8) {
-          panelFeedback('O limite é de 8 presets', { kind: 'err' });
+          showError('Você já tem 8 presets. Remova um para adicionar outro.');
           return;
         }
         set(f.k, current.concat(value).join(', '));
         input.value = '';
+        clearError();
         panelFeedback(`Preset ${value}% adicionado`);
         input.focus();
       };
@@ -647,7 +704,7 @@ window.Settings = (() => {
         if (e.key === 'Enter') { e.preventDefault(); add(); }
       });
       addRow.append(input, addBtn);
-      editor.append(chips, addRow);
+      editor.append(chips, addRow, error);
       row.appendChild(editor);
       customSync = render;
     } else {
@@ -664,7 +721,7 @@ window.Settings = (() => {
         tokens.setAttribute('role', 'group');
         tokens.setAttribute('aria-label', 'Tokens para o nome do arquivo');
         ['{nome}', '{rate}', '{mult}', '{st}', '{sr}', '{data}'].forEach((token) => {
-          const button = h('button', 'cfg__token mono', token);
+          const button = h('button', 'btn cfg__token mono', token);
           button.type = 'button';
           button.title = `Inserir ${token}`;
           button.addEventListener('click', () => {
@@ -683,7 +740,12 @@ window.Settings = (() => {
       }
     }
 
-    if (helpText) row.appendChild(helpText);
+    if (helpPanel) row.appendChild(helpPanel);
+    if (helpText) {
+      const describedBy = new Set((input.getAttribute('aria-describedby') || '').split(/\s+/).filter(Boolean));
+      describedBy.add(helpText.id);
+      input.setAttribute('aria-describedby', [...describedBy].join(' '));
+    }
 
     input.id = id;
     lab.setAttribute('for', id);
@@ -762,6 +824,7 @@ window.Settings = (() => {
     if (!systemShutdownBtn || systemShutdownBtn.disabled) return;
     if (!window.confirm('Desligar o VARISPEED neste computador?')) return;
     systemShutdownBtn.disabled = true;
+    systemShutdownBtn.setAttribute('aria-busy', 'true');
     systemShutdownBtn.textContent = 'Desligando...';
     panelFeedback('Desligando VARISPEED...', { persist: true });
     document.dispatchEvent(new CustomEvent('varispeed:shutdown'));
@@ -776,6 +839,7 @@ window.Settings = (() => {
       setTimeout(showShutdownScreen, 180);
     } catch (err) {
       systemShutdownBtn.disabled = false;
+      systemShutdownBtn.removeAttribute('aria-busy');
       systemShutdownBtn.textContent = 'Desligar VARISPEED';
       panelFeedback(err && err.message ? err.message : 'Não foi possível desligar o VARISPEED.', {
         kind: 'err', hold: 3500,
@@ -800,7 +864,7 @@ window.Settings = (() => {
     sec.appendChild(hint);
 
     const actions = h('div', 'cfg__system-actions');
-    systemCopyBtn = h('button', 'btn cfg__system-action', 'Copiar endereço');
+    systemCopyBtn = h('button', 'btn btn--outline cfg__system-action', 'Copiar endereço');
     systemCopyBtn.type = 'button';
     systemCopyBtn.disabled = true;
     systemCopyBtn.addEventListener('click', copySystemUrl);
@@ -851,9 +915,11 @@ window.Settings = (() => {
         ? 'Renovar sessão'
         : (authSessionState.connected ? 'Renovar sessão' : 'Conectar YouTube'));
     authSessionPrimary.disabled = authSessionBusy || !authSessionState.available;
+    authSessionPrimary.setAttribute('aria-busy', String(authSessionBusy));
     authSessionSecondary.hidden = !authSessionState.login_open && !authSessionState.connected;
     authSessionSecondary.textContent = authSessionState.login_open ? 'Cancelar' : 'Desconectar';
     authSessionSecondary.disabled = authSessionBusy;
+    authSessionSecondary.setAttribute('aria-busy', String(authSessionBusy));
     if (authSessionHint) {
       authSessionHint.textContent = authSessionState.validation === 'playback_verification_required'
         ? (authPoTokenState.ready
@@ -1016,6 +1082,7 @@ window.Settings = (() => {
   async function runGraphCapture() {
     if (!graphCaptureProvider || graphCaptureButton?.disabled) return;
     graphCaptureButton.disabled = true;
+    graphCaptureButton.setAttribute('aria-busy', 'true');
     graphCaptureButton.textContent = 'Preparando…';
     graphCaptureReport = null;
     renderGraphCapture();
@@ -1032,8 +1099,9 @@ window.Settings = (() => {
     }
 
     graphCaptureButton.disabled = false;
+    graphCaptureButton.removeAttribute('aria-busy');
     graphCaptureButton.textContent = 'Medir grafo · 8 s';
-    if (advancedDisclosure) advancedDisclosure.open = true;
+    showSection('diag');
     open({ restoreFocus: false });
     renderGraphCapture();
     requestAnimationFrame(() => {
@@ -1097,7 +1165,7 @@ window.Settings = (() => {
       graphCaptureButton = h('button', 'btn btn--primary cfg__diag-action', 'Medir grafo · 8 s');
       graphCaptureButton.type = 'button';
       graphCaptureButton.addEventListener('click', runGraphCapture);
-      graphCaptureCopyButton = h('button', 'btn btn--ghost cfg__diag-action', 'Copiar relatório');
+      graphCaptureCopyButton = h('button', 'btn btn--outline cfg__diag-action', 'Copiar relatório');
       graphCaptureCopyButton.type = 'button';
       graphCaptureCopyButton.disabled = true;
       graphCaptureCopyButton.addEventListener('click', copyGraphCapture);
@@ -1167,6 +1235,7 @@ window.Settings = (() => {
     githubLink.setAttribute('aria-label', 'Abrir nehalem-x/VARISPEED no GitHub');
     const githubIcon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     githubIcon.setAttribute('viewBox', '0 0 24 24');
+    githubIcon.setAttribute('class', 'ui-icon ui-icon--brand');
     githubIcon.setAttribute('aria-hidden', 'true');
     const githubPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
     githubPath.setAttribute('fill', 'currentColor');
@@ -1260,6 +1329,16 @@ window.Settings = (() => {
   /* ── ciclo de vida do painel ─────────────────────────── */
   let restoreFocusAfterClose = true;
 
+  function showSection(id, { focus = false } = {}) {
+    if (!sectionElements.has(id)) return;
+    closeHelp();
+    activeSection = id;
+    sectionElements.forEach((section, key) => { section.hidden = key !== id; });
+    if (sectionNav) sectionNav.value = id;
+    if (body) body.scrollTop = 0;
+    if (focus) document.getElementById(`settings-heading-${id}`)?.focus({ preventScroll: true });
+  }
+
   function open({ restoreFocus = true } = {}) {
     if (!panel || (!panel.hidden && panel.classList.contains('is-open'))) return;
     clearTimeout(panelTimer); panelTimer = 0;
@@ -1313,47 +1392,60 @@ window.Settings = (() => {
     graphCaptureProvider = opts.captureGraphPerformance || null;
     if (!panel || !body) return;
 
-    const appendGroups = (host, groups) => {
-      groups.forEach((g, i) => {
-        if (i) host.appendChild(h('div', 'hr'));
-        host.appendChild(buildGroup(g));
-      });
+    const navigation = [
+      { label: 'Áudio', ids: ['rate', 'load', 'export'] },
+      { label: 'Biblioteca', ids: ['library', 'remote'] },
+      { label: 'Visual e interação', ids: ['ui', 'timeline', 'scope', 'motion'] },
+      { label: 'Sistema', ids: ['keys', 'system', 'diag'] },
+    ];
+    const descriptions = {
+      rate: 'Unidades, limites e ajustes rápidos da velocidade.',
+      load: 'Defina como o editor recebe uma nova música.',
+      export: 'Formato, qualidade e nome do arquivo de saída.',
+      library: 'Organize as músicas que entram na sua Biblioteca.',
+      remote: 'Preferências para importar músicas de plataformas externas.',
+      ui: 'Aparência, densidade e informações da interface.',
+      timeline: 'Leitura do tempo, navegação e zoom do áudio.',
+      scope: 'Ajuste a representação visual do sinal.',
+      motion: 'Controle o ritmo e a presença das animações.',
+      keys: 'Comandos para usar o editor pelo teclado.',
+      system: 'Endereço local e informações do servidor.',
+      diag: 'Informações de desempenho e ferramentas de medição.',
     };
-
-    const order = ['rate', 'timeline', 'scope', 'export', 'load', 'library', 'ui', 'motion', 'remote', 'keys', 'diag', 'system'];
-    const ordered = [...GROUPS].sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id));
     const navigator = h('nav', 'cfg__navigator');
     navigator.setAttribute('aria-label', 'Seções de configurações');
-    const navLabel = h('label', null, 'IR PARA');
+    const navLabel = h('label', null, 'SEÇÃO');
     navLabel.htmlFor = 'cfgSectionNav';
-    const navSelect = h('select', 'sel');
-    navSelect.id = 'cfgSectionNav';
-    navSelect.appendChild(new Option('Escolha uma seção', ''));
-    ordered.forEach((g) => navSelect.appendChild(new Option(g.title, g.id)));
-    navSelect.addEventListener('change', () => {
-      if (!navSelect.value) return;
-      if (ADVANCED_GROUPS.has(navSelect.value)) advancedDisclosure.open = true;
-      const target = document.getElementById(`settings-heading-${navSelect.value}`);
-      document.getElementById(`settings-section-${navSelect.value}`)?.scrollIntoView({ block: 'start', behavior: 'auto' });
-      target?.focus({ preventScroll: true });
+    sectionNav = h('select', 'sel');
+    sectionNav.id = 'cfgSectionNav';
+    navigation.forEach(({ label, ids }) => {
+      const group = h('optgroup');
+      group.label = label;
+      ids.forEach((id) => {
+        const schema = GROUPS.find((entry) => entry.id === id);
+        group.appendChild(new Option(schema.title, id));
+        const section = buildGroup(schema);
+        const description = h('p', 'cfg__description', descriptions[id]);
+        section.querySelector('.cfg__head').after(description);
+        sectionElements.set(id, section);
+      });
+      sectionNav.appendChild(group);
     });
-    navigator.append(navLabel, navSelect);
+    sectionNav.appendChild(new Option('Sobre o VARISPEED', 'about'));
+    sectionNav.addEventListener('change', () => showSection(sectionNav.value, { focus: true }));
+    navigator.append(navLabel, sectionNav);
     body.appendChild(navigator);
-    appendGroups(body, ordered.filter((g) => !ADVANCED_GROUPS.has(g.id)));
-
-    const advanced = h('details', 'cfg__advanced');
-    advancedDisclosure = advanced;
-    const advancedSummary = h('summary', 'cfg__advanced-summary');
-    advancedSummary.appendChild(h('span', null, 'Avançado'));
-    advancedSummary.appendChild(h('span', 'cfg__advanced-chevron mono', '+'));
-    advanced.appendChild(advancedSummary);
-    const advancedBody = h('div', 'cfg__advanced-body');
-    appendGroups(advancedBody, ordered.filter((g) => ADVANCED_GROUPS.has(g.id)));
-    advanced.appendChild(advancedBody);
-    body.appendChild(h('div', 'hr'));
-    body.appendChild(advanced);
-    body.appendChild(h('div', 'hr'));
-    body.appendChild(buildCredits());
+    sectionElements.forEach((section) => body.appendChild(section));
+    const about = h('section', 'cfg__group cfg__about');
+    about.id = 'settings-section-about';
+    about.setAttribute('aria-labelledby', 'settings-heading-about');
+    const aboutHeading = h('h3', 'panel__title', 'Sobre o VARISPEED');
+    aboutHeading.id = 'settings-heading-about'; aboutHeading.tabIndex = -1;
+    const aboutHead = h('div', 'cfg__head'); aboutHead.appendChild(aboutHeading);
+    about.append(aboutHead, h('p', 'cfg__description', 'Créditos e projetos que fazem parte do VARISPEED.'), buildCredits());
+    sectionElements.set('about', about);
+    body.appendChild(about);
+    showSection(activeSection);
     syncControls();
 
     document.getElementById('cfgClose').addEventListener('click', (event) => {

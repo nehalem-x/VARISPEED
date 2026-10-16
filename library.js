@@ -370,7 +370,7 @@
     const category = categoryForId(browseCategoryId);
     el.browser.hidden = !category;
     el.view.classList.toggle('is-browsing', Boolean(category));
-    el.total.textContent = `${musicCountLabel(items.length)} / ${categories.length + 2} CATEGORIAS`;
+    el.total.textContent = `${musicCountLabel(items.length).toLocaleLowerCase('pt-BR')} · ${categories.length + 2} categorias`;
     // Native select keeps every category reachable by keyboard and on narrow screens.
     const groups = [categoryForId(ROOT_ID), categoryForId(FAVORITES_ID), ...categories];
     const navKey = JSON.stringify(groups.map((entry) => [entry.id, entry.name]));
@@ -391,7 +391,7 @@
     el.listEmptyTitle.textContent = searching ? 'Nenhuma faixa encontrada.' : 'Este espaço está esperando sua música.';
     el.listEmptyHint.textContent = searching ? 'Tente outro termo ou explore todas as faixas.'
       : category.id === FAVORITES_ID ? 'Marque a estrela nos detalhes de uma faixa para encontrá-la aqui.'
-        : category.id === ROOT_ID ? 'Abra um áudio no editor e use Adicionar à Biblioteca.'
+        : category.id === ROOT_ID ? 'Abra um áudio no editor e use Salvar na biblioteca.'
           : 'Abra os detalhes de uma faixa em Biblioteca e escolha esta categoria.';
     el.listEmptyAction.textContent = searching ? 'Limpar busca' : category.id === ROOT_ID ? 'Ir ao editor' : 'Ver todas as faixas';
     const signature = JSON.stringify(rows.map((item) => [item.id, item.title, item.byline, item.sourceLabel, item.thumbnail, item.duration, item.rate, item.favorite]));
@@ -415,6 +415,7 @@
         number.setAttribute('aria-hidden', 'true');
         const art = part('library__track-art', '');
         art.setAttribute('aria-hidden', 'true');
+        art.innerHTML = '<svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#ui-icon-waveform"/></svg>';
         if (item.thumbnail) {
           const img = document.createElement('img');
           img.alt = ''; img.loading = 'lazy'; img.decoding = 'async'; img.referrerPolicy = 'no-referrer';
@@ -436,7 +437,7 @@
         const info = part('library__track-info', '');
         info.append(part('library__track-title', item.title), part('library__track-byline', item.byline || item.sourceLabel));
         const status = part('library__track-state mono', '');
-        const meta = part('library__track-meta mono', `${formatTime(item.duration)} · ${Math.round(item.rate)}%`);
+        const meta = part('library__track-meta mono', `${formatTime(item.duration)} · ${window.VarispeedCore.rateText(item.rate, 'pct')}%`);
         row.append(wash, number, art, info, status, meta);
         row.title = `${item.title} — clique para detalhes; Enter ou duplo clique para abrir`;
         row.addEventListener('click', () => selectTrack(item.id));
@@ -455,8 +456,15 @@
       row.setAttribute('aria-selected', String(selected));
       row.tabIndex = selected || (!selectedId && index === 0) ? 0 : -1;
       row.classList.toggle('is-active', active);
-      row.querySelector('.library__track-state').textContent = active
-        ? playbackPlaying ? 'TOCANDO' : 'NO EDITOR' : item.favorite ? '★' : '';
+      const status = row.querySelector('.library__track-state');
+      status.textContent = active ? playbackPlaying ? 'TOCANDO' : 'NO EDITOR' : '';
+      if (!active && item.favorite) {
+        const star = document.querySelector('#libraryFavorite .ui-icon').cloneNode(true);
+        star.classList.add('ui-icon--small');
+        const label = document.createElement('span');
+        label.className = 'sr-only'; label.textContent = 'Favorita';
+        status.append(star, label);
+      }
     });
   }
 
@@ -542,6 +550,7 @@
     if (engine || !window.GraphEngine || el.view.hidden) return;
     engine = new window.GraphEngine({
       host: el.graph,
+      showControls: false,
       initialZoom: 1.05,
       minFitZoom: 0.68,
       cameraFollowMs: 900,
@@ -613,6 +622,8 @@
     categoryDialogId = '';
     categoryDialogAssignId = '';
     el.categoryError.hidden = true;
+    el.categoryError.textContent = '';
+    el.categoryName.removeAttribute('aria-invalid');
     if (restoreFocus && categoryDialogReturnFocus?.isConnected) {
       categoryDialogReturnFocus.focus({ preventScroll: true });
     }
@@ -633,6 +644,8 @@
     el.categoryDialogTitle.textContent = category ? 'Renomear categoria' : 'Nova categoria';
     el.categoryName.value = category?.name || '';
     el.categoryError.hidden = true;
+    el.categoryError.textContent = '';
+    el.categoryName.removeAttribute('aria-invalid');
     el.categoryDialogLayer.hidden = false;
     requestAnimationFrame(() => {
       el.categoryName.focus({ preventScroll: true });
@@ -657,6 +670,7 @@
     event.preventDefault();
     const result = validCategoryName(el.categoryName.value);
     if (result.error) {
+      el.categoryName.setAttribute('aria-invalid', 'true');
       el.categoryError.textContent = result.error;
       el.categoryError.hidden = false;
       el.categoryName.focus({ preventScroll: true });
@@ -725,6 +739,15 @@
       else engine.resume();
     }
     el.view.classList.toggle('has-track', Boolean(item));
+    if (!item || !item.thumbnail) {
+      el.detailWash.hidden = true;
+      el.detailWashImage.dataset.src = '';
+      el.detailWashImage.removeAttribute('src');
+    } else if (el.detailWashImage.dataset.src !== item.thumbnail) {
+      el.detailWash.hidden = true;
+      el.detailWashImage.dataset.src = item.thumbnail;
+      el.detailWashImage.src = item.thumbnail;
+    }
     if (!item) return;
     el.detailArtwork.hidden = !item || !item.thumbnail;
     el.detailRows.hidden = !item;
@@ -733,10 +756,9 @@
 
     el.detailTitle.textContent = item.title;
     el.detailTitle.title = item.title;
-    window.Motion?.marquee?.(el.detailTitle, { speed: 24 });
     el.detailSource.textContent = item.sourceLabel;
     el.detailDuration.textContent = formatTime(item.duration);
-    el.detailRate.textContent = `${Math.round(item.rate)}%`;
+    el.detailRate.textContent = `${window.VarispeedCore.rateText(item.rate, 'pct')}%`;
     el.detailChannels.textContent = item.channels === 1 ? 'Mono' : item.channels > 1 ? 'Estéreo' : 'Áudio';
     el.detailOrigin.textContent = item.sourceType === 'remote' ? item.sourceLabel : 'Arquivo local';
     populateCategorySelect(item);
@@ -865,7 +887,7 @@
       el.tutorial.classList.remove('is-leaving');
       el.tutorial.hidden = true;
       delete el.view.dataset.tutorial;
-      if (restoreFocus) el.search?.focus({ preventScroll: true });
+      if (restoreFocus) el.searchToggle?.focus({ preventScroll: true });
     };
 
     if (animate && !window.Motion?.reduced?.()) {
@@ -889,6 +911,18 @@
     if (tutorialStep > 0) renderTutorialStep(tutorialStep - 1);
   }
 
+  function setSearchExpanded(expanded, { clear = false, restoreFocus = true } = {}) {
+    if (clear && el.search.value) {
+      el.search.value = '';
+      refresh({ fit: true });
+    }
+    el.searchWrap.classList.toggle('is-expanded', expanded);
+    el.searchToggle.setAttribute('aria-expanded', String(expanded));
+    el.searchField.inert = !expanded;
+    el.search.tabIndex = expanded ? 0 : -1;
+    if (restoreFocus) (expanded ? el.search : el.searchToggle).focus({ preventScroll: true });
+  }
+
   function show() {
     if (!mounted) return;
     const token = ++viewToken;
@@ -907,7 +941,7 @@
       engine?.resize();
       engine?.resume();
       refresh({ fit: true, reset: true });
-      if (!openTutorial()) el.search.focus({ preventScroll: true });
+      if (!openTutorial()) (el.searchWrap.classList.contains('is-expanded') ? el.search : el.searchToggle).focus({ preventScroll: true });
     });
   }
 
@@ -1114,6 +1148,8 @@
       listEmpty: $('libraryListEmpty'), listEmptyTitle: $('libraryListEmptyTitle'),
       listEmptyHint: $('libraryListEmptyHint'), listEmptyAction: $('libraryListEmptyAction'),
       close: $('libraryClose'), graph: $('libraryGraph'), search: $('librarySearch'),
+      searchWrap: $('librarySearchWrap'), searchToggle: $('librarySearchToggle'),
+      searchField: $('librarySearchField'), searchClear: $('librarySearchClear'),
       empty: $('libraryEmpty'), emptyTitle: $('libraryEmptyTitle'), emptyHint: $('libraryEmptyHint'),
       details: $('libraryDetails'),
       detailTitle: $('libraryDetailTitle'), detailSource: $('libraryDetailSource'),
@@ -1122,6 +1158,7 @@
       detailClose: $('libraryDetailClose'),
       detailBylineRow: $('libraryDetailBylineRow'), detailByline: $('libraryDetailByline'),
       detailArtwork: $('libraryDetailArtwork'), detailArtworkImage: $('libraryDetailArtworkImage'),
+      detailWash: $('libraryDetailWash'), detailWashImage: $('libraryDetailWashImage'),
       detailRows: $('libraryDetailRows'),
       organization: $('libraryOrganization'), categorySelect: $('libraryCategorySelect'),
       open: $('libraryOpen'), openLabel: $('libraryOpenLabel'),
@@ -1148,6 +1185,23 @@
     selectedId = '';
     el.trigger.addEventListener('click', show);
     el.close.addEventListener('click', hide);
+    el.searchToggle.addEventListener('click', () => {
+      const open = !el.searchWrap.classList.contains('is-expanded');
+      setSearchExpanded(open, { clear: !open });
+    });
+    el.searchClear.addEventListener('click', () => setSearchExpanded(false, { clear: true }));
+    el.searchWrap.addEventListener('keydown', (event) => {
+      if (event.key !== 'Escape' || !el.searchWrap.classList.contains('is-expanded')) return;
+      event.preventDefault(); event.stopPropagation();
+      setSearchExpanded(false, { clear: true });
+    });
+    el.searchWrap.addEventListener('focusout', () => {
+      requestAnimationFrame(() => {
+        if (!el.searchWrap.contains(document.activeElement) && !el.search.value) {
+          setSearchExpanded(false, { restoreFocus: false });
+        }
+      });
+    });
     el.search.addEventListener('input', () => {
       if (text(el.search.value) && !browseCategoryId) browseCategoryId = ROOT_ID;
       refresh({ fit: true });
@@ -1162,7 +1216,7 @@
       engine?.resize();
     });
     el.listEmptyAction.addEventListener('click', () => {
-      if (text(el.search.value)) { el.search.value = ''; refresh({ fit: true }); el.search.focus(); }
+      if (text(el.search.value)) { el.search.value = ''; refresh({ fit: true }); setSearchExpanded(true); }
       else if (browseCategoryId === ROOT_ID) { hide(); el.trigger.focus(); }
       else openCategory(ROOT_ID);
     });
@@ -1174,6 +1228,11 @@
     el.categoryRename.addEventListener('click', () => openCategoryDialog({ categoryId: browseCategoryId }));
     el.categoryRemove.addEventListener('click', removeSelectedCategory);
     el.categoryDialog.addEventListener('submit', saveCategory);
+    el.categoryName.addEventListener('input', () => {
+      el.categoryName.removeAttribute('aria-invalid');
+      el.categoryError.hidden = true;
+      el.categoryError.textContent = '';
+    });
     el.categoryDialogClose.addEventListener('click', () => closeCategoryDialog());
     el.categoryCancel.addEventListener('click', () => closeCategoryDialog());
     el.categoryDialogLayer.addEventListener('pointerdown', (event) => {
@@ -1184,6 +1243,8 @@
     el.tutorialNext.addEventListener('click', nextTutorialStep);
     el.detailArtworkImage.addEventListener('load', () => el.detailArtwork.classList.add('has-image'));
     el.detailArtworkImage.addEventListener('error', () => el.detailArtwork.classList.remove('has-image'));
+    el.detailWashImage.addEventListener('load', () => { el.detailWash.hidden = !el.detailWashImage.dataset.src; });
+    el.detailWashImage.addEventListener('error', () => { el.detailWash.hidden = true; });
     el.detailClose.addEventListener('click', closeDetails);
     el.remove.addEventListener('click', removeSelected);
     el.relink.addEventListener('change', onRelink);
@@ -1225,6 +1286,9 @@
           (event.shiftKey ? last : first).focus({ preventScroll: true });
         }
         return;
+      }
+      if (el.categoryDialogLayer.hidden && (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'f') {
+        event.preventDefault(); setSearchExpanded(true); el.search.select(); return;
       }
       if (event.key !== 'Escape') return;
       event.preventDefault();
