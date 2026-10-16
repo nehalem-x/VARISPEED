@@ -42,14 +42,15 @@
   libraryScrub.setAttribute('aria-label', 'Posição da música na Biblioteca');
   libraryTotal.id = 'libraryTotal';
   $('libraryScrubSlot').replaceChildren(libraryScrubGroup);
+  const focusPlay = cloneControl($('btnPlay'), 'fPlaySlot', 'fPlay');
   const focusRateDown = cloneControl($('rateDown'), 'fRateDownSlot', 'fRateDown');
   const focusRateUp = cloneControl($('rateUp'), 'fRateUpSlot', 'fRateUp');
   const el = {
     root: document.documentElement, themeColor: $('themeColor'),
-    file: $('file'), btnImport: $('btnImport'),
+    file: $('file'), btnImport: $('btnImport'), btnEmptyImport: $('btnEmptyImport'),
     importMenu: $('importMenu'), importFile: $('importFile'), importLink: $('importLink'),
     importMenuWrap: document.querySelector('.import-menu-wrap'),
-    btnLibraryAdd: $('btnLibraryAdd'),
+    btnLibraryAdd: $('btnLibraryAdd'), libraryAddLabel: $('libraryAddLabel'),
     fileName: $('fileName'), fileMeta: $('fileMeta'),
     libraryTransport: $('libraryTransport'), libraryPlay, libraryStop,
     libraryLoop, libraryScrub,
@@ -67,9 +68,12 @@
     rateUp: $('rateUp'), rateDown: $('rateDown'),
     presets: Array.from(document.querySelectorAll('.btn--preset')),
     rPitch: $('rPitch'), rFreq: $('rFreq'), rDur: $('rDur'), rDelta: $('rDelta'),
+    rOriginal: $('rOriginal'), rateHelp: $('rateHelp'), rateError: $('rateError'),
     sName: $('sName'), sDur: $('sDur'), sRate: $('sRate'), sCh: $('sCh'), sSize: $('sSize'),
-    sourceArtwork: $('sourceArtwork'), sourceArtworkImage: $('sourceArtworkImage'),
+    sourcePanel: $('sourcePanel'), sourceArtwork: $('sourceArtwork'), sourceArtworkImage: $('sourceArtworkImage'),
+    sourceArtworkWashImage: $('sourceArtworkWashImage'),
     btnExport: $('btnExport'), exportLabel: $('exportLabel'),
+    exportName: $('exportName'), exportFormat: $('exportFormat'), exportProcessing: $('exportProcessing'),
     statusMsg: $('statusMsg'), drop: $('drop'),
     rateUnit: document.querySelector('.rate__unit'),
     presetHost: document.querySelector('.presets'),
@@ -77,12 +81,12 @@
     sbarItems: Array.from(document.querySelectorAll('.sbar__item')),
     /* apresentações do osciloscópio */
     focus: $('focus'), scopeFocus: $('scopeFocus'),
-    fCur: $('fCur'), fTot: $('fTot'), fScrub: $('fScrub'), fRate: $('fRate'),
+    fCur: $('fCur'), fTot: $('fTot'), fScrub: $('fScrub'), fRate: $('fRate'), fPlay: focusPlay,
     fRateUp: focusRateUp, fRateDown: focusRateDown, fExit: $('fExit'),
     btnPop: $('btnPop'),
     /* importação por link */
     linkbar: $('linkbar'), url: $('url'),
-    urlGo: $('btnUrlGo'), urlClose: $('btnUrlClose'),
+    urlGo: $('btnUrlGo'), urlClose: $('btnUrlClose'), urlCancel: $('btnUrlCancel'),
     urlProg: $('urlProg'), urlStage: $('urlStage'), urlPct: $('urlPct'),
     urlTrack: $('urlTrack'), urlFill: $('urlFill'), urlMsg: $('urlMsg'),
     urlAuthWrap: $('urlAuthWrap'), urlAuth: $('btnUrlAuth'), urlAuthHint: $('urlAuthHint'),
@@ -246,7 +250,10 @@
 
   const syncPlayback = () => {
     const playing = state.loaded && state.playing;
-    [el.btnPlay, el.libraryPlay].forEach((button) => syncPlayControl(button, playing));
+    [el.btnPlay, el.libraryPlay, el.fPlay].forEach((button) => {
+      button.disabled = !state.loaded;
+      syncPlayControl(button, playing);
+    });
     window.MediaLibrary?.setPlaybackState(state.playing);
     syncLibraryTransport();
   };
@@ -278,9 +285,10 @@
     el.btnLibraryAdd.classList.toggle('is-busy', libraryAddBusy && motionSweep());
     if (libraryAddBusy) el.btnLibraryAdd.setAttribute('aria-busy', 'true');
     else el.btnLibraryAdd.removeAttribute('aria-busy');
-    const label = libraryAddBusy ? 'Adicionando à Biblioteca' : 'Adicionar a música atual à Biblioteca';
+    const label = libraryAddBusy ? 'Salvando na biblioteca' : 'Salvar na biblioteca';
     el.btnLibraryAdd.setAttribute('aria-label', label);
     el.btnLibraryAdd.title = label;
+    el.libraryAddLabel.textContent = libraryAddBusy ? 'Salvando…' : 'Salvar na biblioteca';
   }
 
   function setLibraryDraft(entry, blob) {
@@ -756,6 +764,7 @@
     el.rateTag.textContent = `${rateText(state.rate)}${cfg('rate.unit') === 'pct' ? '%' : ` ${rateSuffix()}`}`;
     el.rPitch.textContent = `${st >= 0 ? '+' : '−'}${Math.abs(st).toFixed(2)} st`;
     el.rFreq.textContent = `${r.toFixed(3)}×`;
+    el.rOriginal.textContent = fmtTime(src);
     el.rDur.textContent = fmtTime(out);
     const delta = out - src;
     el.rDelta.textContent = `${delta >= 0 ? '+' : '−'}${Math.abs(delta).toFixed(2)} s`;
@@ -768,7 +777,18 @@
     el.fRate.textContent = el.rateTag.textContent;
     el.fTot.textContent = fmtTime(out);
     el.fCur.textContent = fmtTime((state.audio.currentTime || 0) / r);
-    el.presets.forEach((b) => b.classList.toggle('is-on', Math.abs(+b.dataset.rate - state.rate) < 0.001));
+    el.presets.forEach((b) => {
+      const selected = Math.abs(+b.dataset.rate - state.rate) < 0.001;
+      b.classList.toggle('is-on', selected);
+      b.setAttribute('aria-pressed', String(selected));
+    });
+    el.rateHelp.textContent = !state.loaded
+      ? ''
+      : state.rate < 100 ? ''
+      : state.rate > 100 ? ''
+      : '100% é a velocidade e o tom do arquivo original.';
+    el.rateHelp.hidden = !el.rateHelp.textContent;
+    renderExportSummary();
     syncLibraryTransport();
   }
 
@@ -876,7 +896,10 @@
     state.audio.mozPreservesPitch = false;
     state.audio.webkitPreservesPitch = false;
     smoothPlaybackRate(val / 100);
-    if (!opts.fromInput) el.rateInput.value = rateText(val);
+    if (!opts.fromInput) {
+      el.rateInput.value = rateText(val);
+      clearRateError();
+    }
     el.rateSlider.value = String(val);
     // microinteração: só em passos discretos, nunca em arraste contínuo
     if (opts.step && val !== prev && cfg('motion.rateTick')) {
@@ -901,16 +924,33 @@
 
   el.rateSlider.addEventListener('input', () => setRate(+el.rateSlider.value));
   el.rateInput.addEventListener('input', () => {
+    clearRateError();
     const num = parseRate(el.rateInput.value);
-    if (!isNaN(num) && num >= rateMin() && num <= rateMax()) setRate(num, { fromInput: true });
+    if (Number.isFinite(num) && num >= rateMin() && num <= rateMax()) setRate(num, { fromInput: true });
   });
-  el.rateInput.addEventListener('blur', () => {
+  function clearRateError() {
+    el.rateInput.removeAttribute('aria-invalid');
+    el.rateError.hidden = true;
+    el.rateError.textContent = '';
+  }
+  function commitRateInput() {
     const num = parseRate(el.rateInput.value);
-    if (!isNaN(num)) setRate(num);
-    el.rateInput.value = rateText(state.rate);
-  });
+    if (!Number.isFinite(num) || num < rateMin() || num > rateMax()) {
+      const unit = rateSuffix();
+      el.rateInput.setAttribute('aria-invalid', 'true');
+      el.rateError.textContent = `Digite uma velocidade entre ${rateText(rateMin())} ${unit} e ${rateText(rateMax())} ${unit}.`;
+      el.rateError.hidden = false;
+      return false;
+    }
+    setRate(num);
+    return true;
+  }
+  el.rateInput.addEventListener('blur', commitRateInput);
   el.rateInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') { el.rateInput.blur(); }
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      if (commitRateInput()) el.rateInput.blur();
+    }
     if (e.key === 'ArrowUp') { e.preventDefault(); setRate(state.rate + rateStep(e.shiftKey)); }
     if (e.key === 'ArrowDown') { e.preventDefault(); setRate(state.rate - rateStep(e.shiftKey)); }
   });
@@ -990,8 +1030,7 @@
     repaintScope();
   }
   const toggle = () => (state.playing ? pause() : play());
-
-  [el.btnPlay, el.libraryPlay].forEach((button) => button.addEventListener('click', toggle));
+  [el.btnPlay, el.libraryPlay, el.fPlay].forEach((button) => button.addEventListener('click', toggle));
   const stop = () => {
     pause();
     state.audio.currentTime = 0;
@@ -1203,11 +1242,13 @@
     const src = String(thumbnail || '').trim();
     el.sourceArtwork.hidden = !src;
     el.sourceArtwork.classList.remove('has-image');
+    el.sourcePanel.classList.remove('has-artwork');
 
     if (!src) {
       el.sourceArtworkImage.alt = '';
       el.sourceArtworkImage.dataset.src = '';
       el.sourceArtworkImage.removeAttribute('src');
+      el.sourceArtworkWashImage.removeAttribute('src');
       return;
     }
 
@@ -1215,16 +1256,21 @@
     if (el.sourceArtworkImage.dataset.src !== src) {
       el.sourceArtworkImage.dataset.src = src;
       el.sourceArtworkImage.src = src;
+      el.sourceArtworkWashImage.src = src;
     } else if (el.sourceArtworkImage.complete && el.sourceArtworkImage.naturalWidth > 0) {
       el.sourceArtwork.classList.add('has-image');
+      el.sourcePanel.classList.add('has-artwork');
     }
   }
 
   el.sourceArtworkImage.addEventListener('load', () => {
+    if (!el.sourceArtworkImage.dataset.src) return;
     el.sourceArtwork.classList.add('has-image');
+    el.sourcePanel.classList.add('has-artwork');
   });
   el.sourceArtworkImage.addEventListener('error', () => {
     el.sourceArtwork.classList.remove('has-image');
+    el.sourcePanel.classList.remove('has-artwork');
     el.sourceArtwork.hidden = true;
   });
 
@@ -1318,8 +1364,9 @@
       setRate(cfg('load.resetRate') ? 100 : state.rate);
       state.audio.volume = +el.vol.value / 100;
 
-      [el.btnPlay, el.btnStop, el.btnLoop, el.scrub, el.zoomIn, el.zoomOut, el.btnExport, el.fScrub]
+      [el.btnPlay, el.btnStop, el.btnLoop, el.scrub, el.zoomIn, el.zoomOut, el.fScrub, el.fPlay]
         .forEach((b) => { b.disabled = false; });
+      el.btnExport.disabled = state.exporting;
       el.waveHost.classList.remove('is-empty');
       el.empty.hidden = true;
 
@@ -1334,7 +1381,6 @@
       el.fileMeta.textContent = `${(buf.sampleRate / 1000).toFixed(1)} kHz · ${buf.numberOfChannels === 1 ? 'mono' : 'estéreo'} · ${fmtTime(buf.duration)}`;
       el.sName.textContent = file.name;
       el.sName.title = file.name;
-      window.Motion.marquee(el.sName, { speed: 24 });
       el.sDur.textContent = fmtTime(buf.duration);
       el.sRate.textContent = `${buf.sampleRate} Hz`;
       el.sCh.textContent = String(buf.numberOfChannels);
@@ -1493,15 +1539,38 @@
     rate: state.rate,
     sampleRate: sr,
   });
+  function renderExportSummary() {
+    // A operação mantém o resumo que foi confirmado, mesmo com ajustes posteriores.
+    if (state.exporting) return;
+    if (!state.loaded) {
+      el.exportName.textContent = '—';
+      el.exportName.removeAttribute('title');
+      el.exportFormat.textContent = '—';
+      el.exportProcessing.textContent = '';
+      el.exportProcessing.hidden = true;
+      return;
+    }
+    const sr = outSampleRate();
+    const depth = cfg('export.bits');
+    const name = outName(sr);
+    el.exportName.textContent = name;
+    el.exportName.title = name;
+    el.exportFormat.textContent = `WAV · ${depth === '32f' ? '32 bits float' : `${depth} bits PCM`} · ${sr / 1000} kHz · ${state.meta.channels} ${state.meta.channels === 1 ? 'canal' : 'canais'}`;
+    el.exportProcessing.textContent = cfg('export.normalize')
+      ? `Pico normalizado a ${Number(cfg('export.ceiling')).toFixed(1)} dBFS`
+      : '';
+    el.exportProcessing.hidden = !el.exportProcessing.textContent;
+  }
 
   el.btnExport.addEventListener('click', async () => {
     if (!state.buffer || state.exporting) return;
+    renderExportSummary();
     state.exporting = true;
     syncStatusPriority();
     el.btnExport.disabled = true;
+    el.btnExport.setAttribute('aria-busy', 'true');
     if (motionSweep()) {
       el.btnExport.classList.add('is-busy');
-      el.btnExport.setAttribute('aria-busy', 'true');
       el.exportLabel.classList.add('is-working');
     }
     window.Motion.cancel(el.exportLabel);
@@ -1514,6 +1583,10 @@
       const r = state.rate / 100;
       const src = state.buffer;
       const sr = outSampleRate();
+      // Capturar a saída antes do primeiro await mantém arquivo e resumo coerentes.
+      const name = outName(sr);
+      const depth = cfg('export.bits');
+      const opts = { normalize: cfg('export.normalize'), ceiling: cfg('export.ceiling') };
       const frames = Math.max(1, Math.ceil((src.duration / r) * sr));
       const OAC = window.OfflineAudioContext || window.webkitOfflineAudioContext;
       const oac = new OAC(src.numberOfChannels, frames, sr);
@@ -1524,8 +1597,7 @@
       node.start(0);
       const out = await oac.startRendering();
       el.exportLabel.textContent = 'Codificando…';
-      const depth = cfg('export.bits');
-      const opts = { normalize: cfg('export.normalize'), ceiling: cfg('export.ceiling') };
+      status('Codificando WAV');
       let blob;
       try {
         blob = await encodeOffThread(out, depth, opts);
@@ -1534,7 +1606,7 @@
       }
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
-      a.download = outName(sr);
+      a.download = name;
       a.click();
       setTimeout(() => URL.revokeObjectURL(a.href), 4000);
       done = { name: a.download, size: blob.size };
@@ -1543,11 +1615,12 @@
     } finally {
       state.exporting = false;
       syncStatusPriority();
-      el.btnExport.disabled = false;
+      el.btnExport.disabled = !state.loaded;
       el.btnExport.classList.remove('is-busy');
       el.btnExport.removeAttribute('aria-busy');
       el.exportLabel.classList.remove('is-working');
       el.exportLabel.textContent = 'Exportar WAV';
+      renderExportSummary();
       dot(state.playing ? 'live' : 'ready');
       repaintScope();
     }
@@ -1578,8 +1651,9 @@
   /* ═══ Focus Mode ═════════════════════════════════════════
      A mesma apresentação do osciloscópio em escala de tela.
      A interface normal se recolhe; no rodapé permanecem só a
-     timeline e a velocidade, discretas mas operáveis.       */
+     reprodução, posição e velocidade, discretas mas operáveis. */
   let focusTimer = 0;
+  const focusBackground = new Map();
 
   function syncFocus(cur, r) {
     el.fCur.textContent = fmtTime(cur / r);
@@ -1588,11 +1662,19 @@
 
   function focusOn() {
     if (state.focus) return;
+    if (window.Settings.isOpen()) window.Settings.close({ restoreFocus: false });
+    importMenuOpen(false);
     state.focus = true;
     clearTimeout(focusTimer);
     el.focus.hidden = false;
+    el.focus.inert = false;
     el.root.dataset.focus = '1';
     el.scopeWrap.setAttribute('aria-expanded', 'true');
+    for (const sibling of el.focus.parentElement.children) {
+      if (sibling === el.focus) continue;
+      focusBackground.set(sibling, sibling.inert);
+      sibling.inert = true;
+    }
     const settle = () => {
       el.focus.classList.add('is-on');
       views.focus.resize();
@@ -1600,18 +1682,23 @@
     };
     if (window.Motion.reduced()) settle(); else requestAnimationFrame(settle);
     el.fScrub.disabled = !state.loaded;
+    el.fPlay.disabled = !state.loaded;
+    syncPlayback();
     renderReadouts();
     syncFocus(state.audio.currentTime || 0, state.rate / 100);
-    el.fExit.focus({ preventScroll: true });
+    (state.loaded ? el.fPlay : el.fExit).focus({ preventScroll: true });
     flash('Modo foco');
   }
 
   function focusOff() {
     if (!state.focus) return;
     state.focus = false;
+    el.focus.inert = true;
     el.focus.classList.remove('is-on');
     el.scopeWrap.setAttribute('aria-expanded', 'false');
     delete el.root.dataset.focus;
+    for (const [sibling, inert] of focusBackground) sibling.inert = inert;
+    focusBackground.clear();
     clearTimeout(focusTimer);
     const close = () => { el.focus.hidden = true; };
     if (window.Motion.reduced()) close(); else focusTimer = setTimeout(close, 240);
@@ -1621,6 +1708,15 @@
 
   el.scopeWrap.addEventListener('click', () => (state.focus ? focusOff() : focusOn()));
   el.fExit.addEventListener('click', focusOff);
+  el.focus.addEventListener('keydown', (e) => {
+    if (e.key !== 'Tab' || !state.focus) return;
+    const controls = Array.from(el.focus.querySelectorAll('button:not(:disabled), input:not(:disabled)'));
+    const first = controls[0], last = controls[controls.length - 1];
+    if (!controls.includes(document.activeElement) || (e.shiftKey ? document.activeElement === first : document.activeElement === last)) {
+      e.preventDefault();
+      (e.shiftKey ? last : first).focus();
+    }
+  });
   let focusResizeRaf = 0;
   new ResizeObserver(() => {
     if (!state.focus || focusResizeRaf) return;
@@ -1762,8 +1858,15 @@
     el.url.disabled = linkUI.busy;
     el.urlGo.disabled = linkUI.busy;
     el.urlGo.setAttribute('aria-busy', String(linkUI.busy && phase === 'analyze'));
+    el.urlCancel.hidden = !linkUI.busy;
+    el.urlCancel.textContent = phase === 'analyze' ? 'Cancelar análise' : 'Cancelar importação';
+    el.urlClose.setAttribute('aria-label', linkUI.busy ? 'Cancelar e fechar importação por link' : 'Fechar importação por link');
+    el.urlClose.title = linkUI.busy ? 'Cancelar e fechar' : 'Fechar';
     if (el.urlAuth) el.urlAuth.disabled = linkUI.busy;
     linkSyncImportButton();
+    if (!on && document.activeElement === el.urlCancel) {
+      (!el.urlPreview.hidden && !el.urlImport.disabled ? el.urlImport : el.url).focus({ preventScroll: true });
+    }
     syncStatusPriority();
   }
 
@@ -1781,6 +1884,7 @@
   const linkIsCurrent = (op) => op === linkUI.op;
 
   function linkOpen(on) {
+    const restoreFocus = !on && el.linkbar.contains(document.activeElement);
     el.linkbar.hidden = !on;
     if (on) importMenuOpen(false);
     if (on) {
@@ -1789,14 +1893,17 @@
     } else {
       linkMsg('');
       linkAbort();
+      if (restoreFocus) el.btnImport.focus({ preventScroll: true });
     }
   }
 
   function linkMsg(text, kind) {
     el.urlMsg.hidden = !text;
     window.Motion.cancel(el.urlMsg);
-    if (!text) el.urlMsg.textContent = '';
-    else if (cfg('motion.status')) {
+    if (!text) {
+      el.urlMsg.textContent = '';
+      el.url.removeAttribute('aria-invalid');
+    } else if (kind !== 'err' && cfg('motion.status')) {
       window.Motion.status(el.urlMsg, text, { persist: true, caret: false, intensity: 0.9 });
     } else {
       el.urlMsg.textContent = text;
@@ -1981,7 +2088,10 @@
     if (linkUI.busy) return false;
     const parsed = window.RemoteImport.parse(raw);
     if (!parsed.ok) {
-      if (!opts.silent) linkFail(parsed.error, false);
+      if (!opts.silent) {
+        el.url.setAttribute('aria-invalid', 'true');
+        linkFail(parsed.error, false);
+      }
       return false;
     }
 
@@ -2025,6 +2135,7 @@
     }
     const parsed = window.RemoteImport.parse(el.url.value);
     if (!parsed.ok) {
+      el.url.setAttribute('aria-invalid', 'true');
       linkFail(parsed.error, false);
       return;
     }
@@ -2196,6 +2307,7 @@
   }
 
   const linkAbort = () => {
+    const restoreFocus = document.activeElement === el.urlCancel;
     clearTimeout(linkUI.pasteTimer);
     linkUI.pasteTimer = 0;
     linkUI.pastePending = false;
@@ -2214,22 +2326,32 @@
       if (!state.loaded) dot('idle');
       status('Importação por link cancelada');
     }
+    if (restoreFocus && !el.linkbar.hidden) el.url.focus({ preventScroll: true });
   };
 
   /* ── menu unificado de importação ──────────────────────
      O header expõe apenas uma entrada. Arquivo local e URL
      são escolhas do mesmo fluxo de aquisição, não ações globais
      independentes. O menu não altera a linkbar nem o motor de áudio. */
+  let importTrigger = el.btnImport;
   function importMenuOpen(on, focusFirst = false) {
     el.importMenu.hidden = !on;
     el.btnImport.setAttribute('aria-expanded', String(on));
+    el.btnEmptyImport.setAttribute('aria-expanded', String(on));
     if (on && focusFirst) requestAnimationFrame(() => el.importFile.focus());
   }
-
-  el.btnImport.addEventListener('click', () => importMenuOpen(el.importMenu.hidden));
+  el.btnEmptyImport.addEventListener('click', () => {
+    importTrigger = el.btnEmptyImport;
+    importMenuOpen(true, true);
+  });
+  el.btnImport.addEventListener('click', () => {
+    importTrigger = el.btnImport;
+    importMenuOpen(el.importMenu.hidden);
+  });
   el.btnImport.addEventListener('keydown', (e) => {
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
       e.preventDefault();
+      importTrigger = el.btnImport;
       importMenuOpen(true, true);
       if (e.key === 'ArrowUp') requestAnimationFrame(() => el.importLink.focus());
     }
@@ -2251,7 +2373,7 @@
     if (e.key === 'Escape') {
       e.preventDefault();
       importMenuOpen(false);
-      el.btnImport.focus();
+      importTrigger.focus();
     } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
       e.preventDefault();
       const step = e.key === 'ArrowDown' ? 1 : -1;
@@ -2265,6 +2387,7 @@
   el.urlThumb.addEventListener('load', () => el.urlThumbWrap.classList.add('has-image'));
   el.urlThumb.addEventListener('error', () => el.urlThumbWrap.classList.remove('has-image'));
   el.urlClose.addEventListener('click', () => linkOpen(false));
+  el.urlCancel.addEventListener('click', linkAbort);
   el.urlGo.addEventListener('click', () => analyzeUrl(el.url.value));
   el.urlAuth?.addEventListener('click', useBrowserSession);
   el.urlImport.addEventListener('click', importRemoteAudio);
@@ -2331,7 +2454,7 @@
   document.addEventListener('keydown', (e) => {
     const target = e.target instanceof Element ? e.target : document.activeElement;
     if (e.key === 'Escape') {
-      if (!el.importMenu.hidden) { importMenuOpen(false); el.btnImport.focus(); return; }
+      if (!el.importMenu.hidden) { importMenuOpen(false); importTrigger.focus(); return; }
       if (window.Settings.isOpen()) { window.Settings.close(); return; }
       if (state.focus) { focusOff(); return; }
       if (!el.linkbar.hidden) { linkOpen(false); return; }
@@ -2349,7 +2472,7 @@
       case '[': setRate(state.rate - rateStep(e.shiftKey), { step: true }); break;
       case ']': setRate(state.rate + rateStep(e.shiftKey), { step: true }); break;
       case '0': setRate(100, { step: true }); break;
-      case ',': e.preventDefault(); window.Settings.toggle(); break;
+      case ',': e.preventDefault(); if (state.focus) focusOff(); window.Settings.toggle(); break;
       default: break;
     }
   });

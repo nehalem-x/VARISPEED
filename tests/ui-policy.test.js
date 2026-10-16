@@ -22,11 +22,14 @@ test('Space on a library option is contained and never opens the track', () => {
   assert.match(library, /event\.key === ' '\) \{\s*event\.preventDefault\(\);\s*event\.stopPropagation\(\);/);
 });
 
-test('focus is represented inside controls and track artwork extends into rows', () => {
+test('keyboard focus stays in controls without external outlines or changing geometry', () => {
   const css = read('styles.css');
-  const outlineValues = [...css.matchAll(/\boutline\s*:\s*([^;]+);/g)].map((match) => match[1].trim());
-  assert.ok(outlineValues.every((value) => value === 'none' || value === '0'), outlineValues.join(', '));
-  assert.match(css, /\.btn:focus-visible,[\s\S]*?border-width:\s*2px;/);
+  // Match CSS declarations rather than a selector such as .btn--outline:focus-visible.
+  const outlines = [...css.matchAll(/(?:^|[;{])\s*outline\s*:\s*([^;}]+);/g)].map(match => match[1].trim());
+  assert.ok(outlines.every(value => value === 'none' || value === '0'));
+  assert.match(css, /\.txt:focus-visible\s*\{\s*border-color:\s*var\(--focus\);/);
+  assert.doesNotMatch(css, /[^{}]*:focus(?:-visible|\b)[^{}]*\{[^{}]*border(?:-bottom)?-width:\s*2px;/);
+  assert.match(css, /\.library__track:focus-visible\s*\{\s*outline:\s*0;\s*border-left-color:\s*var\(--focus\);/);
   assert.match(css, /\.library__track-wash\s*\{/);
   assert.match(css, /mask-image:\s*linear-gradient/);
 });
