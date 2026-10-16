@@ -847,8 +847,13 @@ Não volte a capturar o ponteiro no `<g>` do nó: esses elementos são descartá
 │   ├── requirements.txt
 │   └── requirements-dev.txt
 ├── pyproject.toml
+├── VARISPEED.desktop
+├── docs/
+│   ├── HANDOFF.md
+│   ├── PADRAO_UI.md
+│   └── REVISAO_ICONES.md
+├── CHANGELOG.md
 ├── README.md
-├── HANDOFF.md
 └── .gitignore
 ```
 
