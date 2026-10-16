@@ -759,10 +759,12 @@
       el.detailWash.hidden = true;
       el.detailWashImage.dataset.src = '';
       el.detailWashImage.removeAttribute('src');
+      el.detailWashBloom.removeAttribute('src');
     } else if (el.detailWashImage.dataset.src !== item.thumbnail) {
       el.detailWash.hidden = true;
       el.detailWashImage.dataset.src = item.thumbnail;
       el.detailWashImage.src = item.thumbnail;
+      el.detailWashBloom.src = item.thumbnail;
     }
     if (!item) return;
     el.detailArtwork.hidden = !item || !item.thumbnail;
@@ -1179,7 +1181,7 @@
       detailByline: $('libraryDetailByline'), detailOutputLabel: $('libraryDetailOutputLabel'),
       detailOutputDuration: $('libraryDetailOutputDuration'), favoriteLabel: $('libraryFavoriteLabel'),
       detailArtwork: $('libraryDetailArtwork'), detailArtworkImage: $('libraryDetailArtworkImage'),
-      detailWash: $('libraryDetailWash'), detailWashImage: $('libraryDetailWashImage'),
+      detailWash: $('libraryDetailWash'), detailWashImage: $('libraryDetailWashImage'), detailWashBloom: $('libraryDetailWashBloom'),
       detailRows: $('libraryDetailRows'),
       organization: $('libraryOrganization'), categorySelect: $('libraryCategorySelect'),
       open: $('libraryOpen'), openLabel: $('libraryOpenLabel'),
