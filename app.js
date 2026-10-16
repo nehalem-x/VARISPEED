@@ -199,7 +199,12 @@
     }, opts));
   };
   const motionSweep = () => cfg('motion.sweep') && !window.Motion.reduced();
-  const dot = (s) => { el.scopeWrap.dataset.state = s; };
+  const dot = (s) => {
+    el.scopeWrap.dataset.state = s;
+    /* Até a primeira reprodução não há quadro para mostrar; o cabeçalho troca
+       o ponto central do silêncio por um texto. */
+    if (s === 'live') el.scopeWrap.dataset.heard = 'true';
+  };
 
   /* REV 2 · uma faixa carregada no editor não é necessariamente uma faixa da
      Biblioteca. Este rascunho conserva sua origem e seu Blob até que o usuário
@@ -1389,6 +1394,7 @@
 
       resize();
       renderReadouts();
+      el.scopeWrap.dataset.heard = 'false';
       dot('ready');
       status(`Carregado · ${file.name}`);
       if (cfg('load.autoplay')) play();

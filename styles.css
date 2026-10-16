@@ -284,10 +284,10 @@ button, input { font: inherit; color: inherit; }
   max-width: 136px;
   overflow: hidden;
   border: 0;
-  border-left: 0;
-  padding: 0 var(--space-2);
+  border-left: var(--border) solid var(--border-c);
+  padding: 0 0 0 var(--space-2);
   margin: 0;
-  background: var(--surface);
+  background: none;
   appearance: none;
   cursor: pointer;
   opacity: 0.55;
@@ -298,6 +298,24 @@ button, input { font: inherit; color: inherit; }
 .scope-wrap[data-state='live'],
 .scope-wrap[data-state='busy'] { opacity: 1; }
 .scope { display: block; width: 100%; height: 100%; }
+/* Sem áudio carregado, o visualizador mostra um texto em vez do traço vazio. */
+/* O canvas só fica invisível, para manter as medidas quando o áudio chega. */
+.scope-wrap { position: relative; }
+.scope__empty { display: none; }
+.scope-wrap[data-state='idle'] .scope,
+.scope-wrap[data-state='ready'][data-heard='false'] .scope { visibility: hidden; }
+.scope-wrap[data-state='idle'] .scope__empty::before { content: 'Sem áudio'; }
+.scope-wrap[data-state='ready'][data-heard='false'] .scope__empty::before { content: 'Parado'; }
+.scope-wrap[data-state='idle'] .scope__empty,
+.scope-wrap[data-state='ready'][data-heard='false'] .scope__empty {
+  position: absolute;
+  inset: 0 0 0 var(--space-2);
+  display: flex;
+  align-items: center;
+  font-size: var(--text-xs);
+  color: var(--text-3);
+  white-space: nowrap;
+}
 .hdr__filename {
   flex: 1 1 auto;
   font-size: var(--text-sm);

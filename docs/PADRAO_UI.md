@@ -40,6 +40,10 @@ Cor: títulos de bloco usam `--text`, rótulos e apoio usam `--text-2` ou `--tex
 
 As fontes são locais, sem imports remotos.
 
+## Visualizador do cabeçalho
+
+Sem áudio carregado, o visualizador mostra "Sem áudio"; com áudio que ainda não tocou, mostra "Parado". Nos dois casos o canvas só fica invisível, sem perder as medidas. Depois da primeira reprodução, a pausa volta a mostrar o último quadro atenuado. O visualizador não tem fundo próprio.
+
 ## Base compartilhada
 
 Usar os tokens de `styles.css`, com espaçamento em múltiplos de 4 px.
