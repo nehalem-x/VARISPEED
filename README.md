@@ -372,7 +372,7 @@ Mapa e lista:
 - `Biblioteca` reúne todas as faixas, `Favoritas` mostra as marcadas e cada categoria pessoal filtra as músicas ligadas a ela. O nó `Biblioteca` usa o papel `root` da engine e só se liga às categorias.
 - Cada música tem uma categoria principal. Sem escolha, fica só em `Biblioteca`. Excluir uma categoria pessoal devolve as músicas para `Biblioteca` com áudio, metadados e favorito intactos.
 - Categorias são guardadas na ordem de criação e nunca são escondidas ou fundidas automaticamente. Uma categoria vazia continua no mapa para ser renomeada e receber músicas.
-- A lista tem busca, ordenação por inclusão, título, última abertura ou duração, navegação por setas e abertura com Enter. Títulos longos são cortados sem invadir duração e velocidade.
+- A lista tem busca, ordenação por inclusão, título, última abertura ou duração, navegação por setas e abertura com Enter. Títulos longos são cortados sem invadir as colunas da direita. Cada linha mostra a velocidade salva e a duração nessa velocidade em colunas alinhadas; a duração original fica no title. O topo da lista mostra o total de músicas, e "x de y músicas" só durante uma busca.
 - O botão Biblioteca aparece no editor mesmo sem músicas. Entrar na Biblioteca não pausa nem reinicia a reprodução.
 
 Interação:

@@ -385,7 +385,10 @@
     const rows = currentTracks();
     if (selectedId && !rows.some((item) => item.id === selectedId)) selectedId = '';
     el.browserTitle.textContent = category.name;
-    el.browserCount.textContent = `${rows.length} de ${categoryItemCount(category.id)} músicas`;
+    const total = categoryItemCount(category.id);
+    el.browserCount.textContent = text(el.search.value)
+      ? `${rows.length} de ${musicCountLabel(total)}`
+      : musicCountLabel(total);
     el.listEmpty.hidden = rows.length > 0;
     const searching = Boolean(text(el.search.value));
     el.listEmptyTitle.textContent = searching ? 'Nenhuma música encontrada.' : 'Nenhuma música nesta categoria.';
@@ -411,8 +414,6 @@
           span.textContent = value;
           return span;
         };
-        const number = part('library__track-number mono', String(index + 1).padStart(2, '0'));
-        number.setAttribute('aria-hidden', 'true');
         const art = part('library__track-art', '');
         art.setAttribute('aria-hidden', 'true');
         art.innerHTML = '<svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#ui-icon-waveform"/></svg>';
@@ -437,8 +438,13 @@
         const info = part('library__track-info', '');
         info.append(part('library__track-title', item.title), part('library__track-byline', item.byline || item.sourceLabel));
         const status = part('library__track-state mono', '');
-        const meta = part('library__track-meta mono', `${formatTime(item.duration)} · ${window.VarispeedCore.rateText(item.rate, 'pct')}%`);
-        row.append(wash, number, art, info, status, meta);
+        /* Velocidade salva e duração nessa velocidade, em colunas alinhadas. */
+        const rateLabel = `${window.VarispeedCore.rateText(item.rate, 'pct')}%`;
+        const meta = part('library__track-meta mono', '');
+        meta.append(part('library__track-rate', rateLabel),
+          part('library__track-duration', item.rate > 0 ? formatTime(item.duration / (item.rate / 100)) : '—'));
+        meta.title = `Velocidade salva ${rateLabel} · duração nessa velocidade (original ${formatTime(item.duration)})`;
+        row.append(wash, art, info, status, meta);
         row.title = `${item.title} · clique para ver os detalhes; Enter ou clique duplo abre no editor`;
         row.addEventListener('click', () => selectTrack(item.id));
         row.addEventListener('dblclick', () => { selectTrack(item.id); openSelected(); });
