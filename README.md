@@ -377,7 +377,7 @@ Mapa e lista:
 
 Interação:
 
-- Com uma faixa carregada, o cabeçalho da Biblioteca mostra o mesmo transporte do editor (play/pause, parar, repetir, tempo, timeline e duração), sincronizado com o mesmo áudio. Play/Pause, Stop, Loop e o scrub são clonados dos controles oficiais na inicialização; o modo foco faz o mesmo com os passos de velocidade. Os três scrubs usam o mesmo binder de eventos.
+- Com uma faixa carregada, a Biblioteca mostra embaixo a mesma barra de reprodução do editor, no mesmo lugar (play/pause, parar, repetir, tempo, timeline e duração), sincronizada com o mesmo áudio. Sem faixa carregada, o mapa ocupa a altura toda. Play/Pause, Stop, Loop e o scrub são clonados dos controles oficiais na inicialização; o modo foco faz o mesmo com os passos de velocidade. Os três scrubs usam o mesmo binder de eventos.
 - Nenhuma música começa selecionada. Clique, Enter ou Espaço selecionam o nó e abrem o painel lateral. A câmera usa `focusNode()`, aproxima até pelo menos `1.35×` e centraliza no espaço útil, descontando os blocos marcados com `data-graph-viewport-block`. Com o painel aberto, a câmera acompanha a flutuação do nó; clicar de novo no mesmo nó não reconstrói o painel, e fechar o painel volta ao enquadramento geral.
 - O painel de detalhes usa a thumbnail guardada das músicas remotas e mostra autor/canal como Crédito. O painel `Fonte` usa a mesma thumbnail como capa e remove o espaço quando não há imagem ou ela falha.
 - `Abrir música`/`Voltar à música` usa o mesmo estado ocupado, pulso e varredura de `Exportar WAV`.

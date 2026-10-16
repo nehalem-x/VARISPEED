@@ -206,14 +206,6 @@ SOFTWARE.
         </button>
       </div>
       <span class="hdr__filename" id="fileName">nenhum arquivo</span>
-      <div class="hdr-player" id="libraryTransport" role="group" aria-label="Transporte da música carregada" hidden>
-        <div class="transport__group hdr-player__controls">
-          <span class="ui-slot" id="libraryPlaySlot"></span>
-          <span class="ui-slot" id="libraryStopSlot"></span>
-          <span class="ui-slot" id="libraryLoopSlot"></span>
-        </div>
-        <span class="ui-slot" id="libraryScrubSlot"></span>
-      </div>
       <span class="hdr__filemeta mono" id="fileMeta" hidden aria-hidden="true">—</span>
     </div>
 
@@ -430,6 +422,15 @@ SOFTWARE.
           </footer>
         </form>
       </div>
+    </div>
+    <!-- Mesma barra de reprodução do editor, no mesmo lugar: embaixo. -->
+    <div class="library__transport" id="libraryTransport" role="group" aria-label="Transporte da música carregada" hidden>
+      <div class="transport__group">
+        <span class="ui-slot" id="libraryPlaySlot"></span>
+        <span class="ui-slot" id="libraryStopSlot"></span>
+        <span class="ui-slot" id="libraryLoopSlot"></span>
+      </div>
+      <span class="ui-slot" id="libraryScrubSlot"></span>
     </div>
     <div class="library-tutorial" id="libraryTutorial" role="dialog" aria-modal="true" aria-labelledby="libraryTutorialTitle" aria-describedby="libraryTutorialBody" data-step="0" hidden>
       <svg class="library-tutorial__network" viewBox="0 0 720 420" preserveAspectRatio="xMidYMid slice" aria-hidden="true">

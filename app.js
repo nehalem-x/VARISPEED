@@ -33,7 +33,7 @@
   const libraryStop = cloneControl($('btnStop'), 'libraryStopSlot', 'libraryStop');
   const libraryLoop = cloneControl($('btnLoop'), 'libraryLoopSlot', 'libraryLoop');
   const libraryScrubGroup = document.querySelector('.transport > .transport__scrub').cloneNode(true);
-  libraryScrubGroup.classList.add('hdr-player__scrub');
+  libraryScrubGroup.classList.add('library__transport-scrub');
   const libraryCurrent = libraryScrubGroup.querySelector('#tCur');
   const libraryScrub = libraryScrubGroup.querySelector('#scrub');
   const libraryTotal = libraryScrubGroup.querySelector('#tTot');
