@@ -80,7 +80,7 @@ Importar e exportar usam desenhos distintos. Biblioteca usa livros, salvar na Bi
 
 As setas dos selects seguem o mesmo chevron, com contraste adequado ao tema; em cores forçadas, retorna o controle nativo. Não acrescentar ícones a ações que já são claras por texto.
 
-Origem, revisão e mapeamento: [manifesto Lucide](assets/icons/lucide-manifest.json). Licenças ISC e MIT/Feather preservadas em [LICENSE.lucide.txt](assets/icons/LICENSE.lucide.txt) e nos arquivos que distribuem os desenhos. Nenhuma biblioteca JavaScript, fonte de ícones ou CDN é carregada em runtime.
+Origem, revisão e mapeamento: [manifesto Lucide](../assets/icons/lucide-manifest.json). Licenças ISC e MIT/Feather preservadas em [LICENSE.lucide.txt](../assets/icons/LICENSE.lucide.txt) e nos arquivos que distribuem os desenhos. Nenhuma biblioteca JavaScript, fonte de ícones ou CDN é carregada em runtime.
 
 
 ## Configurações e ajudas por item

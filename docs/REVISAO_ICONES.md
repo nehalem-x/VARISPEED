@@ -9,7 +9,7 @@ A interface usa agora uma seleção local do Lucide. A troca preserva as caixas 
 | [Lucide](https://github.com/lucide-icons/lucide) | [ISC; MIT para desenhos derivados do Feather](https://lucide.dev/license) | Selecionado: geometria SVG de 24×24, desenhos legíveis em 16 px e símbolos adequados às ações existentes |
 | [Tabler Icons](https://github.com/tabler/tabler-icons) | MIT | Alternativa coerente, com [grade de 24×24 e traço de 2 unidades](https://docs.tabler.io/icons/design-guide); não misturada ao conjunto adotado |
 
-Os SVGs selecionados contêm apenas primitivas vetoriais, sem scripts, imagens externas ou fontes. São incorporados ao sprite local. Não há dependência JavaScript adicional nem requisições a um CDN. A revisão upstream está fixada no [manifesto](assets/icons/lucide-manifest.json), com a [licença completa](assets/icons/LICENSE.lucide.txt). Os avisos legais também acompanham o HTML e o componente opcional que distribuem os desenhos.
+Os SVGs selecionados contêm apenas primitivas vetoriais, sem scripts, imagens externas ou fontes. São incorporados ao sprite local. Não há dependência JavaScript adicional nem requisições a um CDN. A revisão upstream está fixada no [manifesto](../assets/icons/lucide-manifest.json), com a [licença completa](../assets/icons/LICENSE.lucide.txt). Os avisos legais também acompanham o HTML e o componente opcional que distribuem os desenhos.
 
 ## Mudanças por contexto
 

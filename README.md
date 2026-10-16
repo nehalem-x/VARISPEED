@@ -1,4 +1,4 @@
-# VARISPEED — velocidade de áudio sem preservação de pitch
+# VARISPEED: velocidade de áudio sem preservação de pitch
 
 VARISPEED é uma ferramenta web para reproduzir e exportar áudio em velocidades diferentes **sem correção/preservação de pitch**. Ao reduzir a velocidade, o áudio fica naturalmente mais grave; ao aumentar, fica mais agudo.
 
@@ -38,9 +38,9 @@ Implementado:
 
 A interface diferencia a entrada de áudio, o transporte/velocidade e a saída. O editor vazio apresenta uma ação explícita de importação; com áudio carregado, mostra comparação de duração e resumo da exportação. Biblioteca, editor e modo foco reutilizam o controle de reprodução.
 
-Botões compartilham estados de hover, foco de teclado, pressão, seleção, indisponibilidade e carregamento. Campos de velocidade, presets, links e categorias mostram erros junto ao controle. Medidas e comportamento estão em [PADRAO_UI.md](PADRAO_UI.md); implementação e verificação estão em [ALTERACOES_UI.md](ALTERACOES_UI.md).
+Botões compartilham estados de hover, foco de teclado, pressão, seleção, indisponibilidade e carregamento. Campos de velocidade, presets, links e categorias mostram erros junto ao controle. Medidas e comportamento estão em [docs/PADRAO_UI.md](docs/PADRAO_UI.md), e o que mudou em cada versão está no [CHANGELOG.md](CHANGELOG.md).
 
-A iconografia usa uma seleção local do Lucide, com geometrias e tamanhos compartilhados entre módulos. Origem, licenças, escolhas e verificações estão em [REVISAO_ICONES.md](REVISAO_ICONES.md).
+A iconografia usa uma seleção local do Lucide, com geometrias e tamanhos compartilhados entre módulos. Origem, licenças, escolhas e verificações estão em [docs/REVISAO_ICONES.md](docs/REVISAO_ICONES.md).
 
 ## Regra central do projeto
 
@@ -276,8 +276,13 @@ Uma verificação adicional no teto estrutural usou `200` músicas, `64` categor
 │   ├── requirements.txt
 │   └── requirements-dev.txt # lint e auditoria usados na CI
 ├── pyproject.toml          # política Ruff do projeto
+├── VARISPEED.desktop       # atalho de menu para Linux (ajustar caminhos)
+├── docs/
+│   ├── HANDOFF.md          # estado técnico e invariantes
+│   ├── PADRAO_UI.md        # medidas e regras da interface
+│   └── REVISAO_ICONES.md   # origem e licença dos ícones
+├── CHANGELOG.md
 ├── README.md
-├── HANDOFF.md
 └── .gitignore
 ```
 
@@ -388,6 +393,12 @@ Depois abra:
 
 ```text
 http://127.0.0.1:8765/
+```
+
+Para abrir pelo menu de aplicativos, use `VARISPEED.desktop`. O arquivo aponta para `/home/gaspar/.config/VARISPEED`; troque pelo caminho do seu clone antes de instalar:
+
+```bash
+sed "s#/home/gaspar/.config/VARISPEED#$PWD#g" VARISPEED.desktop > ~/.local/share/applications/VARISPEED.desktop
 ```
 
 ## Execução manual
