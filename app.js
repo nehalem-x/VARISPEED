@@ -71,7 +71,7 @@
     rOriginal: $('rOriginal'), rateHelp: $('rateHelp'), rateError: $('rateError'),
     sName: $('sName'), sDur: $('sDur'), sRate: $('sRate'), sCh: $('sCh'), sSize: $('sSize'),
     sourcePanel: $('sourcePanel'), sourceArtwork: $('sourceArtwork'), sourceArtworkImage: $('sourceArtworkImage'),
-    sourceArtworkWashImage: $('sourceArtworkWashImage'),
+    sourceArtworkWashImage: $('sourceArtworkWashImage'), sourceArtworkWashBloom: $('sourceArtworkWashBloom'),
     btnExport: $('btnExport'), exportLabel: $('exportLabel'),
     exportName: $('exportName'), exportFormat: $('exportFormat'), exportProcessing: $('exportProcessing'),
     statusMsg: $('statusMsg'), drop: $('drop'),
@@ -1254,6 +1254,7 @@
       el.sourceArtworkImage.dataset.src = '';
       el.sourceArtworkImage.removeAttribute('src');
       el.sourceArtworkWashImage.removeAttribute('src');
+      el.sourceArtworkWashBloom.removeAttribute('src');
       return;
     }
 
@@ -1262,6 +1263,7 @@
       el.sourceArtworkImage.dataset.src = src;
       el.sourceArtworkImage.src = src;
       el.sourceArtworkWashImage.src = src;
+      el.sourceArtworkWashBloom.src = src;
     } else if (el.sourceArtworkImage.complete && el.sourceArtworkImage.naturalWidth > 0) {
       el.sourceArtwork.classList.add('has-image');
       el.sourcePanel.classList.add('has-artwork');
