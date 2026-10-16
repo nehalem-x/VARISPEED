@@ -581,7 +581,7 @@ window.Settings = (() => {
       row.appendChild(input);
       row.classList.add('cfg__row--inline', 'cfg__row--switch');
     } else if (f.t === 'select') {
-      input = h('select', 'sel mono');
+      input = h('select', 'sel');
       f.opts.forEach(([id, label]) => {
         const o = h('option', null, label);
         o.value = id;

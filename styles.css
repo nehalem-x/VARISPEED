@@ -284,10 +284,10 @@ button, input { font: inherit; color: inherit; }
   max-width: 136px;
   overflow: hidden;
   border: 0;
-  border-left: var(--border) solid var(--border-c);
-  padding: 0 0 0 var(--space-2);
+  border-left: 0;
+  padding: 0 var(--space-2);
   margin: 0;
-  background: none;
+  background: var(--surface);
   appearance: none;
   cursor: pointer;
   opacity: 0.55;
@@ -486,7 +486,9 @@ button, input { font: inherit; color: inherit; }
   --btn-active-text: var(--accent-text);
   --btn-focus-border: var(--accent-text);
 }
-[data-media='loaded'] .btn--import-primary {
+/* O Importar do cabeçalho é sempre secundário; no editor vazio a ação
+   principal é o botão do centro. */
+.btn--import-primary {
   --btn-bg: transparent;
   --btn-border: var(--border-c);
   --btn-text: var(--text);
@@ -660,8 +662,10 @@ button, input { font: inherit; color: inherit; }
 .library__header-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); min-width: 0; }
 .library__explore, .library__sort { display: flex; align-items: center; gap: var(--space-2); min-width: 0; }
 .library__map-label { flex: none; font-size: var(--text-xs); color: var(--text-2); }
-.library__explore .sel { width: 160px; max-width: none; }
-.library__sort .sel { width: 176px; max-width: none; }
+.library__explore .sel,
+.library__sort .sel { width: auto; max-width: none; }
+/* Ordenar só afeta a lista de uma categoria. */
+.library:not(.is-browsing) .library__sort { display: none; }
 .library__browser {
   position: absolute; inset: 0 0 0 var(--library-side-w); min-width: 0;
   display: grid; grid-template-rows: auto minmax(0, 1fr);
@@ -1630,7 +1634,7 @@ button, input { font: inherit; color: inherit; }
   overscroll-behavior: contain;
 }
 .insp > .hr { display: none; }
-.panel--result { background: var(--surface-2); }
+.insp > .panel + .panel { border-top: var(--border) solid var(--divider); }
 .insp > .panel { padding: var(--space-5) var(--space-4); }
 .insp > .panel,
 .insp__foot { flex: none; }
@@ -1652,10 +1656,10 @@ button, input { font: inherit; color: inherit; }
 .result__duration--output dd { color: var(--text); font-size: var(--text-title); font-weight: 500; }
 .panel--result .rows { gap: var(--space-3); }
 .panel--result .row { align-items: center; }
-.panel--source { position: relative; display: grid; overflow: hidden; background: var(--bg); }
+.panel--source { position: relative; display: grid; overflow: hidden; }
 .panel--source > :not(.panel-source__wash) { position: relative; z-index: 1; }
 .export-summary { display: grid; gap: var(--space-2); width: 100%; min-width: 0; font-size: var(--text-xs); }
-.export-summary__title { color: var(--text); font-weight: 600; }
+.export-summary__title { color: var(--text); font-size: var(--text-lg); font-weight: 600; }
 .export-summary__name { color: var(--text); overflow-wrap: anywhere; }
 .export-summary__format, .export-summary__processing { color: var(--text-2); line-height: var(--lh-base); }
 
@@ -1746,6 +1750,8 @@ button, input { font: inherit; color: inherit; }
   justify-items: center;
   background: var(--surface);
 }
+/* Na Biblioteca, só o atalho de reprodução continua valendo. */
+[data-view='library'] .sbar__item--editor { display: none; }
 .foot__note {
   font-size: var(--text-xs);
   color: var(--text-3);
@@ -1801,6 +1807,12 @@ kbd {
   background: var(--bg);
   font-size: var(--text-sm);
   color: var(--text);
+}
+
+/* Exportar é a conclusão da tarefa: quando o painel rola sozinho (acima de
+   900 px), o rodapé fica preso à base enquanto os blocos acima rolam. */
+@media (min-width: 901px) {
+  .insp__foot { position: sticky; bottom: 0; z-index: 2; }
 }
 
 /* ═══ responsive ══════════════════════════════════════════ */
@@ -2111,6 +2123,8 @@ kbd {
   align-items: center;
   gap: var(--space-3);
 }
+/* Selects da mesma lista têm a mesma largura. */
+.cfg__row--inline .sel { width: 168px; }
 .cfg__row--stack { grid-template-columns: minmax(0, 1fr) auto; align-items: baseline; }
 .cfg__row--stack .slider,
 .cfg__row--stack .txt,
@@ -2344,7 +2358,8 @@ kbd {
 .sel {
   max-width: 168px;
   appearance: none;
-  padding-right: var(--space-5);
+  /* Espaço para a seta de 12 px, com a mesma folga dos dois lados. */
+  padding-right: calc(var(--space-2) * 2 + 12px);
   background-image: var(--select-chevron);
   background-position: right 8px center;
   background-size: 12px 12px;
@@ -3486,7 +3501,7 @@ textarea { border-radius: 0; }
   border-bottom-color: var(--btn-focus-border);
 }
 .btn--outline:focus-visible:not(:disabled):not([aria-busy='true']),
-[data-media='loaded'] .btn--import-primary:focus-visible:not(:disabled):not([aria-busy='true']) { border-color: var(--focus); }
+.btn--import-primary:focus-visible:not(:disabled):not([aria-busy='true']) { border-color: var(--focus); }
 /* A busca já possui uma borda funcional: não enquadrar seus botões internos. */
 .library__search-wrap.is-expanded .btn:focus-visible { border-bottom-color: transparent; background: transparent; color: var(--text); }
 .btn--primary:focus-visible:not(:disabled),
@@ -3847,4 +3862,12 @@ a:focus-visible { text-decoration: underline; text-underline-offset: 3px; }
 @media (max-width: 420px) {
   .cfg__row--switch { grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
   .cfg__row--switch > .sw { justify-self: end; }
+}
+
+/* Celular: as quatro ações do cabeçalho cabem numa linha. Salvar na
+   biblioteca fica só com o ícone; o nome acessível continua no botão. */
+@media (max-width: 520px) {
+  .hdr__actions { flex-wrap: nowrap; }
+  .btn.hdr__library-add { width: var(--ctl-h); padding-inline: 0; justify-content: center; }
+  .btn.hdr__library-add #libraryAddLabel { display: none; }
 }
