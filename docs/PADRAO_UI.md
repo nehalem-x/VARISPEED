@@ -134,7 +134,9 @@ Arquivo original é um bloco sempre visível ao carregar áudio, com nome comple
 
 O estado inicial mostra apenas a lupa, junto dos filtros e da criação de categoria. A expansão é horizontal, até 240 px, sem aumentar o campo até ocupar o cabeçalho. Usar transição de largura/opacidade e respeitar movimento reduzido. Conteúdo recolhido deve ficar inert, sem focos invisíveis.
 
-Abrir move o foco para o campo; Escape e limpar/fechar recolhem a busca, removem o filtro e devolvem o foco à lupa. Ctrl/Cmd+F é a entrada de teclado da busca quando a Biblioteca está ativa e nenhum modal de categoria está aberto. Manter Explorar e Ordenar separados por função; retorno ao editor acompanha a identificação da página em layouts menores.
+Abrir move o foco para o campo; Escape e limpar/fechar recolhem a busca, removem o filtro e devolvem o foco à lupa. Ctrl/Cmd+F é a entrada de teclado da busca quando a Biblioteca está ativa e nenhum modal de categoria está aberto. Manter Explorar e Ordenar separados por função; Ordenar só aparece na lista de uma categoria. O rótulo Explorar fica só para leitores de tela.
+
+A barra da Biblioteca tem dois tipos de controle: o select e botões com borda da mesma altura. Busca e Nova categoria são botões quadrados de ícone; o nome de Nova categoria fica no `aria-label` e no `title`. O botão "← Editor" fica antes do título acima de 1280 px e à direita do título abaixo disso, separando a navegação das ações da tela.
 
 
 Ações independentes como Nova categoria, Analisar link, Salvar preset e Copiar podem usar contorno discreto. O Importar do cabeçalho é sempre secundário e usa esse tratamento; no editor vazio, a ação principal é o botão do centro. Não combinar contorno do grupo com contornos de todos os controles internos. Presets e tokens usam texto e espaçamento, sem caixas preenchidas permanentes em cada item. No campo de busca expandido, o foco usa a borda do wrapper e o contraste do ícone, sem acrescentar moldura aos botões internos.

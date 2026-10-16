@@ -284,13 +284,17 @@ SOFTWARE.
   <!-- ─── BIBLIOTECA VISUAL ─────────────────────────────── -->
   <section class="library" id="libraryView" aria-label="Biblioteca de músicas" hidden>
     <header class="library__bar">
+      <button class="btn btn--ghost library__close" id="libraryClose" type="button" aria-label="Voltar ao editor" title="Voltar ao editor">
+        <svg class="ui-icon ui-icon--small" width="12" height="12" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#ui-icon-chevron-left"/></svg>
+        Editor
+      </button>
       <div class="library__heading">
         <h1 class="library__title">Biblioteca</h1>
         <span class="library__total mono" id="librarySummary">Sua escuta, organizada</span>
       </div>
       <div class="library__header-actions">
         <div class="library__explore">
-          <label class="library__map-label" for="libraryCategoryNav">Explorar</label>
+          <label class="library__map-label sr-only" for="libraryCategoryNav">Explorar</label>
           <select class="sel" id="libraryCategoryNav"><option value="">Mapa de categorias</option></select>
         </div>
         <div class="library__sort">
@@ -312,15 +316,11 @@ SOFTWARE.
             </button>
           </div>
         </div>
-        <button class="btn btn--outline library__category-create" id="libraryCategoryCreate" type="button" title="Criar categoria" aria-label="Nova categoria">
+        <button class="btn btn--outline library__category-create" id="libraryCategoryCreate" type="button" title="Nova categoria" aria-label="Nova categoria">
           <svg class="ui-icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#ui-icon-category-add"/></svg>
           <span>Nova categoria</span>
         </button>
       </div>
-      <button class="btn btn--ghost library__close" id="libraryClose" type="button">
-        Voltar ao editor
-        <svg class="ui-icon ui-icon--small" width="12" height="12" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#ui-icon-chevron-right"/></svg>
-      </button>
     </header>
 
     <div class="library__workspace">
