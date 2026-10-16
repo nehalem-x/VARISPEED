@@ -436,7 +436,10 @@
           washImg.alt = ''; washImg.loading = 'lazy'; washImg.decoding = 'async'; washImg.referrerPolicy = 'no-referrer';
           washImg.src = item.thumbnail;
           washImg.addEventListener('error', () => wash.remove(), { once: true });
-          wash.append(washImg);
+          /* Segunda cópia, mais borrada e clara, faz o brilho que vaza da capa. */
+          const bloomImg = washImg.cloneNode();
+          bloomImg.className = 'library__track-bloom';
+          wash.append(washImg, bloomImg);
         } else {
           wash.hidden = true;
         }
