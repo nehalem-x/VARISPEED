@@ -6,7 +6,7 @@
 <meta name="color-scheme" content="dark light" />
 <meta name="theme-color" id="themeColor" content="#000000" />
 <script src="theme-boot.js"></script>
-<title>VARISPEED — Editor de velocidade de áudio</title>
+<title>VARISPEED · Editor de velocidade de áudio</title>
 <link rel="stylesheet" href="styles.css" />
 <link rel="icon" type="image/x-icon" href="assets/varispeed.ico" />
 <link rel="icon" type="image/png" href="assets/favicon.png" />
@@ -205,7 +205,7 @@ SOFTWARE.
           <span class="scope__empty" aria-hidden="true"></span>
         </button>
       </div>
-      <span class="hdr__filename" id="fileName">nenhum arquivo</span>
+      <span class="hdr__filename" id="fileName">Nenhum arquivo</span>
       <span class="hdr__filemeta mono" id="fileMeta" hidden aria-hidden="true">—</span>
     </div>
 
@@ -214,9 +214,9 @@ SOFTWARE.
         <svg class="ui-icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#ui-icon-library"/></svg>
         Biblioteca
       </button>
-      <button class="btn btn--ghost btn--progress hdr__library-add" id="btnLibraryAdd" type="button" title="Salvar na biblioteca" aria-label="Salvar na biblioteca" hidden>
+      <button class="btn btn--ghost btn--progress hdr__library-add" id="btnLibraryAdd" type="button" title="Salvar na Biblioteca" aria-label="Salvar na Biblioteca" hidden>
         <svg class="ui-icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#ui-icon-library-add"/></svg>
-        <span id="libraryAddLabel">Salvar na biblioteca</span>
+        <span id="libraryAddLabel">Salvar na Biblioteca</span>
       </button>
       <div class="import-menu-wrap">
         <button class="btn btn--import-primary" id="btnImport" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="importMenu">
@@ -257,7 +257,7 @@ SOFTWARE.
     <div class="linkbar__preview" id="urlPreview" hidden>
       <div class="linkbar__thumb" id="urlThumbWrap" aria-hidden="true">
         <img id="urlThumb" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==" alt="" referrerpolicy="no-referrer" />
-        <span class="linkbar__thumb-fallback mono">AUDIO</span>
+        <span class="linkbar__thumb-fallback mono">ÁUDIO</span>
       </div>
       <div class="linkbar__media">
         <span class="linkbar__source mono" id="urlSource">yt-dlp</span>
@@ -290,7 +290,7 @@ SOFTWARE.
       </button>
       <div class="library__heading">
         <h1 class="library__title">Biblioteca</h1>
-        <span class="library__total mono" id="librarySummary">Sua escuta, organizada</span>
+        <span class="library__total mono" id="librarySummary"></span>
       </div>
       <div class="library__header-actions">
         <div class="library__explore">
@@ -334,20 +334,20 @@ SOFTWARE.
           <button class="btn btn--ghost btn--icon" id="libraryBrowserClose" type="button" aria-label="Voltar ao mapa" title="Voltar ao mapa">
             <svg class="ui-icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#ui-icon-back"/></svg>
           </button>
-          <div><span class="library__browser-kicker mono">Coleção / <span id="libraryBrowserCount" role="status"></span></span><h2 id="libraryBrowserTitle" tabindex="-1">Biblioteca</h2></div>
+          <div><span class="library__browser-kicker mono"><span id="libraryBrowserCount" role="status"></span></span><h2 id="libraryBrowserTitle" tabindex="-1">Biblioteca</h2></div>
           <div class="library__category-actions" id="libraryCategoryActions" hidden>
             <button class="btn btn--ghost btn--icon" id="libraryCategoryRename" type="button" aria-label="Renomear categoria" title="Renomear categoria"><svg class="ui-icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#ui-icon-edit"/></svg></button>
             <button class="btn btn--ghost btn--icon" id="libraryCategoryRemove" type="button" aria-label="Excluir categoria" title="Excluir categoria"><svg class="ui-icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#ui-icon-trash"/></svg></button>
           </div>
         </header>
-        <div class="library__tracks" id="libraryTracks" role="listbox" aria-label="Faixas da categoria"></div>
+        <div class="library__tracks" id="libraryTracks" role="listbox" aria-label="Músicas da categoria"></div>
         <div class="library__list-empty" id="libraryListEmpty" hidden>
           <strong id="libraryListEmptyTitle">Este espaço está esperando sua música.</strong>
           <p id="libraryListEmptyHint"></p>
-          <button class="btn" id="libraryListEmptyAction" type="button">Ver todas as faixas</button>
+          <button class="btn" id="libraryListEmptyAction" type="button">Ver todas as músicas</button>
         </div>
       </section>
-      <aside class="library__details" id="libraryDetails" aria-label="Detalhes da faixa selecionada" hidden>
+      <aside class="library__details" id="libraryDetails" aria-label="Detalhes da música selecionada" hidden>
         <div class="library__detail-wash" id="libraryDetailWash" aria-hidden="true" hidden>
           <img id="libraryDetailWashImage" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==" alt="" decoding="async" referrerpolicy="no-referrer" draggable="false" />
         </div>
@@ -383,7 +383,7 @@ SOFTWARE.
               </button>
             </div>
             <label class="library__category-field">
-              <span class="sr-only">Categoria da faixa</span>
+              <span class="sr-only">Categoria da música</span>
               <select class="sel" id="libraryCategorySelect"></select>
             </label>
           </section>
@@ -396,7 +396,7 @@ SOFTWARE.
             <svg class="ui-icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#ui-icon-star"/></svg>
             <span>Favoritas</span>
           </button>
-          <button class="btn btn--ghost library__remove" id="libraryRemove" type="button" title="Remover da biblioteca" aria-label="Remover da biblioteca"><svg class="ui-icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#ui-icon-trash"/></svg><span>Remover</span></button>
+          <button class="btn btn--ghost library__remove" id="libraryRemove" type="button" title="Remover da Biblioteca" aria-label="Remover da Biblioteca"><svg class="ui-icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#ui-icon-trash"/></svg><span>Remover</span></button>
         </footer>
       </aside>
       <div class="library__category-dialog-layer" id="libraryCategoryDialogLayer" hidden>
@@ -468,20 +468,20 @@ SOFTWARE.
             <path d="M174 176 92 96M174 176 82 190M174 176 132 300M174 176 242 82M548 244 618 108M548 244 654 206M548 244 622 334M548 244 492 354M305 116 242 82M438 310 492 354M444 136 618 108M282 282 132 300"/>
             <circle cx="92" cy="96" r="5"/><circle cx="82" cy="190" r="5"/><circle cx="132" cy="300" r="5"/><circle cx="242" cy="82" r="5"/>
             <circle cx="618" cy="108" r="5"/><circle cx="654" cy="206" r="5"/><circle cx="622" cy="334" r="5"/><circle cx="492" cy="354" r="5"/>
-            <text class="library-tutorial__node-label library-tutorial__node-label--story" x="618" y="82" text-anchor="middle">Sua história</text>
+            <text class="library-tutorial__node-label library-tutorial__node-label--story" x="618" y="82" text-anchor="middle">Músicas</text>
           </g>
         </g>
       </svg>
       <div class="library-tutorial__frame">
         <header class="library-tutorial__head">
-          <span class="library-tutorial__brand mono">VARISPEED · BIBLIOTECA VIVA</span>
-          <button class="btn btn--ghost library-tutorial__skip" id="libraryTutorialSkip" type="button">Pular tutorial</button>
+          <span class="library-tutorial__brand mono">VARISPEED · Biblioteca</span>
+          <button class="btn btn--ghost library-tutorial__skip" id="libraryTutorialSkip" type="button">Pular guia</button>
         </header>
         <article class="library-tutorial__content" id="libraryTutorialContent" aria-live="polite">
-          <span class="library-tutorial__kicker mono" id="libraryTutorialKicker">A memória da sua escuta</span>
-          <h2 id="libraryTutorialTitle">Sua biblioteca deixa rastros.</h2>
-          <p id="libraryTutorialBody">Isto não é apenas uma lista. Cada música adicionada ocupa um lugar em um mapa que pertence somente a você.</p>
-          <span class="library-tutorial__signal mono" id="libraryTutorialSignal">Um arquivo · um primeiro ponto</span>
+          <span class="library-tutorial__kicker mono" id="libraryTutorialKicker">Onde ficam</span>
+          <h2 id="libraryTutorialTitle">Suas músicas ficam neste computador.</h2>
+          <p id="libraryTutorialBody">O mapa mostra as categorias. Cada categoria abre uma lista com as músicas e os ajustes de velocidade salvos.</p>
+          <span class="library-tutorial__signal mono" id="libraryTutorialSignal">Mapa · categorias · músicas</span>
         </article>
         <footer class="library-tutorial__foot">
           <button class="btn btn--ghost library-tutorial__back" id="libraryTutorialBack" type="button">
@@ -529,7 +529,6 @@ SOFTWARE.
           <canvas id="wave" class="cv cv--wave"></canvas>
           <div class="playhead" id="playhead" hidden><span class="playhead__cap"></span></div>
           <div class="empty" id="empty">
-            <span class="empty__index">Sua próxima escuta</span>
             <p class="empty__title">Dê outro tempo<br>à sua música.</p>
             <p class="empty__description">Arraste um áudio ou importe um arquivo ou link.</p>
             <button class="btn btn--primary empty__import" id="btnEmptyImport" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="importMenu">Importar áudio</button>

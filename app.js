@@ -290,10 +290,10 @@
     el.btnLibraryAdd.classList.toggle('is-busy', libraryAddBusy && motionSweep());
     if (libraryAddBusy) el.btnLibraryAdd.setAttribute('aria-busy', 'true');
     else el.btnLibraryAdd.removeAttribute('aria-busy');
-    const label = libraryAddBusy ? 'Salvando na biblioteca' : 'Salvar na biblioteca';
+    const label = libraryAddBusy ? 'Salvando na Biblioteca' : 'Salvar na Biblioteca';
     el.btnLibraryAdd.setAttribute('aria-label', label);
     el.btnLibraryAdd.title = label;
-    el.libraryAddLabel.textContent = libraryAddBusy ? 'Salvando…' : 'Salvar na biblioteca';
+    el.libraryAddLabel.textContent = libraryAddBusy ? 'Salvando…' : 'Salvar na Biblioteca';
   }
 
   function setLibraryDraft(entry, blob) {
@@ -1755,7 +1755,7 @@
     let w = null;
     try { w = window.open('scope.html', 'tempo-scope', 'width=760,height=280'); } catch (e) { w = null; }
     if (!w) {
-      status('A janela do visualizador foi bloqueada pelo navegador — libere janelas para este endereço');
+      status('O navegador bloqueou a janela do visualizador · permita janelas para este endereço');
       return;
     }
     pop.win = w;
@@ -2085,7 +2085,7 @@
     const m = String((err && err.message) || err);
     if (err && err.name === 'AbortError') return 'Importação cancelada.';
     if (err instanceof TypeError || /failed to fetch|networkerror|load failed/i.test(m)) {
-      return 'Não foi possível acessar o backend do VARISPEED. Inicie o projeto pelo servidor local (start-tempo.bat ou start-tempo.sh) e tente novamente.';
+      return 'Não foi possível acessar o servidor local do VARISPEED. Abra o app pelo atalho ou por start-tempo.bat / start-tempo.sh e tente de novo.';
     }
     return m;
   };
@@ -2113,7 +2113,7 @@
       linkShowPreview({ ...meta, requestUrl: parsed.url });
       linkMsg('');
       linkClear();
-      status('Link analisado — confirme para importar');
+      status('Link analisado · confirme a importação');
       if (!state.loaded) dot('idle');
       linkIdle(op);
       return true;
@@ -2159,7 +2159,7 @@
       linkMsg(`Sessão validada · ${result.source?.browser_label || 'navegador'}`);
       linkClear();
       linkIdle(op);
-      status('Sessão do YouTube validada — confirme para importar');
+      status('Sessão do YouTube validada · confirme a importação');
       if (!state.loaded) dot('idle');
     } catch (error) {
       if (!linkIsCurrent(op)) return;
@@ -2304,7 +2304,7 @@
 
       linkUI.importedUrl = item.sourceType === 'remote' ? item.sourceUrl : null;
       linkSyncImportButton();
-      status(`Aberto da biblioteca · ${item.title}`);
+      status(`Aberto da Biblioteca · ${item.title}`);
       return true;
     } catch (err) {
       status(err && err.message ? err.message : 'Não foi possível abrir esta música');
@@ -2538,8 +2538,8 @@
 
   document.addEventListener('cfg:imported', (e) => {
     const n = Number(e.detail);
-    if (n < 0) status('Preset inválido — o JSON não pôde ser lido');
-    else if (n === 0) status('Preset carregado — nenhum ajuste compatível mudou');
+    if (n < 0) status('Preset inválido · não foi possível ler o JSON');
+    else if (n === 0) status('Preset carregado · nenhum ajuste compatível mudou');
     else status(`Preset aplicado · ${n} ajuste${n === 1 ? '' : 's'}`);
   });
 
@@ -2572,7 +2572,7 @@
       };
     },
     captureGraphPerformance: async ({ durationMs = 8000 } = {}) => {
-      flash('DIAGNÓSTICO DO GRAFO · use zoom, arrasto e mova uma categoria', {
+      flash('Diagnóstico do grafo · use o zoom, arraste o mapa e mova uma categoria', {
         hold: durationMs + 500,
       });
       return window.MediaLibrary.measurePerformance({ durationMs });
@@ -2609,5 +2609,5 @@
     applyAll();
     syncLibraryAdd();
   });
-  status('Pronto — importe um arquivo de áudio');
+  status('Pronto · importe um áudio');
 })();

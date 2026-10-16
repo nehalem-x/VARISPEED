@@ -44,6 +44,14 @@ As fontes são locais, sem imports remotos.
 
 Sem áudio carregado, o visualizador mostra "Sem áudio"; com áudio que ainda não tocou, mostra "Parado". Nos dois casos o canvas só fica invisível, sem perder as medidas. Depois da primeira reprodução, a pausa volta a mostrar o último quadro atenuado. O visualizador não tem fundo próprio.
 
+## Textos
+
+- "Música" é o que fica na Biblioteca; "áudio" é o que está no editor. Não usar "faixa".
+- "Biblioteca" sempre com maiúscula, por ser o nome de uma área do app.
+- Tom técnico e direto: frases curtas que dizem o que acontece ou o que fazer, sem metáfora nem slogan. A única frase de marca é "Dê outro tempo à sua música.", no editor vazio.
+- Termos de áudio ficam (preset, WAV, dBFS, pico, ganho, timeline). Termos de programação não aparecem na tela: usar "servidor local" em vez de "backend" e "alternativa" em vez de "fallback".
+- Mensagens de status seguem "Estado · detalhe", sem travessão. Títulos de janela usam "VARISPEED · Tela".
+
 ## Base compartilhada
 
 Usar os tokens de `styles.css`, com espaçamento em múltiplos de 4 px.

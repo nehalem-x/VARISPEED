@@ -14,7 +14,7 @@ window.Settings = (() => {
   const GROUPS = [
     {
       id: 'motion', title: 'Animações', test: 'motion',
-      note: 'Todos os feedbacks textuais usam a mesma cadência da confirmação de exportação.',
+      note: 'As mensagens usam a mesma animação da confirmação de exportação.',
       fields: [
         { k: 'motion.level', t: 'select', label: 'Nível', d: 'system',
           opts: [['system', 'Seguir sistema'], ['full', 'Completo'], ['discreet', 'Discreto'], ['off', 'Desligado']] },
@@ -57,7 +57,7 @@ window.Settings = (() => {
           fmt: (v) => `${Math.round((1 - v) * 100)}%`,
           help: 'Percentuais maiores estabilizam o envelope visual entre quadros. Disponível no traço por colunas.',
           off: (g) => !g('scope.on') || g('scope.visualizer') !== 'waveform' || g('scope.mode') === 'line' },
-        { k: 'scope.trigger', t: 'bool', label: 'Trigger em cruzamento de zero', d: true,
+        { k: 'scope.trigger', t: 'bool', label: 'Alinhar no cruzamento de zero', d: true,
           off: (g) => !g('scope.on') || g('scope.visualizer') !== 'waveform' },
         { k: 'scope.vectorTrail', t: 'range', label: 'Persistência das partículas', d: 0.88, min: 0.5, max: 0.97, step: 0.01,
           fmt: (v) => `${Math.round(v * 100)}%`, bounds: true,
@@ -113,7 +113,7 @@ window.Settings = (() => {
           opts: [['mmss', 'm:ss.cc'], ['sec', 'Segundos'], ['samples', 'Amostras']] },
         { k: 'tl.seek', t: 'range', label: 'Passo das setas', d: 5, min: 1, max: 30, step: 1, fmt: (v) => `${v} s`,
           help: 'Define o passo normal de ←/→. Com Shift, o deslocamento permanece em 1 segundo.' },
-        { k: 'tl.wheelZoom', t: 'bool', label: 'Roda amplia sem Ctrl', d: false },
+        { k: 'tl.wheelZoom', t: 'bool', label: 'Zoom com a roda, sem Ctrl', d: false },
       ],
     },
     {
@@ -130,9 +130,9 @@ window.Settings = (() => {
       id: 'library', title: 'Biblioteca',
       fields: [
         { k: 'library.autoAdd', t: 'bool', label: 'Adicionar importações automaticamente', d: false,
-          help: 'Quando desligado, a música permanece no editor até você usar “Salvar na biblioteca”.' },
-        { k: 'library.alwaysShowGuide', t: 'bool', label: 'Sempre mostrar guia de apresentação', d: false,
-          help: 'Reabre o guia cinematográfico sempre que você entra na Biblioteca. Desligado, ele aparece somente na primeira visita.' },
+          help: 'Quando desligado, a música permanece no editor até você usar “Salvar na Biblioteca”.' },
+        { k: 'library.alwaysShowGuide', t: 'bool', label: 'Mostrar o guia sempre', d: false,
+          help: 'Mostra o guia toda vez que você abre a Biblioteca. Desligado, ele aparece só na primeira vez.' },
       ],
     },
     {
@@ -150,7 +150,7 @@ window.Settings = (() => {
             ['brave', 'Brave'],
             ['vivaldi', 'Vivaldi'],
           ],
-          help: '“Usar cookies do navegador” procura perfis compatíveis e só escolhe uma sessão que consiga abrir o link. Navegadores Chromium precisam estar fechados para permitir a leitura. A sessão dedicada é o fallback quando o navegador principal está em uso. Prefira uma conta secundária.' },
+          help: '“Usar cookies do navegador” procura perfis compatíveis e só escolhe uma sessão que consiga abrir o link. Navegadores Chromium precisam estar fechados para permitir a leitura. A sessão dedicada é a alternativa quando o navegador principal está aberto. Prefira uma conta secundária.' },
       ],
     },
     {
@@ -227,15 +227,15 @@ window.Settings = (() => {
     'export.normalize': 'Ajusta o ganho do arquivo exportado para que o maior pico alcance o teto definido, sem alterar a dinâmica relativa.',
     'export.name': 'Define o modelo do nome do WAV. Os tokens abaixo são substituídos pelas informações atuais durante a exportação.',
     'load.confirmExit': 'Exibe um aviso ao tentar fechar ou recarregar a página enquanto uma exportação ainda está em andamento.',
-    'library.autoAdd': 'Quando desligado, a música permanece no editor até você usar “Salvar na biblioteca”.',
-    'library.alwaysShowGuide': 'Reabre o guia cinematográfico sempre que você entra na Biblioteca. Desligado, ele aparece somente na primeira visita.',
-    'remote.authBrowser': 'O modo automático procura os navegadores instalados e valida cada sessão no link solicitado. Chromium precisa estar fechado para liberar o banco local. A sessão dedicada contorna esse bloqueio com uma janela isolada. Nenhum cookie é enviado ao frontend. Prefira uma conta secundária.',
+    'library.autoAdd': 'Quando desligado, a música permanece no editor até você usar “Salvar na Biblioteca”.',
+    'library.alwaysShowGuide': 'Mostra o guia toda vez que você abre a Biblioteca. Desligado, ele aparece só na primeira vez.',
+    'remote.authBrowser': 'O modo automático procura os navegadores instalados e valida cada sessão no link solicitado. O Chromium precisa estar fechado para liberar o banco de cookies. A sessão dedicada contorna esse bloqueio com uma janela isolada. Os cookies nunca passam para a interface. Prefira uma conta secundária.',
     'tl.ruler': 'Tempo de saída acompanha a velocidade; tempo da fonte mantém a duração original na régua.',
     'tl.format': 'Escolhe como os tempos da timeline são escritos: relógio, segundos totais ou posição em amostras.',
     'tl.seek': 'Define o passo normal de ←/→. Com Shift, o deslocamento permanece em 1 segundo.',
     'tl.wheelZoom': 'Permite ampliar a timeline apenas com a roda do mouse. Desligado, o zoom exige Ctrl + roda.',
     'scope.on': 'Liga ou desliga a visualização de áudio em todas as áreas do VARISPEED sem afetar a reprodução.',
-    'scope.visualizer': 'Alterna entre o vectorscope de partículas estéreo e o osciloscópio temporal existente.',
+    'scope.visualizer': 'Alterna entre o vectorscope de partículas estéreo e o osciloscópio clássico.',
     'scope.mode': 'Escolhe o desenho do sinal: envelope por colunas de mínimo/máximo ou uma linha contínua.',
     'scope.gain': 'Amplia somente o desenho do sinal; não altera o volume do áudio.',
     'scope.window': 'Define quantas amostras formam cada quadro do visualizador.',
@@ -255,7 +255,7 @@ window.Settings = (() => {
     'motion.sweep': 'Exibe a linha animada durante exportação, abertura e inclusão de músicas na Biblioteca.',
     'load.autoplay': 'Inicia automaticamente a reprodução assim que uma nova música termina de carregar.',
     'load.resetRate': 'Faz cada nova música começar em 100%, ignorando a velocidade que estava ativa no editor.',
-    'load.keepZoom': 'Preserva somente a ampliação da timeline ao trocar de música; a nova faixa continua começando no início.',
+    'load.keepZoom': 'Preserva somente a ampliação da timeline ao trocar de áudio; o novo áudio sempre começa do início.',
     'export.ceiling': 'Pico máximo usado pela normalização. Valores abaixo de 0 dBFS deixam margem contra clipping.',
   };
 
@@ -776,8 +776,8 @@ window.Settings = (() => {
       if (systemShutdownBtn) {
         systemShutdownBtn.disabled = !info.can_shutdown;
         systemShutdownBtn.title = info.can_shutdown
-          ? 'Encerra o backend local do VARISPEED'
-          : 'O desligamento só está disponível no computador host';
+          ? 'Encerra o servidor local do VARISPEED'
+          : 'Só é possível desligar no computador em que o VARISPEED está rodando';
       }
     } catch (_) {
       if (lan) { lan.textContent = 'Indisponível'; lan.dataset.url = ''; }
@@ -811,7 +811,7 @@ window.Settings = (() => {
 
   function showShutdownScreen() {
     document.documentElement.classList.remove('cfg-open');
-    document.title = 'VARISPEED — Desligado';
+    document.title = 'VARISPEED · Desligado';
     document.body.innerHTML = `
       <main class="shutdown-screen" role="status" aria-live="polite">
         <img src="assets/favicon.png" width="56" height="56" alt="" draggable="false">
@@ -1463,7 +1463,7 @@ window.Settings = (() => {
       if (!f) return;
       const n = await importPresetFile(f);
       fileIn.value = '';
-      if (n < 0) panelFeedback('Preset inválido — não foi possível ler o JSON', { kind: 'err', hold: 3500 });
+      if (n < 0) panelFeedback('Preset inválido · não foi possível ler o JSON', { kind: 'err', hold: 3500 });
       else if (n === 0) panelFeedback('Preset carregado · nenhum ajuste compatível mudou');
       else panelFeedback(`Preset aplicado · ${n} ajuste${n === 1 ? '' : 's'}`);
       document.dispatchEvent(new CustomEvent('cfg:imported', { detail: n }));

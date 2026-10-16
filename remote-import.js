@@ -22,7 +22,7 @@
   };
 
   async function apiError(res) {
-    let msg = `O backend respondeu ${res.status}.`;
+    let msg = `O servidor local respondeu com erro ${res.status}.`;
     let errCode = '';
     try {
       const data = await res.json();

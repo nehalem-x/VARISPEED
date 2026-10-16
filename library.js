@@ -21,28 +21,28 @@
   const TUTORIAL_EXIT_MS = 420;
   const TUTORIAL_STEPS = Object.freeze([
     {
-      kicker: 'A memória da sua escuta',
-      title: 'Sua biblioteca deixa rastros.',
-      body: 'Suas músicas ficam neste computador. O mapa reúne as categorias; dentro de cada uma, uma lista guarda suas faixas e seus ajustes.',
-      signal: 'Um mapa · sua escuta',
+      kicker: 'Onde ficam',
+      title: 'Suas músicas ficam neste computador.',
+      body: 'O mapa mostra as categorias. Cada categoria abre uma lista com as músicas e os ajustes de velocidade salvos.',
+      signal: 'Mapa · categorias · músicas',
     },
     {
-      kicker: 'Cada categoria é um ponto',
-      title: 'Um mapa para se encontrar.',
-      body: 'Clique em uma categoria para abrir suas músicas. Biblioteca reúne todas as faixas, e Favoritas acompanha as que você marcou com uma estrela.',
-      signal: 'Categoria → lista de faixas',
+      kicker: 'O mapa',
+      title: 'Cada ponto é uma categoria.',
+      body: 'Clique em um ponto para ver as músicas dele. Biblioteca reúne todas as músicas, e Favoritas mostra as marcadas com estrela.',
+      signal: 'Categoria → lista de músicas',
     },
     {
-      kicker: 'Categorias criam territórios',
-      title: 'Organize sem apagar a complexidade.',
-      body: 'Crie uma categoria e escolha as músicas que pertencem a ela pelo painel de detalhes. Sua organização muda sem duplicar arquivos.',
-      signal: 'Categoria → novo centro',
+      kicker: 'Categorias',
+      title: 'Crie categorias para organizar.',
+      body: 'Use Nova categoria e escolha a categoria de cada música no painel de detalhes. Nenhum arquivo é duplicado.',
+      signal: 'Nova categoria → detalhes da música',
     },
     {
-      kicker: 'Um mapa impossível de copiar',
-      title: 'Encontre. Escolha. Ouça.',
-      body: 'Use a busca e a ordenação para encontrar uma faixa. As setas percorrem a lista; Enter abre a seleção no editor. Escape retorna um nível.',
-      signal: 'Mapa → faixa → editor',
+      kicker: 'No editor',
+      title: 'Abra uma música no editor.',
+      body: 'Busque ou ordene a lista, percorra com as setas e aperte Enter para abrir a música no editor. Escape volta um nível.',
+      signal: 'Mapa → música → editor',
     },
   ]);
   const cache = new Map();
@@ -385,15 +385,15 @@
     const rows = currentTracks();
     if (selectedId && !rows.some((item) => item.id === selectedId)) selectedId = '';
     el.browserTitle.textContent = category.name;
-    el.browserCount.textContent = `${rows.length} de ${categoryItemCount(category.id)} faixas`;
+    el.browserCount.textContent = `${rows.length} de ${categoryItemCount(category.id)} músicas`;
     el.listEmpty.hidden = rows.length > 0;
     const searching = Boolean(text(el.search.value));
-    el.listEmptyTitle.textContent = searching ? 'Nenhuma faixa encontrada.' : 'Este espaço está esperando sua música.';
-    el.listEmptyHint.textContent = searching ? 'Tente outro termo ou explore todas as faixas.'
-      : category.id === FAVORITES_ID ? 'Marque a estrela nos detalhes de uma faixa para encontrá-la aqui.'
-        : category.id === ROOT_ID ? 'Abra um áudio no editor e use Salvar na biblioteca.'
-          : 'Abra os detalhes de uma faixa em Biblioteca e escolha esta categoria.';
-    el.listEmptyAction.textContent = searching ? 'Limpar busca' : category.id === ROOT_ID ? 'Ir ao editor' : 'Ver todas as faixas';
+    el.listEmptyTitle.textContent = searching ? 'Nenhuma música encontrada.' : 'Nenhuma música nesta categoria.';
+    el.listEmptyHint.textContent = searching ? 'Tente outro termo ou veja todas as músicas.'
+      : category.id === FAVORITES_ID ? 'Marque a estrela nos detalhes de uma música para ela aparecer aqui.'
+        : category.id === ROOT_ID ? 'Abra um áudio no editor e use Salvar na Biblioteca.'
+          : 'Abra os detalhes de uma música em Biblioteca e escolha esta categoria.';
+    el.listEmptyAction.textContent = searching ? 'Limpar busca' : category.id === ROOT_ID ? 'Ir ao editor' : 'Ver todas as músicas';
     const signature = JSON.stringify(rows.map((item) => [item.id, item.title, item.byline, item.sourceLabel, item.thumbnail, item.duration, item.rate, item.favorite]));
     if (signature !== listSignature) {
       const focusedId = document.activeElement?.dataset.id;
@@ -439,7 +439,7 @@
         const status = part('library__track-state mono', '');
         const meta = part('library__track-meta mono', `${formatTime(item.duration)} · ${window.VarispeedCore.rateText(item.rate, 'pct')}%`);
         row.append(wash, number, art, info, status, meta);
-        row.title = `${item.title} — clique para detalhes; Enter ou duplo clique para abrir`;
+        row.title = `${item.title} · clique para ver os detalhes; Enter ou clique duplo abre no editor`;
         row.addEventListener('click', () => selectTrack(item.id));
         row.addEventListener('dblclick', () => { selectTrack(item.id); openSelected(); });
         fragment.append(row);
@@ -566,8 +566,8 @@
       getNodeLabel: (node) => node.label,
       getNodeCountLabel: (node) => node.countLabel,
       getNodeTitle: (node) => node.isCategory
-        ? `${node.title} — ${node.countLabel.toLocaleLowerCase('pt-BR')}`
-        : `${node.title} — ${node.sourceLabel}`,
+        ? `${node.title} · ${node.countLabel.toLocaleLowerCase('pt-BR')}`
+        : `${node.title} · ${node.sourceLabel}`,
       isNodePlaying: (node) => playbackPlaying && items.some((item) => item.id === activeId && model.belongs(item, node.id)),
       getViewportInsets: graphViewportInsets,
       onResize: () => {
@@ -833,7 +833,7 @@
     el.tutorialProgress.setAttribute('aria-label', `Etapa ${tutorialStep + 1} de ${TUTORIAL_STEPS.length}`);
     el.tutorialBack.hidden = tutorialStep === 0;
     el.tutorialNextLabel.textContent = tutorialStep === TUTORIAL_STEPS.length - 1
-      ? 'Explorar biblioteca'
+      ? 'Abrir a Biblioteca'
       : 'Continuar';
 
     const apply = () => {
@@ -1011,7 +1011,7 @@
         hide();
       }
     } catch (_) {
-      document.dispatchEvent(new CustomEvent('varispeed:status', { detail: { text: 'Não foi possível abrir esta faixa. Tente novamente.' } }));
+      document.dispatchEvent(new CustomEvent('varispeed:status', { detail: { text: 'Não foi possível abrir esta música. Tente de novo.' } }));
     } finally {
       setOpenBusy(false);
     }
@@ -1077,7 +1077,7 @@
 
   function removeSelected() {
     const item = items.find((entry) => entry.id === selectedId);
-    if (!item || !confirm(`Remover “${item.title}” da biblioteca?`)) return;
+    if (!item || !confirm(`Remover “${item.title}” da Biblioteca?`)) return;
     items = items.filter((entry) => entry.id !== item.id);
     cache.delete(item.id);
     durable.delete(item.id);

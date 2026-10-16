@@ -38,7 +38,7 @@
         document.documentElement.dataset.theme = d.theme;
         view.invalidateColors();
       }
-      if (d.title) document.title = `VARISPEED — ${d.title}`;
+      if (d.title) document.title = `VARISPEED · ${d.title}`;
       note.hidden = true;
     } else if (d.type === 'tempo:bye') {
       note.textContent = 'A sessão do VARISPEED foi encerrada.';
