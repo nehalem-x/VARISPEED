@@ -194,3 +194,25 @@ button:focus-visible { outline: 1px solid var(--text); outline-offset: 2px; }
   .ch--in { animation: none; opacity: 1; }
   .eph { opacity: 1; transform: none; filter: none; transition: none; }
 }
+
+/* Um padrão discreto para toda região rolável, nos dois temas. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong, var(--line2, #3d3d3d)) transparent;
+}
+/* Fallback para navegadores sem as propriedades padrão de scrollbar. */
+@supports not (scrollbar-width: thin) {
+  *::-webkit-scrollbar { width: 6px; height: 6px; }
+  *::-webkit-scrollbar-track,
+  *::-webkit-scrollbar-corner { background: transparent; }
+  *::-webkit-scrollbar-thumb {
+    background: var(--border-strong, var(--line2, #3d3d3d));
+    border: 0;
+    border-radius: 0;
+  }
+  *::-webkit-scrollbar-thumb:hover { background: var(--control-border, var(--muted, #686868)); }
+  *::-webkit-scrollbar-button { display: none; }
+}
+@media (forced-colors: active) {
+  * { scrollbar-color: auto; }
+}

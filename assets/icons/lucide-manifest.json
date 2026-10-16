@@ -1,0 +1,33 @@
+{
+  "library": "Lucide",
+  "repository": "https://github.com/lucide-icons/lucide",
+  "revision": "b56741cf30c08fc7248bf41ddd3a261367aa9579",
+  "license": "ISC and MIT (Feather-derived icons)",
+  "icons": {
+    "close": "x",
+    "category-add": "folder-plus",
+    "edit": "pencil-line",
+    "trash": "trash",
+    "plus": "plus",
+    "minus": "minus",
+    "help": "circle-question-mark",
+    "waveform": "audio-lines",
+    "star": "star",
+    "window": "picture-in-picture-2",
+    "chevron-left": "chevron-left",
+    "library-add": "book-plus",
+    "download": "download",
+    "chevron-down": "chevron-down",
+    "folder": "folder-open",
+    "link": "link",
+    "settings": "sliders-horizontal",
+    "search": "search",
+    "chevron-right": "chevron-right",
+    "back": "arrow-left",
+    "loop": "repeat-2",
+    "import": "import",
+    "library": "library",
+    "center": "crosshair"
+  },
+  "adaptations": "Local sprite; 24×24 geometry; stroke 2.25 units (1.5 px at 16 px); native round caps/joins. Original filled transport shapes retained."
+}

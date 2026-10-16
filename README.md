@@ -34,6 +34,14 @@ Implementado:
 - interação touch/mobile endurecida: scrub horizontal sem conflito com scroll vertical, sliders com gesto próprio, targets maiores, Configurações com scroll contido e estados sem dependência de hover;
 - launcher gráfico no Windows: inicia sem terminal visível, mostra etapas reais de bootstrap no navegador, registra logs e redireciona automaticamente para o VARISPEED quando o backend está pronto.
 
+## Padronização da interface
+
+A interface diferencia a entrada de áudio, o transporte/velocidade e a saída. O editor vazio apresenta uma ação explícita de importação; com áudio carregado, mostra comparação de duração e resumo da exportação. Biblioteca, editor e modo foco reutilizam o controle de reprodução.
+
+Botões compartilham estados de hover, foco de teclado, pressão, seleção, indisponibilidade e carregamento. Campos de velocidade, presets, links e categorias mostram erros junto ao controle. Medidas e comportamento estão em [PADRAO_UI.md](PADRAO_UI.md); implementação e verificação estão em [ALTERACOES_UI.md](ALTERACOES_UI.md).
+
+A iconografia usa uma seleção local do Lucide, com geometrias e tamanhos compartilhados entre módulos. Origem, licenças, escolhas e verificações estão em [REVISAO_ICONES.md](REVISAO_ICONES.md).
+
 ## Regra central do projeto
 
 **Não adicionar time-stretch com preservação de pitch.**
