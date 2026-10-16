@@ -30,7 +30,7 @@ Todo tamanho, peso e espaçamento de letra vem de um token de `styles.css`. Não
 
 Fonte: a de interface vale para todo texto, inclusive rótulos, títulos, botões e mensagens. A monoespaçada fica para valores: tempos, durações, velocidade, frequência, tamanhos, nomes de arquivo de saída, teclas e campos técnicos.
 
-Caixa: títulos, rótulos, botões e mensagens usam só a primeira letra maiúscula. A caixa alta é reservada para etiquetas curtas de origem e de estado (`LINK`, `ARQUIVO LOCAL`, `TOCANDO`, `NO EDITOR`), sempre em mono, `--text-xs` e `--tr-wide`. A tela de inicialização mantém sua linha de estado própria.
+Caixa: títulos, rótulos, botões e mensagens usam só a primeira letra maiúscula. A caixa alta é reservada para etiquetas curtas de origem e de estado (`LINK`, `ARQUIVO LOCAL`, `TOCANDO`, `PAUSADO`), sempre em mono, `--text-xs` e `--tr-wide`. A tela de inicialização mantém sua linha de estado própria.
 
 Peso: 400 para texto, 500 para controles, rótulos e títulos grandes, 600 para títulos de bloco e de página.
 

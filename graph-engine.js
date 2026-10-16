@@ -100,6 +100,7 @@ class GraphEngine {
       getNodeCharge: null,
       getCenterStrength: null,
       isNodePlaying: () => false,
+      isNodeLoaded: () => false,
       getLinkDistance: link => Number.isFinite(link.distance) ? link.distance : 102,
       getLinkStrength: link => Number.isFinite(link.strength) ? link.strength : 0.52,
       renderNodeIcon: null,
@@ -1271,6 +1272,14 @@ class GraphEngine {
               this
             );
 
+        const loaded =
+          !playing &&
+          !!this.options
+            .isNodeLoaded(
+              node,
+              this
+            );
+
         this.nodeEls[i]
           ?.setAttribute(
             'class',
@@ -1278,7 +1287,8 @@ class GraphEngine {
             `${focused ? ' focused' : ''}` +
             `${muted ? ' muted' : ''}` +
             `${selected ? ' selected' : ''}` +
-            `${playing ? ' playing' : ''}`
+            `${playing ? ' playing' : ''}` +
+            `${loaded ? ' loaded' : ''}`
           );
 
         this.nodeEls[i]

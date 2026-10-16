@@ -738,11 +738,26 @@ button, input { font: inherit; color: inherit; }
 .library__track-art { position: relative; width: 52px; height: 44px; overflow: hidden; background: var(--surface-3); }
 .library__track-art .ui-icon { position: absolute; inset: 0; margin: auto; color: var(--text-3); }
 .library__track-art img { position: relative; width: 100%; height: 100%; object-fit: cover; }
+/* Música no editor: a capa escurece e mostra barras (tocando) ou pausa (pausada). */
+.library__track-indicator { position: absolute; inset: 0; z-index: 1; display: none; place-items: center; background: rgb(0 0 0 / 0.55); }
+.library__track.is-active .library__track-indicator { display: grid; }
+.library__track.is-active .library__track-art > .ui-icon { visibility: hidden; }
+.library__track-eq,
+.library__track-paused { grid-area: 1 / 1; display: none; align-items: flex-end; gap: 3px; height: 14px; }
+.library__track-eq i { width: 3px; height: 100%; background: #fff; transform-origin: bottom; animation: library-eq 0.9s ease-in-out infinite; }
+.library__track-eq i:nth-child(2) { animation-delay: -0.3s; }
+.library__track-eq i:nth-child(3) { animation-delay: -0.6s; }
+.library__track-paused i { width: 4px; height: 100%; background: #fff; }
+.library__track.is-active.is-playing .library__track-eq,
+.library__track.is-active:not(.is-playing) .library__track-paused { display: flex; }
+@keyframes library-eq { 0%, 100% { transform: scaleY(0.3); } 50% { transform: scaleY(1); } }
+@media (prefers-reduced-motion: reduce) { .library__track-eq i { animation: none; transform: scaleY(0.7); } }
+[data-motion='reduced'] .library__track-eq i { animation: none; transform: scaleY(0.7); }
 .library__track-info { display: grid; gap: 4px; min-width: 0; }
 .library__track-title { font-family: var(--font-ui); font-size: var(--text-md); font-weight: 500; }
 .library__track-byline { font-size: var(--text-xs); color: var(--text-3); }
 .library__track-title, .library__track-byline { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.library__track-state { font-size: var(--text-xs); letter-spacing: var(--tr-wide); color: var(--text-2); font-family: var(--font-mono); text-transform: uppercase; }
+.library__track-state { display: inline-flex; align-items: center; gap: var(--space-2); font-size: var(--text-xs); letter-spacing: var(--tr-wide); color: var(--text-2); font-family: var(--font-mono); text-transform: uppercase; }
 .library__track-meta { display: grid; grid-template-columns: 7ch 6ch; gap: var(--space-3); font-size: var(--text-xs); color: var(--text-3); text-align: right; font-variant-numeric: tabular-nums; }
 .library__track-duration { color: var(--text-2); }
 .library__track[aria-selected='true'] { background: var(--text); color: var(--text-inv); }
@@ -1267,6 +1282,9 @@ button, input { font: inherit; color: inherit; }
   transform-box: fill-box;
   transform-origin: center;
 }
+/* Categoria da música carregada: anel parado; tocando, o anel pulsa. */
+.graph-engine-node.loaded .graph-engine-playing-ring { opacity: 0.5; }
+.graph-engine-node.loaded .graph-engine-label { fill: var(--text); }
 .graph-engine-node.playing .graph-engine-playing-ring {
   opacity: 0.72;
   animation: graph-playing-pulse 1.8s ease-in-out infinite;

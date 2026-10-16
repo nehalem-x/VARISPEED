@@ -424,6 +424,11 @@
           img.addEventListener('error', () => img.remove(), { once: true });
           art.append(img);
         }
+        /* Estado da música no editor sobre a capa: barras tocando, pausa parada. */
+        const indicator = part('library__track-indicator', '');
+        indicator.setAttribute('aria-hidden', 'true');
+        indicator.innerHTML = '<span class="library__track-eq"><i></i><i></i><i></i></span><span class="library__track-paused"><i></i><i></i></span>';
+        art.append(indicator);
         const wash = part('library__track-wash', '');
         wash.setAttribute('aria-hidden', 'true');
         if (item.thumbnail) {
@@ -462,9 +467,10 @@
       row.setAttribute('aria-selected', String(selected));
       row.tabIndex = selected || (!selectedId && index === 0) ? 0 : -1;
       row.classList.toggle('is-active', active);
+      row.classList.toggle('is-playing', active && playbackPlaying);
       const status = row.querySelector('.library__track-state');
-      status.textContent = active ? playbackPlaying ? 'TOCANDO' : 'NO EDITOR' : '';
-      if (!active && item.favorite) {
+      status.textContent = active ? playbackPlaying ? 'TOCANDO' : 'PAUSADO' : '';
+      if (item.favorite) {
         const star = document.querySelector('#libraryFavorite .ui-icon').cloneNode(true);
         star.classList.add('ui-icon--small');
         const label = document.createElement('span');
@@ -575,6 +581,7 @@
         ? `${node.title} · ${node.countLabel.toLocaleLowerCase('pt-BR')}`
         : `${node.title} · ${node.sourceLabel}`,
       isNodePlaying: (node) => playbackPlaying && items.some((item) => item.id === activeId && model.belongs(item, node.id)),
+      isNodeLoaded: (node) => Boolean(activeId) && items.some((item) => item.id === activeId && model.belongs(item, node.id)),
       getViewportInsets: graphViewportInsets,
       onResize: () => {
         clearTimeout(resizeTimer);

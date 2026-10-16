@@ -358,13 +358,13 @@ O nome do arquivo é limpo, limitado a 176 caracteres antes de `.wav`, sem ponto
 
 ## Biblioteca
 
-Carregar uma faixa no editor e salvá-la na Biblioteca são coisas separadas. Por padrão, importar só carrega o áudio; Adicionar à Biblioteca cria o nó e guarda a mídia. Biblioteca → Adicionar importações automaticamente volta ao fluxo automático.
+Carregar uma música no editor e salvá-la na Biblioteca são coisas separadas. Por padrão, importar só carrega o áudio; Adicionar à Biblioteca cria o nó e guarda a mídia. Biblioteca → Adicionar importações automaticamente volta ao fluxo automático.
 
 Dados:
 
 - `library.js` guarda metadados, velocidade, última posição e categoria em `localStorage` (`varispeed.library.v1`), as categorias pessoais em `varispeed.library.categories.v1` e os bytes do áudio no IndexedDB (`varispeed.media.v1`).
 - O áudio importado continua disponível depois de F5 ou de reabrir o app. Links antigos sem áudio guardado podem ser baixados de novo pelo backend. Entradas locais sem áudio são removidas na inicialização.
-- Remover da Biblioteca a faixa que está no editor não a descarrega; ela pode ser adicionada de novo.
+- Remover da Biblioteca a música que está no editor não a descarrega; ela pode ser adicionada de novo.
 
 Mapa e lista:
 
@@ -380,6 +380,7 @@ Interação:
 - Com uma faixa carregada, a Biblioteca mostra embaixo a mesma barra de reprodução do editor, no mesmo lugar (play/pause, parar, repetir, tempo, timeline e duração), sincronizada com o mesmo áudio. Sem faixa carregada, o mapa ocupa a altura toda. Play/Pause, Stop, Loop e o scrub são clonados dos controles oficiais na inicialização; o modo foco faz o mesmo com os passos de velocidade. Os três scrubs usam o mesmo binder de eventos.
 - Nenhuma música começa selecionada. Clique, Enter ou Espaço selecionam o nó e abrem o painel lateral. A câmera usa `focusNode()`, aproxima até pelo menos `1.35×` e centraliza no espaço útil, descontando os blocos marcados com `data-graph-viewport-block`. Com o painel aberto, a câmera acompanha a flutuação do nó; clicar de novo no mesmo nó não reconstrói o painel, e fechar o painel volta ao enquadramento geral.
 - O painel de detalhes usa a thumbnail guardada das músicas remotas e mostra o autor/canal como subtítulo, logo abaixo do título. Os dados ficam numa lista única: velocidade salva, duração original, duração na velocidade salva e canais. Favoritar alterna o texto entre "Favoritar" e "Favorita". O painel `Fonte` usa a mesma thumbnail como capa e remove o espaço quando não há imagem ou ela falha.
+- A música que está no editor tem uma barra à esquerda na lista. A capa escurece e mostra barras de equalizador animadas quando ela toca e um ícone de pausa quando está pausada, com a etiqueta `TOCANDO` ou `PAUSADO`; a estrela de favorita continua visível. Com animações reduzidas, as barras ficam paradas. No mapa, a categoria dela tem um anel parado e pulsa só enquanto a música toca.
 - `Abrir no editor`/`Voltar à música` usa o mesmo estado ocupado, pulso e varredura de `Exportar WAV`.
 - Nomes longos rolam (marquee) só quando passam da largura disponível, no cabeçalho, no detalhe e em `Fonte → Arquivo`. O marquee espera, mostra o final e volta; hover pausa e o movimento reduzido é respeitado.
 - Depois de clicar num botão com mouse ou toque, `Espaço` continua sendo Play/Pause. Controles alcançados por `Tab`, campos, sliders, menus e Configurações mantêm o comportamento nativo, e os atalhos globais não capturam teclas desses controles.
