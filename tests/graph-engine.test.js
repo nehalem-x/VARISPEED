@@ -363,7 +363,7 @@ test('fit automático preserva escala legível sem alterar o zoom mínimo manual
     byId: new Map(),
     cameraFollow: null,
     zoomTarget: { x: 0, y: 0, scale: 1 },
-    options: { fitPadding: 0, minZoom: 0.48, minFitZoom: 0.68, maxZoom: 2 },
+    options: { fitPadding: 0, minZoom: 0.48, minFitZoom: 0.68, maxZoom: 2, getNodeRole: () => 'track' },
     getVisibleViewport: () => ({ width: 400, height: 320, centerX: 200, centerY: 160 }),
     _startSmoothCamera() {},
   });
@@ -1072,4 +1072,159 @@ test('captura de desempenho ativa é reutilizada e pode ser cancelada com segura
   assert.equal((await first), report);
   assert.equal(report.cancelled, true);
   assert.equal(graph.cancelPerformanceCapture(), null);
+});
+
+function cameraGraph(overrides = {}) {
+  const graph = Object.create(GraphEngine.prototype);
+  Object.assign(graph, {
+    dragging: null,
+    running: true,
+    cameraActive: false,
+    zoomLastTime: 0,
+    wheelDelta: 0,
+    wheelPanX: 0,
+    wheelPanY: 0,
+    wheelQueuedAt: 0,
+    wheelInteractionStartedAt: 0,
+    wheelLastFrameAt: 0,
+    wheelSettlePending: false,
+    cameraFollow: null,
+    zoomAnchor: null,
+    panGlide: null,
+    cameraVelocity: { x: 0, y: 0, scale: 0 },
+    camera: { x: 0, y: 0, scale: 1 },
+    zoomTarget: { x: 0, y: 0, scale: 1 },
+    nodes: [{ id: 'a', x: 0, y: 0 }, { id: 'b', x: 200, y: 100 }],
+    byId: new Map(),
+    W: 800,
+    H: 600,
+    options: {
+      cameraSpringMs: 150,
+      reduceMotion: () => false,
+      minZoom: 0.48,
+      maxZoom: 2.35,
+      nodeLabelMaxWidth: 0,
+      getNodeRole: () => 'track',
+      getNodeRadius: () => 10,
+      getNodeLabel: () => '',
+      getNodeCountLabel: () => '',
+    },
+    getVisibleViewport: () => ({ left: 0, top: 0, width: 800, height: 600, centerX: 400, centerY: 300 }),
+    applyCamera() {},
+    hostOrigin: { left: 0, top: 0 },
+    _performance: performanceState(),
+    ...overrides,
+  });
+  return graph;
+}
+
+function runCamera(graph, frames = 400) {
+  let time = 1000;
+  graph.zoomLastTime = time;
+  for (let i = 0; i < frames && graph._stepCamera(time += 16); i++) { /* avança a mola */ }
+}
+
+test('zoom pela roda mantém o ponto sob o cursor parado em todos os quadros', () => {
+  const graph = cameraGraph({ camera: { x: 40, y: 30, scale: 1 }, zoomTarget: { x: 40, y: 30, scale: 1 } });
+  const cursor = { x: 300, y: 200 };
+  const under = { x: (cursor.x - 40) / 1, y: (cursor.y - 30) / 1 };
+
+  /* Três giros seguidos, com a câmera ainda no meio da animação. */
+  let time = 1000;
+  graph.zoomLastTime = time;
+  for (let turn = 0; turn < 3; turn++) {
+    graph._queueWheelZoom(-120, cursor.x, cursor.y);
+    for (let i = 0; i < 3; i++) {
+      graph._stepCamera(time += 16);
+      const screenX = under.x * graph.camera.scale + graph.camera.x;
+      const screenY = under.y * graph.camera.scale + graph.camera.y;
+      assert.ok(Math.abs(screenX - cursor.x) < 1e-6, `x saiu do cursor: ${screenX}`);
+      assert.ok(Math.abs(screenY - cursor.y) < 1e-6, `y saiu do cursor: ${screenY}`);
+    }
+  }
+  assert.ok(graph.camera.scale > 1.2);
+});
+
+test('câmera solta fora do limite volta até deixar parte do grafo visível', () => {
+  const graph = cameraGraph({ camera: { x: -3000, y: 0, scale: 1 }, zoomTarget: { x: -3000, y: 0, scale: 1 } });
+  graph.cameraActive = true;
+  runCamera(graph);
+
+  const bound = graph._constrainCamera({ x: -3000, y: 0, scale: 1 });
+  assert.equal(graph.cameraActive, false);
+  assert.ok(Math.abs(graph.camera.x - bound.x) < 0.05);
+  /* O grafo pequeno (220 px com raio) volta inteiro para dentro da tela. */
+  assert.ok(graph.camera.x + -10 >= -0.05);
+});
+
+test('limite não mexe numa câmera que já mostra o grafo', () => {
+  const graph = cameraGraph();
+  const target = { x: 120, y: 80, scale: 1.2 };
+  assert.deepEqual({ ...graph._constrainCamera(target) }, target);
+});
+
+test('inércia continua o arrasto e para sozinha', () => {
+  const graph = cameraGraph({ camera: { x: 100, y: 100, scale: 1 }, zoomTarget: { x: 100, y: 100, scale: 1 } });
+  const samples = [
+    { t: 0, x: 0, y: 0 },
+    { t: 16, x: 16, y: 0 },
+    { t: 32, x: 32, y: 0 },
+    { t: 48, x: 48, y: 0 },
+  ];
+  graph._releasePan({ samples }, { timeStamp: 52 });
+  assert.ok(graph.panGlide && graph.panGlide.x > 900);
+  runCamera(graph);
+  assert.equal(graph.panGlide, null);
+  assert.ok(graph.camera.x > 200, `andou só ${graph.camera.x - 100} px`);
+});
+
+test('arrasto parado antes de soltar não ganha inércia', () => {
+  const graph = cameraGraph();
+  const samples = [{ t: 0, x: 0, y: 0 }, { t: 40, x: 80, y: 0 }];
+  graph._releasePan({ samples }, { timeStamp: 200 });
+  assert.equal(graph.panGlide, null);
+});
+
+test('reduzir movimento desliga a inércia', () => {
+  const graph = cameraGraph();
+  graph.options.reduceMotion = () => true;
+  graph._releasePan({ samples: [{ t: 0, x: 0, y: 0 }, { t: 40, x: 80, y: 0 }] }, { timeStamp: 44 });
+  assert.equal(graph.panGlide, null);
+});
+
+test('touchpad: pinça dá zoom e rolagem com deltaX move o mapa', () => {
+  const graph = cameraGraph({ wheelGestureAt: 0, wheelGesturePan: false });
+  graph._handleWheel({ deltaMode: 0, deltaX: 0, deltaY: -4, ctrlKey: true, clientX: 400, clientY: 300, timeStamp: 10 });
+  assert.ok(graph.wheelDelta < 0);
+  assert.equal(graph.wheelPanX, 0);
+
+  graph.wheelDelta = 0;
+  graph._handleWheel({ deltaMode: 0, deltaX: 6, deltaY: 3, ctrlKey: false, clientX: 400, clientY: 300, timeStamp: 400 });
+  graph._handleWheel({ deltaMode: 0, deltaX: 0, deltaY: 5, ctrlKey: false, clientX: 400, clientY: 300, timeStamp: 420 });
+  assert.equal(graph.wheelDelta, 0);
+  assert.equal(graph.wheelPanX, 6);
+  assert.equal(graph.wheelPanY, 8);
+
+  /* Depois de uma pausa, a roda do mouse volta a dar zoom. */
+  graph._handleWheel({ deltaMode: 1, deltaX: 0, deltaY: 3, ctrlKey: false, clientX: 400, clientY: 300, timeStamp: 900 });
+  assert.equal(graph.wheelDelta, 48);
+});
+
+test('mapa que encolhe ao abrir a lista mantém o centro visual no mesmo quadro', () => {
+  const graph = cameraGraph({
+    W: 1440,
+    H: 735,
+    _cameraInitialized: true,
+    camera: { x: 0, y: 0, scale: 1 },
+    zoomTarget: { x: 0, y: 0, scale: 1 },
+    host: { clientWidth: 498, clientHeight: 735, getBoundingClientRect: () => ({ left: 0, top: 0 }) },
+    getVisibleViewport() { return { left: 0, top: 0, width: this.W, height: this.H, centerX: this.W / 2, centerY: this.H / 2 }; },
+    _resizeLinkCanvas() {},
+    _renderLinks() {},
+  });
+
+  graph.resize();
+
+  assert.equal(graph.camera.x, 249 - 720);
+  assert.equal(graph.zoomTarget.x, 249 - 720);
 });

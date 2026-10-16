@@ -8,7 +8,7 @@ Medidas, estados e ícones agora seguem as regras de [docs/PADRAO_UI.md](docs/PA
 
 - O editor vazio mostra uma ação de importação no centro. Com áudio carregado, mostra a duração original ao lado da duração de saída e o efeito da velocidade no tom.
 - Velocidade, Resultado e Arquivo original perderam a numeração. Os passos de velocidade ficam lado a lado e os presets deixaram de usar uma faixa preenchida.
-- Arquivo original virou uma seção sempre visível. A capa ocupa a largura do painel em 16:9, com a thumbnail desfocada atrás do bloco (22% no tema escuro, 12% no claro). O nome do arquivo quebra linha em vez de ser cortado.
+- Arquivo original virou uma seção sempre visível. A capa ocupa a largura do painel em 16:9, com a thumbnail desfocada atrás do bloco (50% com bloom no tema escuro, 12% sem bloom no claro). O nome do arquivo quebra linha em vez de ser cortado.
 - O painel não comprime mais os blocos na vertical. Quando o conteúdo passa da altura, o painel rola.
 - Uma velocidade inválida mostra o erro junto ao campo, mantém o texto para edição e conserva o último ajuste válido no áudio.
 - A exportação mostra nome, formato, profundidade e normalização junto ao botão e usa os ajustes confirmados no início da operação.
@@ -19,7 +19,14 @@ Medidas, estados e ícones agora seguem as regras de [docs/PADRAO_UI.md](docs/PA
 - A busca começa como uma lupa e abre até 240 px em 220 ms. Ctrl/Cmd+F abre a busca, e Escape fecha, limpa o filtro e devolve o foco à lupa. Uma busca com texto continua aberta.
 - O detalhe da faixa foi reorganizado: origem e fechar no topo, capa 16:9, título de 20 px, duração e velocidade sem caixas e categoria abaixo de uma única divisória. As ações ficam fixas no rodapé.
 - A thumbnail desfocada aparece atrás de cada linha da lista e do painel de detalhes. Na lista, a cor some nos últimos 160 px para não atrapalhar duração e velocidade, e cada linha recorta o próprio blur.
+- O blur atrás das linhas, do painel de detalhes e de Arquivo original ficou mais claro e ganhou bloom no tema escuro. Título e artista ganharam uma sombra curta para continuarem legíveis.
 - Os botões de zoom e centralização do grafo foram removidos (`showControls: false`).
+- A câmera do grafo não deixa mais o mapa sumir. Se ele cabe na tela, volta inteiro; se é maior, volta cobrindo 75% da área. Além do limite, o arrasto tem resistência e a câmera volta com uma mola.
+- O zoom pela roda fica preso no ponto sob o cursor, mesmo com vários giros seguidos.
+- No celular, dois dedos dão zoom. No touchpad, a pinça dá zoom e a rolagem com dois dedos move o mapa.
+- Soltar o arrasto em movimento deixa uma inércia curta, que não aparece com movimento reduzido.
+- Ao abrir uma categoria, o mapa encolhe sem que a bolinha suma atrás da lista; a câmera só anima o zoom até ela.
+- O enquadramento conta o raio e o nome de cada nó, então nomes e contagens não ficam colados na borda.
 
 ### Configurações
 

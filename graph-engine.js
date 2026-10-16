@@ -81,7 +81,7 @@ class GraphEngine {
       vectorCameraExitScale: 1.04,
       maxLinkPixelRatio: 2,
       cameraFollowMs: 520,
-      fitPadding: 84,
+      fitPadding: 48,
       compactBreakpoint: 800,
       showControls: true,
       nodeLabelMaxWidth: 0,
@@ -142,6 +142,15 @@ class GraphEngine {
     this.wheelLastFrameAt = 0;
     this.wheelSettlePending = false;
     this.cameraFollow = null;
+    /* Ponto do grafo preso sob o cursor (ou centro) durante um zoom animado. */
+    this.zoomAnchor = null;
+    /* Velocidade restante do arrasto, em px/s, para a inércia ao soltar. */
+    this.panGlide = null;
+    this.wheelPanX = 0;
+    this.wheelPanY = 0;
+    this.wheelGestureAt = 0;
+    this.wheelGesturePan = false;
+    this._touchPoints = new Map();
     this._cameraDirty = false;
     this._cameraRenderMode = 'transform';
     this._linkPixelRatio = 1;
@@ -315,10 +324,18 @@ class GraphEngine {
     }
 
     this.dragging = null;
+    this._touchPoints?.clear();
 
-    if (this.svg?.hasPointerCapture?.(interaction.id)) {
-      try { this.svg.releasePointerCapture(interaction.id); }
+    (interaction.ids || [interaction.id]).forEach(id => {
+      if (!this.svg?.hasPointerCapture?.(id)) return;
+      try { this.svg.releasePointerCapture(id); }
       catch (_) { /* a captura já pode ter sido perdida pelo navegador */ }
+    });
+
+    /* Um arrasto interrompido além do limite ainda volta para dentro. */
+    if (interaction.type === 'pan' || interaction.type === 'pinch') {
+      this.zoomTarget = this._constrainCamera({ ...this.camera });
+      this._startSmoothCamera();
     }
 
     this._flushPendingData();
@@ -401,8 +418,18 @@ class GraphEngine {
     };
 
     const changed = width !== this.W || height !== this.H;
+    const before = changed && this.W > 0 && this.H > 0 && this._cameraInitialized
+      ? this.getVisibleViewport()
+      : null;
     this.W = width;
     this.H = height;
+    /* Quando um painel abre ao lado, o mapa encolhe no mesmo quadro. Mover a
+       câmera junto mantém o centro visual no lugar; sem isso o conteúdo fica
+       atrás do painel até o próximo foco alcançá-lo. */
+    if (before) {
+      const after = this.getVisibleViewport();
+      this._shiftCamera(after.centerX - before.centerX, after.centerY - before.centerY);
+    }
     this._resizeLinkCanvas();
     this.applyCamera();
     this._cameraDirty = false;
@@ -426,6 +453,8 @@ class GraphEngine {
     const target = this._targetForNode(nodeId, { scale });
     if (!target) return this;
 
+    this.zoomAnchor = null;
+    this.panGlide = null;
     this.zoomTarget = target;
 
     this.cameraFollow = followViewport
@@ -508,43 +537,14 @@ class GraphEngine {
        faz o arrasto parecer bloqueado. A interação manual sempre tem prioridade. */
     if (this.dragging) return this;
 
-    const candidates = (
-      nodeIds?.length
-        ? nodeIds.map(id => this.byId.get(id))
-        : this.nodes
-    ).filter(node => node && Number.isFinite(node.x) && Number.isFinite(node.y));
-
-    if (!candidates.length) return this;
+    const bounds = this._contentBounds(nodeIds);
+    if (!bounds) return this;
 
     const vp = this.getVisibleViewport();
-
-    const xs = candidates.map(n => n.x);
-    const ys = candidates.map(n => n.y);
-
-    const minX = Math.min(...xs);
-    const maxX = Math.max(...xs);
-    const minY = Math.min(...ys);
-    const maxY = Math.max(...ys);
-
-    const graphW = Math.max(
-      1,
-      maxX - minX
-    );
-
-    const graphH = Math.max(
-      1,
-      maxY - minY
-    );
-
-    const usableW = Math.max(
-      120,
-      vp.width - padding * 2
-    );
-
-    const usableH = Math.max(
-      120,
-      vp.height - padding * 2
-    );
+    const graphW = Math.max(1, bounds.maxX - bounds.minX);
+    const graphH = Math.max(1, bounds.maxY - bounds.minY);
+    const usableW = Math.max(120, vp.width - padding * 2);
+    const usableH = Math.max(120, vp.height - padding * 2);
 
     const scale = this._clamp(
       Math.min(
@@ -557,9 +557,11 @@ class GraphEngine {
       this.options.maxZoom
     );
 
-    const cx = (minX + maxX) / 2;
-    const cy = (minY + maxY) / 2;
+    const cx = (bounds.minX + bounds.maxX) / 2;
+    const cy = (bounds.minY + bounds.maxY) / 2;
 
+    this.zoomAnchor = null;
+    this.panGlide = null;
     this.cameraFollow = null;
 
     this.zoomTarget = {
@@ -609,14 +611,17 @@ class GraphEngine {
       this.options.maxZoom
     );
 
-    const gx =
-      (point.x - base.x) /
-      base.scale;
+    /* O ponto preso é o que está sob o cursor agora, não o do destino. Em uma
+       sequência rápida de roda o destino já está à frente da tela, e usá-lo
+       fazia o zoom escorregar para longe do cursor. */
+    const ref = Number.isFinite(this.camera?.scale) && this.camera.scale > 0
+      ? this.camera
+      : base;
+    const gx = (point.x - ref.x) / ref.scale;
+    const gy = (point.y - ref.y) / ref.scale;
 
-    const gy =
-      (point.y - base.y) /
-      base.scale;
-
+    this.zoomAnchor = { x: point.x, y: point.y, gx, gy };
+    this.panGlide = null;
     this.zoomTarget = {
       x: point.x - gx * scale,
       y: point.y - gy * scale,
@@ -635,13 +640,85 @@ class GraphEngine {
     this.wheelInteractionStartedAt = 0;
     this.wheelLastFrameAt = 0;
     this.wheelSettlePending = false;
+    this.wheelPanX = 0;
+    this.wheelPanY = 0;
     this.cameraFollow = null;
+    this.zoomAnchor = null;
+    this.panGlide = null;
 
     this.zoomTarget = {
       ...this.camera
     };
 
     return this;
+  }
+
+  /* Caixa do conteúdo em coordenadas do grafo, contando o raio de cada nó e o
+     nome desenhado embaixo dele. */
+  _contentBounds(nodeIds = null) {
+    if (!this.nodes?.length && !nodeIds?.length) return null;
+    const list = (
+      nodeIds?.length
+        ? nodeIds.map(id => this.byId.get(id))
+        : this.nodes
+    ).filter(node => node && Number.isFinite(node.x) && Number.isFinite(node.y));
+    if (!list.length) return null;
+
+    const labelHalf = (Number(this.options.nodeLabelMaxWidth) || 120) / 2;
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+
+    list.forEach(node => {
+      const r = this._radius(node);
+      const labeled = !!(this.options.getNodeLabel?.(node) || this.options.getNodeCountLabel?.(node));
+      const half = labeled ? Math.max(r, labelHalf) : r;
+      minX = Math.min(minX, node.x - half);
+      maxX = Math.max(maxX, node.x + half);
+      minY = Math.min(minY, node.y - r);
+      maxY = Math.max(maxY, node.y + r + (labeled ? 38 : 0));
+    });
+
+    return { minX, minY, maxX, maxY };
+  }
+
+  /* Devolve a câmera mais próxima em que o grafo continua visível: inteiro
+     quando cabe na área útil, ou cobrindo 75% dela quando é maior, sempre
+     com uma margem da borda. */
+  _constrainCamera(target) {
+    const bounds = target && this._contentBounds();
+    if (!bounds) return target;
+
+    const vp = this.getVisibleViewport();
+    const s = target.scale;
+    const axis = (pos, min, max, edge, length) => {
+      const margin = Math.min(24, length * 0.05);
+      const start = edge + margin;
+      const size = length - margin * 2;
+      const lo = min * s + pos;
+      const hi = max * s + pos;
+      const keep = hi - lo <= size ? hi - lo : Math.max(64, size * 0.75);
+      if (hi < start + keep) return pos + (start + keep - hi);
+      if (lo > start + size - keep) return pos - (lo - (start + size - keep));
+      return pos;
+    };
+
+    return {
+      x: axis(target.x, bounds.minX, bounds.maxX, vp.left, vp.width),
+      y: axis(target.y, bounds.minY, bounds.maxY, vp.top, vp.height),
+      scale: s,
+    };
+  }
+
+  _shiftCamera(dx, dy) {
+    if (!dx && !dy) return;
+    this.camera = { ...this.camera, x: this.camera.x + dx, y: this.camera.y + dy };
+    this.zoomTarget = { ...this.zoomTarget, x: this.zoomTarget.x + dx, y: this.zoomTarget.y + dy };
+    if (this.zoomAnchor) {
+      this.zoomAnchor = { ...this.zoomAnchor, x: this.zoomAnchor.x + dx, y: this.zoomAnchor.y + dy };
+    }
+    this._cameraDirty = true;
   }
 
   getVisibleViewport() {
@@ -1595,9 +1672,17 @@ class GraphEngine {
   }
 
   _stepCamera(frameTime) {
-    if (!this.cameraActive && !this.wheelDelta && !this.cameraFollow) return false;
+    if (
+      !this.cameraActive &&
+      !this.wheelDelta &&
+      !this.cameraFollow &&
+      !this.panGlide &&
+      !this.wheelPanX &&
+      !this.wheelPanY
+    ) return false;
 
     const wheelZoomed = this._consumeWheelZoom(frameTime);
+    this._consumeWheelPan();
     this._refreshFollowTarget();
 
     const previous = this.zoomLastTime || frameTime;
@@ -1605,9 +1690,29 @@ class GraphEngine {
     this.zoomLastTime = frameTime;
     const cameraStartedAt = performance.now();
 
+    if (this.panGlide) {
+      this._stepPanGlide(dtMs / 1000);
+      this.applyCamera();
+      this._cameraDirty = false;
+      return true;
+    }
+
     if (this.options.reduceMotion?.() === true) {
       this.camera = { ...this.zoomTarget };
       this.cameraVelocity = { x: 0, y: 0, scale: 0 };
+    } else if (this.zoomAnchor) {
+      /* Zoom ancorado: só a escala anda na mola e a posição sai dela, então o
+         ponto sob o cursor fica parado em todos os quadros. */
+      const settleSeconds = Math.max(0.06, Number(this.options.cameraSpringMs) / 1000 || 0.15);
+      const omega = 4.75 / settleSeconds;
+      const dt = dtMs / 1000;
+      const displacement = this.camera.scale - this.zoomTarget.scale;
+      const decay = Math.exp(-omega * dt);
+      const coupling = (this.cameraVelocity.scale + omega * displacement) * dt;
+      const scale = this.zoomTarget.scale + (displacement + coupling) * decay;
+      const anchor = this.zoomAnchor;
+      this.camera = { x: anchor.x - anchor.gx * scale, y: anchor.y - anchor.gy * scale, scale };
+      this.cameraVelocity = { x: 0, y: 0, scale: (this.cameraVelocity.scale - omega * coupling) * decay };
     } else {
       const settleSeconds = Math.max(0.06, Number(this.options.cameraSpringMs) / 1000 || 0.15);
       const omega = 4.75 / settleSeconds;
@@ -1644,6 +1749,16 @@ class GraphEngine {
       this.wheelDelta === 0;
 
     if (settled && !this.cameraFollow) {
+      this.zoomAnchor = null;
+      /* Se o gesto deixou o grafo fora do limite, a mola leva de volta. */
+      const bound = this._constrainCamera(this.zoomTarget);
+      if (
+        bound &&
+        (Math.abs(bound.x - this.zoomTarget.x) > 0.5 || Math.abs(bound.y - this.zoomTarget.y) > 0.5)
+      ) {
+        this.zoomTarget = bound;
+        return true;
+      }
       this.camera = { ...this.zoomTarget };
       this.cameraVelocity = { x: 0, y: 0, scale: 0 };
       this.applyCamera();
@@ -1661,6 +1776,55 @@ class GraphEngine {
       }
     }
 
+    return true;
+  }
+
+  _stepPanGlide(dt) {
+    const tau = 0.18;
+    const decay = Math.exp(-dt / tau);
+    const travel = tau * (1 - decay);
+    const next = {
+      x: this.camera.x + this.panGlide.x * travel,
+      y: this.camera.y + this.panGlide.y * travel,
+      scale: this.camera.scale,
+    };
+    const bound = this._constrainCamera(next);
+    /* Fora do limite a inércia freia bem mais rápido, como uma borda elástica. */
+    const outside = Math.abs(bound.x - next.x) > 0.5 || Math.abs(bound.y - next.y) > 0.5;
+    const brake = outside ? decay * 0.3 : decay;
+    this.panGlide = { x: this.panGlide.x * brake, y: this.panGlide.y * brake };
+    this.camera = next;
+    this.zoomTarget = { ...next };
+    this.cameraVelocity = { x: 0, y: 0, scale: 0 };
+
+    if (Math.hypot(this.panGlide.x, this.panGlide.y) < 30) {
+      this.panGlide = null;
+      this.zoomTarget = this._constrainCamera({ ...this.camera });
+    }
+  }
+
+  _queueWheelPan(deltaX, deltaY) {
+    if (!Number.isFinite(deltaX) || !Number.isFinite(deltaY)) return;
+    this.wheelPanX += deltaX;
+    this.wheelPanY += deltaY;
+    this.cameraFollow = null;
+    this.zoomAnchor = null;
+    this.panGlide = null;
+    this._startSmoothCamera();
+  }
+
+  /* Rolagem de touchpad move o mapa direto, sem mola, e para seco na borda. */
+  _consumeWheelPan() {
+    const dx = this.wheelPanX;
+    const dy = this.wheelPanY;
+    this.wheelPanX = 0;
+    this.wheelPanY = 0;
+    if (this.dragging || (!dx && !dy)) return false;
+
+    this.zoomTarget = { ...this.zoomTarget, x: this.zoomTarget.x - dx, y: this.zoomTarget.y - dy };
+    this.camera = { ...this.camera, x: this.camera.x - dx, y: this.camera.y - dy };
+    const bound = this._constrainCamera(this.zoomTarget);
+    this._shiftCamera(bound.x - this.zoomTarget.x, bound.y - this.zoomTarget.y);
     return true;
   }
 
@@ -1817,6 +1981,8 @@ class GraphEngine {
 
           cy:
             this.camera.y,
+
+          samples: [{ t: event.timeStamp, x: event.clientX, y: event.clientY }],
         };
 
         try {
@@ -1830,6 +1996,17 @@ class GraphEngine {
       {
         signal
       }
+    );
+
+    /* Fase de captura: o segundo dedo vira pinça antes de chegar a um nó. */
+    this.svg.addEventListener(
+      'pointerdown',
+      event => {
+        if (event.pointerType !== 'touch') return;
+        this._touchPoints.set(event.pointerId, { x: event.clientX, y: event.clientY });
+        if (this._touchPoints.size >= 2 && this._beginPinch(event)) event.stopPropagation();
+      },
+      { capture: true, signal }
     );
 
     this.svg.addEventListener(
@@ -1868,7 +2045,11 @@ class GraphEngine {
     this.svg.addEventListener(
       'lostpointercapture',
       event => {
-        if (this.dragging?.id === event.pointerId) this.cancelInteraction();
+        this._touchPoints.delete(event.pointerId);
+        if (
+          this.dragging?.id === event.pointerId ||
+          this.dragging?.ids?.includes(event.pointerId)
+        ) this.cancelInteraction();
       },
       {
         signal
@@ -1903,19 +2084,118 @@ class GraphEngine {
         }
 
         event.preventDefault();
-
-        this._queueWheelZoom(
-          event.deltaY,
-          event.clientX,
-          event.clientY,
-          event.timeStamp
-        );
+        this._handleWheel(event);
       },
       {
         passive: false,
         signal
       }
     );
+  }
+
+  /* Roda do mouse dá zoom. No touchpad, a pinça chega com ctrlKey e dá zoom;
+     rolar com dois dedos traz deltaX e move o mapa. Um gesto que já começou
+     movendo continua movendo até parar por 180 ms. */
+  _handleWheel(event) {
+    const unit = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? (this.H || 800) : 1;
+    const dx = (Number(event.deltaX) || 0) * unit;
+    const dy = (Number(event.deltaY) || 0) * unit;
+    const now = Number(event.timeStamp) || performance.now();
+    if (now - this.wheelGestureAt > 180) this.wheelGesturePan = false;
+    this.wheelGestureAt = now;
+
+    if (event.ctrlKey) {
+      this.wheelGesturePan = false;
+      this._queueWheelZoom(
+        Math.max(-120, Math.min(120, dy * 10)),
+        event.clientX,
+        event.clientY,
+        event.timeStamp
+      );
+      return;
+    }
+
+    if (dx !== 0 || this.wheelGesturePan) {
+      this.wheelGesturePan = true;
+      this._queueWheelPan(dx, dy);
+      return;
+    }
+
+    this._queueWheelZoom(dy, event.clientX, event.clientY, event.timeStamp);
+  }
+
+  _hostPoint(clientX, clientY) {
+    const origin = this.hostOrigin || this.host.getBoundingClientRect();
+    return { x: clientX - origin.left, y: clientY - origin.top };
+  }
+
+  /* Dois dedos no mapa: o ponto do grafo entre eles acompanha o meio dos
+     dedos, e a distância entre eles define a escala. */
+  _beginPinch(event) {
+    if (this.dragging?.type === 'node' || this.dragging?.type === 'pinch') return false;
+    const ids = [...this._touchPoints.keys()].slice(-2);
+    if (ids.length < 2) return false;
+    if (this.dragging && !ids.includes(this.dragging.id)) return false;
+
+    try { this.svg.setPointerCapture(event.pointerId); }
+    catch (_) { return false; }
+
+    this.stopCameraAnimation();
+    const [a, b] = ids.map(id => this._touchPoints.get(id));
+    const mid = this._hostPoint((a.x + b.x) / 2, (a.y + b.y) / 2);
+    this.dragging = {
+      type: 'pinch',
+      ids,
+      startDist: Math.max(1, Math.hypot(a.x - b.x, a.y - b.y)),
+      startScale: this.camera.scale,
+      gx: (mid.x - this.camera.x) / this.camera.scale,
+      gy: (mid.y - this.camera.y) / this.camera.scale,
+    };
+    return true;
+  }
+
+  _updatePinch() {
+    const pinch = this.dragging;
+    const [a, b] = pinch.ids.map(id => this._touchPoints.get(id));
+    if (!a || !b) return;
+    const mid = this._hostPoint((a.x + b.x) / 2, (a.y + b.y) / 2);
+    const scale = this._clamp(
+      pinch.startScale * Math.hypot(a.x - b.x, a.y - b.y) / pinch.startDist,
+      this.options.minZoom,
+      this.options.maxZoom
+    );
+    this.camera = { x: mid.x - pinch.gx * scale, y: mid.y - pinch.gy * scale, scale };
+    this.zoomTarget = { ...this.camera };
+    this._cameraDirty = true;
+  }
+
+  /* Velocidade dos últimos 90 ms do arrasto. Se o dedo parou antes de soltar,
+     não sobra inércia. */
+  _panVelocity(samples, releasedAt) {
+    if (!samples?.length) return null;
+    const last = samples[samples.length - 1];
+    if (releasedAt - last.t > 50) return null;
+    const first = samples.find(sample => last.t - sample.t <= 90) || last;
+    const dt = last.t - first.t;
+    if (dt < 8) return null;
+    const cap = value => Math.max(-4000, Math.min(4000, value));
+    return {
+      x: cap((last.x - first.x) / dt * 1000),
+      y: cap((last.y - first.y) / dt * 1000),
+    };
+  }
+
+  _releasePan(interaction, event) {
+    const velocity = this.options.reduceMotion?.() === true
+      ? null
+      : this._panVelocity(interaction.samples, Number(event?.timeStamp) || performance.now());
+    if (velocity && Math.hypot(velocity.x, velocity.y) > 120) {
+      this.panGlide = velocity;
+      this.zoomTarget = { ...this.camera };
+    } else {
+      this.zoomTarget = this._constrainCamera({ ...this.camera });
+    }
+    this._startSmoothCamera();
   }
 
   _beginNodeInteraction(
@@ -1957,6 +2237,15 @@ class GraphEngine {
   }
 
   _pointerMove(event) {
+    if (event.pointerType === 'touch' && this._touchPoints.has(event.pointerId)) {
+      this._touchPoints.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    }
+
+    if (this.dragging?.type === 'pinch') {
+      if (this.dragging.ids.includes(event.pointerId)) this._updatePinch();
+      return;
+    }
+
     if (
       !this.dragging ||
       this.dragging.id !==
@@ -1969,15 +2258,20 @@ class GraphEngine {
       this.dragging.type ===
       'pan'
     ) {
-      this.camera.x =
-        this.dragging.cx +
-        event.clientX -
-        this.dragging.startX;
+      const pan = this.dragging;
+      pan.samples.push({ t: event.timeStamp, x: event.clientX, y: event.clientY });
+      if (pan.samples.length > 8) pan.samples.shift();
 
-      this.camera.y =
-        this.dragging.cy +
-        event.clientY -
-        this.dragging.startY;
+      /* Além do limite o mapa ainda segue o dedo, mas com resistência. */
+      const desired = {
+        x: pan.cx + event.clientX - pan.startX,
+        y: pan.cy + event.clientY - pan.startY,
+        scale: this.camera.scale,
+      };
+      const bound = this._constrainCamera(desired);
+      const rubber = d => d / (1 + Math.abs(d) / 240) * 0.55;
+      this.camera.x = bound.x + rubber(desired.x - bound.x);
+      this.camera.y = bound.y + rubber(desired.y - bound.y);
 
       this.zoomTarget = {
         ...this.camera
@@ -2079,6 +2373,36 @@ class GraphEngine {
   }
 
   _endInteraction(event) {
+    this._touchPoints.delete(event.pointerId);
+
+    if (this.dragging?.type === 'pinch') {
+      if (!this.dragging.ids.includes(event.pointerId)) return;
+      const rest = this.dragging.ids.find(id => id !== event.pointerId);
+      const point = this._touchPoints.get(rest);
+      if (this.svg.hasPointerCapture(event.pointerId)) {
+        try { this.svg.releasePointerCapture(event.pointerId); }
+        catch (_) { /* captura já encerrada */ }
+      }
+      /* O dedo que ficou continua arrastando de onde está. */
+      this.dragging = point
+        ? {
+            type: 'pan',
+            id: rest,
+            startX: point.x,
+            startY: point.y,
+            cx: this.camera.x,
+            cy: this.camera.y,
+            samples: [],
+          }
+        : null;
+      if (!point) {
+        this.zoomTarget = this._constrainCamera({ ...this.camera });
+        this._startSmoothCamera();
+        this._flushPendingData();
+      }
+      return;
+    }
+
     if (
       !this.dragging ||
       this.dragging.id !==
@@ -2095,6 +2419,9 @@ class GraphEngine {
       'node'
     ) {
       this._releaseDraggedNode(interaction.node);
+
+    } else if (interaction.type === 'pan') {
+      this._releasePan(interaction, event);
 
     } else if (
       interaction.type ===

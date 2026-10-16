@@ -681,7 +681,14 @@ Dados e posicionamento:
 
 Câmera e zoom:
 
-- Roda e trackpad acumulam `deltaY`; câmera, física e pintura usam um único `requestAnimationFrame`. Não criar outro loop de câmera nem medir host e painéis a cada evento.
+- Roda, touchpad e pinça acumulam deltas; câmera, física e pintura usam um único `requestAnimationFrame`. Não criar outro loop de câmera nem medir host e painéis a cada evento.
+- `_handleWheel()` separa os gestos: roda do mouse dá zoom; pinça no touchpad chega com `ctrlKey` e dá zoom; rolagem com `deltaX` move o mapa, e o gesto continua movendo até uma pausa de `180 ms`. `deltaMode` em linhas ou páginas é convertido para pixels.
+- O zoom é ancorado: `_updateZoomTarget()` guarda em `zoomAnchor` o ponto do grafo que está sob o cursor na câmera atual, e `_stepCamera()` anima só a escala e deriva `x/y` dela. O ponto sob o cursor fica parado em todos os quadros, mesmo com vários giros seguidos. Foco, enquadramento, pan e `stopCameraAnimation()` limpam a âncora.
+- Dois dedos no mapa viram pinça (`_beginPinch()`, captura no SVG em fase de captura). O ponto entre os dedos acompanha o meio deles e a distância define a escala; ao tirar um dedo, o outro continua arrastando.
+- `_constrainCamera()` mantém o grafo visível usando `_contentBounds()` (raio e nome de cada nó): inteiro quando cabe na área útil, ou cobrindo `75%` dela quando é maior, com margem de até `24 px`. Durante o arrasto o mapa passa do limite com resistência; ao soltar, a inércia freia mais rápido fora do limite e a mola leva de volta. Wheel-pan para seco na borda. Acompanhamento de nó não é limitado.
+- Inércia: `_panVelocity()` mede os últimos `90 ms` do arrasto; se o ponteiro parou mais de `50 ms` antes de soltar, ou com `reduceMotion`, não há inércia. `panGlide` decai com `τ = 180 ms` e acaba abaixo de `30 px/s`.
+- Quando o host muda de tamanho, `resize()` desloca câmera, alvo e âncora pela diferença do centro útil no mesmo quadro. Ao abrir a lista, o mapa encolhe sem o conteúdo sumir atrás dela; o foco só anima o zoom.
+- `fitGraph()` usa `_contentBounds()`, então nomes e contagens entram no enquadramento; `fitPadding` caiu de `84` para `48` por isso.
 - `zoomBy()` só chama `getVisibleViewport()` sem âncora explícita. `hostOrigin` é atualizado no `resize()` visível; `getBoundingClientRect()` na roda só vale antes da primeira medição.
 - A Biblioteca usa `minFitZoom: 0.68`, e o `minZoom` manual continua menor para a visão geral.
 - Ao selecionar um nó, a câmera espera dois quadros para o painel ocupar espaço, usa o viewport útil, aplica zoom mínimo de `1.35` e passa `followDuration: Infinity` enquanto houver seleção. Selecionar de novo o mesmo nó não faz nada enquanto o acompanhamento está ativo, e o `pointerdown` só cancela a câmera depois de passar do limite de arraste. `closeDetails()` remove o painel antes de enfileirar `fitGraph()`, que encerra o acompanhamento sem salto; roda, pan e saída da Biblioteca também cancelam.
