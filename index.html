@@ -366,35 +366,32 @@ SOFTWARE.
           </figure>
           <div class="library__detail-heading">
             <h2 class="library__detail-title" id="libraryDetailTitle">—</h2>
+            <p class="library__detail-subtitle" id="libraryDetailByline" hidden></p>
           </div>
           <dl class="library__detail-rows" id="libraryDetailRows">
-            <div class="library__detail-row library__detail-stat"><dt>Duração</dt><dd class="mono" id="libraryDetailDuration">—</dd></div>
-            <div class="library__detail-row library__detail-stat"><dt>Velocidade</dt><dd class="mono" id="libraryDetailRate">—</dd></div>
+            <div class="library__detail-row"><dt>Velocidade salva</dt><dd class="mono" id="libraryDetailRate">—</dd></div>
+            <div class="library__detail-row"><dt>Duração original</dt><dd class="mono" id="libraryDetailDuration">—</dd></div>
+            <div class="library__detail-row"><dt id="libraryDetailOutputLabel">Duração na velocidade salva</dt><dd class="mono" id="libraryDetailOutputDuration">—</dd></div>
             <div class="library__detail-row"><dt>Canais</dt><dd class="mono" id="libraryDetailChannels">—</dd></div>
             <div class="library__detail-row" hidden><dt>Origem</dt><dd id="libraryDetailOrigin">—</dd></div>
-            <div class="library__detail-row" id="libraryDetailBylineRow" hidden><dt>Crédito</dt><dd id="libraryDetailByline">—</dd></div>
           </dl>
           <section class="library__organization" id="libraryOrganization">
-            <div class="library__organization-head">
-              <h3>Categoria</h3>
-              <button class="btn btn--ghost library__category-new" id="libraryCategoryCreateInline" type="button" title="Criar categoria" aria-label="Nova categoria">
+            <label class="library__category-label" for="libraryCategorySelect">Categoria</label>
+            <div class="library__category-line">
+              <select class="sel" id="libraryCategorySelect"></select>
+              <button class="btn btn--ghost btn--icon library__category-new" id="libraryCategoryCreateInline" type="button" title="Nova categoria" aria-label="Nova categoria">
                 <svg class="ui-icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#ui-icon-category-add"/></svg>
-                <span>Nova</span>
               </button>
             </div>
-            <label class="library__category-field">
-              <span class="sr-only">Categoria da música</span>
-              <select class="sel" id="libraryCategorySelect"></select>
-            </label>
           </section>
         </div>
         <footer class="library__detail-actions" id="libraryMusicActions">
           <button class="btn btn--primary btn--progress" id="libraryOpen" type="button">
-            <span id="libraryOpenLabel">Abrir música</span>
+            <span id="libraryOpenLabel">Abrir no editor</span>
           </button>
           <button class="btn btn--ghost library__favorite" id="libraryFavorite" type="button" aria-pressed="false" title="Adicionar às Favoritas" aria-label="Adicionar às Favoritas">
             <svg class="ui-icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#ui-icon-star"/></svg>
-            <span>Favoritas</span>
+            <span id="libraryFavoriteLabel">Favoritar</span>
           </button>
           <button class="btn btn--ghost library__remove" id="libraryRemove" type="button" title="Remover da Biblioteca" aria-label="Remover da Biblioteca"><svg class="ui-icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#ui-icon-trash"/></svg><span>Remover</span></button>
         </footer>

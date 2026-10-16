@@ -757,13 +757,16 @@
     el.detailTitle.textContent = item.title;
     el.detailTitle.title = item.title;
     el.detailSource.textContent = item.sourceLabel;
+    const rateLabel = `${window.VarispeedCore.rateText(item.rate, 'pct')}%`;
+    el.detailRate.textContent = rateLabel;
     el.detailDuration.textContent = formatTime(item.duration);
-    el.detailRate.textContent = `${window.VarispeedCore.rateText(item.rate, 'pct')}%`;
+    el.detailOutputLabel.textContent = `Duração a ${rateLabel}`;
+    el.detailOutputDuration.textContent = item.rate > 0 ? formatTime(item.duration / (item.rate / 100)) : '—';
     el.detailChannels.textContent = item.channels === 1 ? 'Mono' : item.channels > 1 ? 'Estéreo' : 'Áudio';
     el.detailOrigin.textContent = item.sourceType === 'remote' ? item.sourceLabel : 'Arquivo local';
     populateCategorySelect(item);
-    el.detailBylineRow.hidden = !item.byline;
-    el.detailByline.textContent = item.byline || '—';
+    el.detailByline.hidden = !item.byline;
+    el.detailByline.textContent = item.byline || '';
     el.detailArtwork.hidden = !item.thumbnail;
     if (item.thumbnail) {
       el.detailArtworkImage.alt = `Capa de ${item.title}`;
@@ -782,10 +785,11 @@
       ? 'Localizar e abrir'
       : item.id === activeId
         ? 'Voltar à música'
-        : 'Abrir música';
+        : 'Abrir no editor';
     el.favorite.setAttribute('aria-pressed', String(item.favorite));
     el.favorite.setAttribute('aria-label', item.favorite ? 'Remover das Favoritas' : 'Adicionar às Favoritas');
     el.favorite.title = item.favorite ? 'Remover das Favoritas' : 'Adicionar às Favoritas';
+    el.favoriteLabel.textContent = item.favorite ? 'Favorita' : 'Favoritar';
   }
 
   function refresh({ fit = false, reset = false } = {}) {
@@ -1156,7 +1160,8 @@
       detailDuration: $('libraryDetailDuration'), detailRate: $('libraryDetailRate'),
       detailChannels: $('libraryDetailChannels'), detailOrigin: $('libraryDetailOrigin'),
       detailClose: $('libraryDetailClose'),
-      detailBylineRow: $('libraryDetailBylineRow'), detailByline: $('libraryDetailByline'),
+      detailByline: $('libraryDetailByline'), detailOutputLabel: $('libraryDetailOutputLabel'),
+      detailOutputDuration: $('libraryDetailOutputDuration'), favoriteLabel: $('libraryFavoriteLabel'),
       detailArtwork: $('libraryDetailArtwork'), detailArtworkImage: $('libraryDetailArtworkImage'),
       detailWash: $('libraryDetailWash'), detailWashImage: $('libraryDetailWashImage'),
       detailRows: $('libraryDetailRows'),
