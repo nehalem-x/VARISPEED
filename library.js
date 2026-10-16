@@ -427,7 +427,7 @@
         /* Estado da música no editor sobre a capa: barras tocando, pausa parada. */
         const indicator = part('library__track-indicator', '');
         indicator.setAttribute('aria-hidden', 'true');
-        indicator.innerHTML = '<span class="library__track-eq"><i></i><i></i><i></i></span><span class="library__track-paused"><i></i><i></i></span>';
+        indicator.innerHTML = '<span class="library__track-eq"><i></i><i></i><i></i></span><span class="library__track-paused"><svg class="ui-icon" viewBox="0 0 24 24" focusable="false"><use href="#ui-icon-pause"/></svg></span>';
         art.append(indicator);
         const wash = part('library__track-wash', '');
         wash.setAttribute('aria-hidden', 'true');

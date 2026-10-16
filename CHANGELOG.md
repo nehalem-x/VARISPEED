@@ -13,6 +13,12 @@ Medidas, estados e ícones agora seguem as regras de [docs/PADRAO_UI.md](docs/PA
 - Uma velocidade inválida mostra o erro junto ao campo, mantém o texto para edição e conserva o último ajuste válido no áudio.
 - A exportação mostra nome, formato, profundidade e normalização junto ao botão e usa os ajustes confirmados no início da operação.
 
+### Ícones
+
+- Play, pause e stop passaram a usar os desenhos do Lucide, preenchidos. Agora todos os ícones de interface são Lucide.
+- O traço tem 1,5 px na tela em todos os tamanhos. Antes ia de 1,1 px nos ícones de 12 px a 3 px no de 32 px.
+- A importação por link sem capa mostra o ícone de onda, como a Biblioteca, em vez do texto ÁUDIO. A pausa sobre a capa da linha usa o mesmo ícone do transporte.
+
 ### Biblioteca
 
 - O cabeçalho reúne Explorar, Ordenar, busca e Nova categoria. Voltar ao editor ficou separado. As faixas exclusivas de categoria e de ordenação foram removidas, assim como as instruções de teclado abaixo da lista. Os atalhos continuam funcionando.

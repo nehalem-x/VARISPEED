@@ -27,7 +27,10 @@
     "loop": "repeat-2",
     "import": "import",
     "library": "library",
-    "center": "crosshair"
+    "center": "crosshair",
+    "play": "play",
+    "pause": "pause",
+    "stop": "square"
   },
-  "adaptations": "Local sprite; 24×24 geometry; stroke 2.25 units (1.5 px at 16 px); native round caps/joins. Original filled transport shapes retained."
+  "adaptations": "Local sprite; 24×24 geometry; native round caps/joins. Symbols carry no stroke-width: CSS sets 2.25 units at 16 px, 3 at 12 px and 1.125 at 32 px, so every icon draws a 1.5 px line. Transport icons (play, pause, square) are filled with currentColor."
 }
