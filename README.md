@@ -1,52 +1,14 @@
-# VARISPEED: velocidade de áudio sem preservação de pitch
+# VARISPEED
 
-VARISPEED é uma ferramenta web para reproduzir e exportar áudio em velocidades diferentes **sem correção/preservação de pitch**. Ao reduzir a velocidade, o áudio fica naturalmente mais grave; ao aumentar, fica mais agudo.
+Editor web de velocidade de áudio que não preserva o pitch. Reduzir a velocidade deixa o som mais grave e aumentar deixa mais agudo, como numa fita ou num toca-discos.
 
-A interface continua majoritariamente client-side. A única parte que exige backend é a **importação por link**, agora feita com `yt-dlp`.
+Quase tudo roda no navegador. O backend local (Python + FastAPI) existe para importar áudio por link com `yt-dlp`, servir a interface e responder às rotas de sistema.
 
-## Estado atual
+O estado técnico completo e o histórico das revisões estão em [docs/HANDOFF.md](docs/HANDOFF.md). As medidas da interface estão em [docs/PADRAO_UI.md](docs/PADRAO_UI.md), a origem dos ícones em [docs/REVISAO_ICONES.md](docs/REVISAO_ICONES.md) e as mudanças recentes no [CHANGELOG.md](CHANGELOG.md).
 
-Implementado:
+## Regra central
 
-- importação de arquivo local;
-- arrastar e soltar áudio;
-- waveform/timeline em Canvas;
-- reprodução com `playbackRate` sem preservação de pitch;
-- controle percentual de velocidade;
-- zoom e navegação da timeline;
-- osciloscópio em tempo real;
-- modo de foco e janela separada do osciloscópio;
-- botão da janela separada posicionado imediatamente à esquerda do visualizador do osciloscópio no header;
-- exportação WAV offline;
-- light/dark mode, alterado exclusivamente em Configurações (sem atalho redundante no header);
-- mascote fotográfico do gato no header, com duas variantes cromáticas sincronizadas ao tema e sem mudança de crop/posição;
-- configurações persistentes;
-- feedback textual padronizado pela animação de exportação em status, importação, startup e sistema;
-- menu único `Importar` no header, com `Arquivo local` e `Link`;
-- importação remota via `yt-dlp`;
-- prévia de link antes do download;
-- título, autor/canal, duração, thumbnail e origem/extractor;
-- estados de importação: obtenção de informações, download, decodificação e pronto.
-- responsividade estrutural para notebook, tablet, mobile e viewports de baixa altura, preservando o desktop largo como baseline visual;
-- hardening de edge cases: concorrência de importação, falha não destrutiva, teclado virtual/foco e conteúdo extremo;
-- Canvas HiDPI resiliente a resize/orientação/DPR, preservando zoom, posição temporal, playhead e reprodução;
-- scaling/zoom endurecido para DPR fracionário (incluindo <1 em zoom abaixo de 100%), com backing store proporcional e playhead alinhado ao pixel físico.
-- interação touch/mobile endurecida: scrub horizontal sem conflito com scroll vertical, sliders com gesto próprio, targets maiores, Configurações com scroll contido e estados sem dependência de hover;
-- launcher gráfico no Windows: inicia sem terminal visível, mostra etapas reais de bootstrap no navegador, registra logs e redireciona automaticamente para o VARISPEED quando o backend está pronto.
-
-## Padronização da interface
-
-A interface diferencia a entrada de áudio, o transporte/velocidade e a saída. O editor vazio apresenta uma ação explícita de importação; com áudio carregado, mostra comparação de duração e resumo da exportação. Biblioteca, editor e modo foco reutilizam o controle de reprodução.
-
-Botões compartilham estados de hover, foco de teclado, pressão, seleção, indisponibilidade e carregamento. Campos de velocidade, presets, links e categorias mostram erros junto ao controle. Medidas e comportamento estão em [docs/PADRAO_UI.md](docs/PADRAO_UI.md), e o que mudou em cada versão está no [CHANGELOG.md](CHANGELOG.md).
-
-A iconografia usa uma seleção local do Lucide, com geometrias e tamanhos compartilhados entre módulos. Origem, licenças, escolhas e verificações estão em [docs/REVISAO_ICONES.md](docs/REVISAO_ICONES.md).
-
-## Regra central do projeto
-
-**Não adicionar time-stretch com preservação de pitch.**
-
-O comportamento desejado é varispeed:
+Não adicionar time-stretch com preservação de pitch.
 
 ```text
 50%  -> mais lento + mais grave
@@ -54,7 +16,7 @@ O comportamento desejado é varispeed:
 150% -> mais rápido + mais agudo
 ```
 
-No player, isso é garantido por:
+O player garante isso com:
 
 ```js
 state.audio.preservesPitch = false;
@@ -62,338 +24,175 @@ state.audio.mozPreservesPitch = false;
 state.audio.webkitPreservesPitch = false;
 ```
 
-O `yt-dlp` serve somente para obter a mídia. Ele não participa da alteração de velocidade.
+O `yt-dlp` só obtém a mídia e não participa da mudança de velocidade.
 
----
+## Recursos
 
+- Importação de arquivo local, por seletor ou arrastando para a janela, e importação por link com prévia de título, autor/canal, duração, thumbnail e origem antes do download.
+- Waveform e timeline em Canvas, com zoom, scrub e playhead alinhado ao pixel físico.
+- Velocidade em porcentagem aplicada por `playbackRate`, com passos, presets e limites configuráveis.
+- Osciloscópio e vectorscope de partículas no cabeçalho, no modo foco e numa janela separada.
+- Exportação WAV feita offline no navegador.
+- Biblioteca persistente organizada como grafo de categorias.
+- Tema claro/escuro, configurações persistentes e presets em JSON.
+- Layout para desktop, notebook, tablet e celular, inclusive telas baixas, toque, zoom do navegador e DPR fracionário.
+- Launcher para Windows sem terminal visível, com tela de inicialização e logs.
+- Acesso por outros dispositivos da rede local, com desligamento permitido só no próprio computador.
 
-# Mascote do header
+## Interface
 
-A antiga identidade textual/ícone do header foi substituída por duas fotografias pareadas do mesmo conceito visual de gato, uma específica para cada tema:
+O editor vazio mostra uma ação de importação no centro. Com áudio carregado, mostra a duração original ao lado da duração de saída e o resumo da exportação. Biblioteca, editor e modo foco usam o mesmo controle de reprodução.
 
-- `assets/cat-brand-light.png`: gato de pelagem preta, olhos amarelos e fundo branco;
-- `assets/cat-brand-dark.png`: gato de pelagem branca, olhos amarelos e fundo preto.
+Os botões compartilham os estados de hover, foco, pressão, seleção, indisponível e carregando. Campos de velocidade, presets, links e categorias mostram o erro junto ao controle. Os ícones são uma seleção local do Lucide.
 
-As duas artes ficam **sobrepostas no mesmo container**, com exatamente o mesmo `width`, `height`, `object-fit` e `object-position`. A troca de tema altera apenas a opacidade da camada correspondente; não há filtro de grayscale/invert, resize, translate ou recálculo de crop.
+### Cabeçalho
 
-Antes da integração, a faixa horizontal artificial gerada na parte inferior das duas imagens foi removida no próprio asset. Assim, a borda inferior real do header funciona como a linha visual de onde o gato parece emergir. A versão Dark também recebeu um pequeno registro geométrico para aproximar os centros dos olhos da versão Light e reduzir qualquer sensação de deslocamento na alternância de tema.
+O cabeçalho usa duas fotografias do mesmo gato, uma por tema:
 
-O crop visual continua fixo com `object-fit: cover` e `object-position: 50% 90%`. Não existe mais bloom, glow ou animação aplicada ao mascote; ele é uma composição fotográfica estática.
+- `assets/cat-brand-light.png`: gato preto, olhos amarelos, fundo branco.
+- `assets/cat-brand-dark.png`: gato branco, olhos amarelos, fundo preto.
 
-O favicon antigo de waveform também foi substituído por `assets/favicon.png`, recortado do próprio gato, para manter a identidade visual coerente fora do header.
+As duas ficam sobrepostas no mesmo container, com o mesmo `width`, `height`, `object-fit: cover` e `object-position: 50% 90%`. Trocar o tema muda só a opacidade; não há filtro, resize, translate nem recálculo de crop. A faixa inferior gerada nas imagens foi removida no próprio asset, para o gato parecer sair da borda do cabeçalho, e a versão escura recebeu um ajuste para alinhar os olhos com a clara. O mascote é estático, sem bloom, glow ou animação. O favicon (`assets/favicon.png`) é recortado do mesmo gato.
 
-## Controles do header
+Controles do cabeçalho:
 
-A toolbar do header foi simplificada para reduzir ações duplicadas e aproximar controles do elemento que comandam:
+- `Importar` é um único botão com menu: `Arquivo local` abre o seletor nativo e `Link` abre a barra de link.
+- O botão da janela separada do osciloscópio fica logo à esquerda do visualizador.
+- O tema só muda em Configurações → Interface → Tema.
 
-- `Importar` é um único botão com menu:
-  - `Arquivo local` abre o seletor nativo de arquivos;
-  - `Link` abre a linkbar do fluxo `yt-dlp`;
-- o botão de **janela separada do osciloscópio** fica imediatamente à esquerda do visualizador do osciloscópio;
-- o botão rápido de Light/Dark foi removido do header; o tema continua disponível em **Configurações → Interface → Tema**.
+Não recriar botões separados de importação nem um botão de tema no cabeçalho sem revisar o layout.
 
-Essas decisões são de hierarquia de interface: não recriar botões separados `Importar arquivo`, `Importar por link` ou controles duplicados de tema no header sem uma revisão explícita do layout.
+### Barra de importação por link
 
-### Alinhamento da importação por link
+- A linha de consulta tem colunas fixas para `LINK`, URL, `ANALISAR` e fechar, todos com a mesma altura.
+- A prévia tem quatro colunas: thumbnail, metadados (título, origem e autor/canal), duração e `IMPORTAR ÁUDIO`.
+- A duração tem largura fixa, alinhamento à direita e numerais tabulares, para `3:09` e `12:48` não deslocarem o botão.
+- Em caso de sucesso, não aparece a linha `Origem: ...` abaixo da prévia, porque a origem já está no micro-label. Mensagens abaixo da prévia ficam para erros.
+- Depois que `ingest()` conclui, o botão muda para `Importado` e fica desabilitado enquanto a mesma URL estiver na prévia. Uma URL diferente libera o botão de novo. Falha de download ou de decodificação não marca a mídia como importada.
+- Em telas menores, thumbnail, metadados e duração continuam alinhados e o botão ocupa a largura disponível.
 
-A linkbar foi refinada para trabalhar com eixos fixos e gutters consistentes:
-
-- a linha de consulta usa colunas dedicadas para `LINK`, URL, `ANALISAR` e fechar;
-- `ANALISAR` e fechar usam a mesma altura dos demais controles;
-- a prévia usa quatro colunas explícitas: thumbnail, metadados, duração e `IMPORTAR ÁUDIO`;
-- a duração possui largura fixa, alinhamento à direita e numerais tabulares, evitando deslocamento visual entre `3:09`, `12:48` ou durações maiores;
-- `IMPORTAR ÁUDIO` possui largura fixa e fica no mesmo eixo vertical da duração e da prévia;
-- título, origem e autor/canal ficam agrupados em uma única coluna, sem a duração competir por espaço com o texto;
-- a mensagem redundante `Origem: ...` abaixo da prévia foi removida nos estados de sucesso, pois a origem já aparece no micro-label da mídia;
-- mensagens abaixo da prévia ficam reservadas para erros/estados que realmente precisam de texto;
-- após uma importação remota concluir com sucesso, o CTA da prévia muda de `Importar áudio` para `Importado` e permanece desabilitado enquanto aquela mesma URL estiver representada no preview;
-- editar/analisar uma URL diferente libera novamente o CTA para o novo resultado; reanalisar a mesma URL já importada mantém o estado `Importado`;
-- o estado desabilitado é aplicado somente depois de `ingest()` concluir com sucesso — falha de download/decodificação não marca a mídia como importada;
-- em telas menores, a composição degrada de forma previsível: thumbnail/metadados/duração permanecem alinhados e o CTA passa a ocupar a largura disponível.
-
----
-
-# 1. Arquitetura
+## Arquitetura
 
 ```text
-                 ARQUIVO LOCAL
-                      │
-                      ▼
-                 File / Blob
-                      │
-                      ├─────────────────────┐
-                      │                     │
-LINK REMOTO           │                     │
-    │                 │                     │
-    ▼                 │                     │
-FastAPI               │                     │
-    │                 │                     │
-    ├─ /api/media/info│                     │
-    │      │          │                     │
-    │      └─ yt-dlp  │                     │
-    │                 │                     │
-    └─ /api/media/audio                     │
-           │                                │
-           └─ yt-dlp -> Blob ───────────────┘
-                                            │
-                                            ▼
-                                     ingest(blob)
-                                            │
-                                            ▼
-                                   decodeAudioData()
-                                            │
-                          ┌─────────────────┼────────────────┐
-                          ▼                 ▼                ▼
-                       waveform          player         metadados
-                          │                 │
-                          │                 ▼
-                          │           playbackRate
-                          │                 │
-                          └──────► osciloscópio
-                                            │
-                                            ▼
-                                      exportação WAV
+ARQUIVO LOCAL ───────────────────────────────┐
+                                             │
+LINK ─> FastAPI ─┬─ /api/media/info  (yt-dlp, sem download)
+                 └─ /api/media/audio (yt-dlp) ─> Blob ─┤
+                                                       ▼
+                                                ingest(blob)
+                                                       │
+                                               decodeAudioData()
+                                                       │
+                              ┌────────────────────────┼──────────────┐
+                              ▼                        ▼              ▼
+                          waveform              player (playbackRate)  metadados
+                                                       │
+                                          osciloscópio / vectorscope
+                                                       │
+                                                 exportação WAV
 ```
 
-A fronteira importante é `ingest()` em `app.js`: tanto arquivos locais quanto áudio recebido do backend chegam ali como `Blob`.
+A fronteira é `ingest()` em `app.js`: arquivos locais e áudio vindo do backend chegam ali como `Blob`.
 
-## Biblioteca visual
+O `yt-dlp` roda no backend porque é uma aplicação Python e precisa lidar com CORS, URLs assinadas, manifests, headers, cookies e formatos que não cabem no sandbox do navegador. Por isso o caminho é `browser -> backend local -> yt-dlp`, e os extractors não devem ser portados para `app.js`.
 
-Uma faixa carregada no editor e uma faixa salva na Biblioteca são estados independentes. Por padrão, a importação apenas carrega o áudio; **Adicionar à Biblioteca** cria o nó e persiste a mídia. A opção **Biblioteca → Adicionar importações automaticamente** restaura o fluxo automático quando desejado.
-
-Na primeira entrada, `#libraryTutorial` apresenta a Biblioteca em quatro atos: memória local, categorias como pontos do mapa, organização e navegação até o editor. Cada ato reenquadra a mesma rede, revela rótulos semânticos nos nós e acrescenta um sinal conceitual curto; a trilha segmentada mostra o avanço sem automatizar o ritmo de leitura. A rede exibida é uma ilustração SVG e nunca altera os dados reais. `Explorar biblioteca` encerra o último ato com uma transição curta que revela o grafo por baixo; pular, usar `Escape`, sair da Biblioteca ou ativar movimento reduzido continuam fechando imediatamente. Concluir, pular ou pressionar `Escape` grava `varispeed.library.tutorial.v1`; sair da Biblioteca por outro fluxo antes de concluir não grava a etapa. A preferência `library.alwaysShowGuide`, em Configurações → Biblioteca, ignora essa marca enquanto estiver ativa e reabre o guia em toda entrada. O tutorial oferece voltar/avançar, setas do teclado, foco modal e uma versão sem transições quando movimento reduzido está ativo.
-
-- `graph-engine.js` é uma adaptação de carregamento de `GraphEngine.txt`; o corpo da engine e seus parâmetros físicos permanecem idênticos ao original;
-- `library.js` mantém metadados, velocidade, última posição e vínculo organizacional em `localStorage` (`varispeed.library.v1`), categorias personalizadas em `varispeed.library.categories.v1` e os bytes de áudio no IndexedDB (`varispeed.media.v1`);
-- o botão **Biblioteca** permanece disponível no editor mesmo quando não há músicas;
-- o grafo exibe somente categorias; músicas individuais ficam em uma lista dedicada, aberta ao selecionar um ponto do mapa;
-- `Biblioteca` reúne todas as faixas, `Favoritas` é uma visão especial sobre as músicas marcadas e categorias personalizadas filtram por vínculo organizacional;
-- a lista aceita busca global, ordenação por inclusão, título, última abertura ou duração, navegação por setas e abertura por `Enter`;
-- sem músicas, cada categoria apresenta um estado vazio contextual; categorias personalizadas vazias permanecem no mapa para poderem ser renomeadas e receber músicas;
-- o nó `Biblioteca` usa o papel físico `root` já existente na engine e se conecta somente às categorias;
-- cada música possui uma categoria organizacional principal. Sem escolha, ela continua disponível em `Biblioteca`; ao ser vinculada, também aparece na lista da categoria pessoal;
-- categorias pessoais podem ser excluídas pelo próprio painel. As músicas vinculadas voltam para `Biblioteca`, preservando áudio, metadados e estado de favorita;
-- categorias são persistidas por ordem de criação e nunca são ocultadas ou consolidadas automaticamente: o crescimento e a complexidade legível do grafo fazem parte da identidade da Biblioteca;
-- ao soltar uma categoria arrastada, a recuperação reduz o pico de energia sem velocidade mínima injetada, limite rígido ou frenagem radial, portanto a aproximação desacelera de maneira contínua;
-- entrar na Biblioteca não pausa nem reinicia a reprodução atual;
-- quando há uma faixa carregada, o cabeçalho da Biblioteca reutiliza o padrão visual do transporte do editor — play/pause, parar, repetição, tempo atual, timeline e duração — sempre sincronizado com o mesmo áudio;
-- Play/Pause, Stop, Loop e o grupo de scrub da Biblioteca são clonados dos controles oficiais no startup da interface; o modo foco faz o mesmo com os passos de velocidade;
-- o painel de detalhes reutiliza a thumbnail já persistida para músicas remotas e apresenta o autor/canal separadamente como Crédito;
-- o painel `Fonte` reutiliza essa mesma thumbnail como capa acima dos metadados; quando a mídia não possui imagem ou ela falha ao carregar, o espaço é removido integralmente;
-
-## Desempenho do grafo
-
-A simulação física permanece contínua, com colisões, `alpha`, amortecimento e movimento flutuante ativos. O perfil atual adapta a intenção visual do grafo do Obsidian à escala do VARISPEED: repulsão mais presente, coesão central moderada e ligações mais espaçosas, sem copiar números incompatíveis entre engines.
-
-- categorias preservam seu papel hierárquico com distância `380` e força `0,52`, mantendo um mapa compacto ao redor de `Biblioteca`;
-- cargas internas são `420` para Biblioteca e `250` para categorias; a atração central continua ponderada por papel para não colapsar o mapa;
-
-- a distribuição inicial é dirigida pela topologia: cada categoria nasce na distância de repouso de sua ligação e cada música nasce em um anel ao redor da categoria à qual pertence; anéis adicionais continuam escalonados, sem congelar posições;
-- ao criar uma categoria com o grafo já desenvolvido, sua posição inicial usa o maior setor angular disponível e a folga real até músicas e hubs existentes para desempatar. Categorias preservadas viram as âncoras reais de novas músicas, impedindo que expansões incrementais nasçam sobre outro aglomerado;
-- o enquadramento automático preserva uma escala mínima legível conforme a rede cresce; o zoom manual ainda alcança a visão geral mais afastada quando desejado;
-- `setData()` reutiliza integralmente o SVG quando nós, links e conteúdo não mudaram;
-- nós e links novos ainda são montados normalmente, mas entram no DOM em fragmentos para evitar layouts intermediários;
-- largura de títulos longos é cacheada e o marquee é medido dois frames depois da montagem;
-- raio, carga, atração central, fase flutuante, distância e força dos links são cacheados depois da indexação;
-- a colisão usa uma grade espacial dimensionada pelo maior alcance possível entre dois nós; somente células vizinhas produzem candidatos e, dentro delas, a rejeição por eixo continua acontecendo antes de `Math.hypot()`;
-- a grade não altera posição, velocidade, força ou ordem: os candidatos são reordenados pelo índice `i/j` original e a fórmula, o espaçamento de `44 px` e o impulso da colisão permanecem integrais;
-- roda, câmera, física e pintura são coordenadas pelo mesmo `requestAnimationFrame`; eventos de entrada apenas atualizam estado e cada quadro produz no máximo uma transformação visual;
-- zoom ancorado no ponteiro não calcula os insets do viewport, pois eles são necessários somente no zoom centralizado;
-- a origem do host é atualizada em `resize()` e reutilizada pela roda, removendo leituras de layout do caminho normal do zoom;
-- o zoom usa uma mola criticamente amortecida com resposta de `150 ms`: converge sem ultrapassar o alvo, sem o encaixe seco em dois quadros e sem um segundo loop concorrente;
-- conexões vivem em um Canvas próprio atrás do SVG interativo dos nós. As linhas são projetadas diretamente em coordenadas de tela, agrupadas por aparência e rejeitadas quando o segmento inteiro está fora do viewport; tracejados de afinidade, destaque e atenuação continuam visualmente equivalentes, sem o custo de rasterizar linhas SVG longas no zoom próximo;
-- nós continuam vetoriais e posicionados por transformações CSS compostas. Até `1,16×`, a câmera usa composição CSS; acima disso, troca o SVG dos nós para `viewBox`, evitando rasterizar uma textura gigante. A volta só ocorre abaixo de `1,04×`, impedindo alternância durante o gesto;
-- a física avança em frequência controlada (`60 Hz` ativa e `30 Hz` em repouso), independente de monitores de 60/120/144 Hz. Os quadros visuais interpolam o último passo físico; o nó arrastado ignora essa interpolação para permanecer diretamente sob o ponteiro;
-- posições continuam sendo calculadas com precisão total; somente serializações visuais idênticas dentro de 0,01 px são suprimidas;
-- apenas o `ResizeObserver` interno do `GraphEngine` mede o host; a Biblioteca recebe o resultado por `onResize`;
-- Configurações → Avançado → Diagnóstico mostra FPS, física, renderização, latência de entrada, intervalo entre quadros, custo da câmera, resposta completa, quadros perdidos por múltiplos do refresh e long tasks.
-- **Medir grafo · 8 s** fecha temporariamente as Configurações para permitir zoom, pan e arraste reais, sem alterar a Biblioteca. Ao terminar, reabre o Diagnóstico com FPS observado, cadência estimada, orçamento de frame e média/p95/máximo de frame, física, render, entrada e zoom; **Copiar relatório** gera um bloco reproduzível para comparar computadores e sessões.
-
-Na linha de base sintética deste projeto, 17 músicas passaram de aproximadamente `0,61 ms` para `0,45 ms` de física por quadro; com 50 músicas, de `4,07 ms` para `2,56 ms`. Esses números são comparativos e variam conforme o computador.
-
-Uma verificação adicional no teto estrutural usou `200` músicas, `64` categorias pessoais, `Favoritas` e `Biblioteca`: `266` nós e `315` ligações. Na captura de maior densidade, a grade encaminhou `1.819` dos `35.245` pares possíveis para a colisão; `463` passaram pela rejeição por eixo e `385` estavam efetivamente sobrepostos. O navegador integrado limitou tanto o FPS geral quanto o FPS do grafo à mesma faixa de aproximadamente `30/s`, por isso essa limitação do ambiente não foi tratada como custo exclusivo da engine.
-- scrubs do editor, Biblioteca e modo foco compartilham o mesmo binder de eventos e a mesma rotina de atualização de posição;
-- depois de clicar em um botão com mouse/toque, `Espaço` continua sendo o atalho global de Play/Pause; controles alcançados por `Tab`, campos, sliders, menus e Configurações preservam a semântica nativa do teclado;
-- ícones semanticamente idênticos, como Fechar, usam símbolos SVG centrais; um símbolo não deve ser reaproveitado para outra função apenas por semelhança visual;
-- músicas começam sem pré-seleção; clique, Enter ou Espaço selecionam o nó e abrem o painel lateral;
-- ao selecionar um nó, a câmera usa `focusNode()`, aproxima até pelo menos `1.35×` e centraliza suavemente no viewport útil; blocos visíveis marcados com `data-graph-viewport-block` são descontados pela lateral correspondente. Enquanto o painel permanece aberto, a câmera acompanha a flutuação do nó; cliques repetidos no mesmo nó não reconstroem o painel nem reiniciam esse acompanhamento, e fechar o painel restaura o enquadramento geral suavemente;
-- `Abrir música`/`Voltar à música` usa o mesmo estado ocupado, pulso e varredura do botão `Exportar WAV`;
-- Blobs importados são mantidos no IndexedDB e continuam disponíveis após F5 ou reabertura do app;
-- links antigos sem Blob persistido ainda podem ser obtidos novamente pelo backend;
-- entradas locais sem áudio correspondente são removidas durante a inicialização, evitando nós indisponíveis;
-- remover a faixa ativa da Biblioteca não interrompe o editor: o áudio continua carregado e pode ser adicionado novamente;
-- O CSS do grafo usa os mesmos tokens, temas e breakpoints do VARISPEED;
-- O reenquadramento após resize pertence à câmera da biblioteca e não modifica a simulação física;
-- a captura do ponteiro pertence ao SVG estável, e atualizações de dados recebidas durante um gesto são aplicadas somente depois do `pointerup`/cancelamento; isso impede que uma reconstrução de nós interrompa o arraste;
-- perda de captura, mudança de aba, desfoque da janela e saída da Biblioteca encerram qualquer interação pendente de forma segura;
-- a simulação é pausada enquanto a Biblioteca está oculta e retomada ao reabrir, sem alterar os parâmetros da física;
-- medições `0 × 0` emitidas enquanto a Biblioteca está oculta não substituem o último viewport válido; nós novos aguardam a próxima medição visível antes de receber posição;
-- câmera, foco e enquadramento rejeitam coordenadas não finitas e restauram um estado seguro, impedindo que `translate(NaN NaN)` bloqueie pan e arraste;
-- nomes de músicas usam marquee horizontal apenas quando ultrapassam a largura disponível: cabeçalho, detalhe da Biblioteca e `Fonte → Arquivo` medem overflow real; na lista, títulos longos são truncados sem invadir estado e duração;
-- o marquee espera antes de mover, revela o final e retorna ao início; nomes curtos permanecem estáticos, hover pausa o movimento e a preferência de movimento reduzido é respeitada;
-- atalhos globais não interceptam teclas usadas em campos, botões, links, sliders ou outros controles interativos.
-
----
-
-# 2. Estrutura de arquivos
+## Estrutura de arquivos
 
 ```text
 .
 ├── index.html              # interface principal
 ├── styles.css              # design system e layout
 ├── theme-boot.js           # tema/densidade antes do primeiro paint
-├── app.js                  # core da aplicação e fluxo de áudio
-├── settings.js             # preferências/configurações
-├── motion.js               # microinterações e motion system
+├── app.js                  # núcleo da aplicação e fluxo de áudio
+├── core.js                 # lógica pura, sem DOM, coberta por testes
+├── settings.js             # preferências e configurações
+├── motion.js               # microinterações e feedback textual
 ├── scope-view.js           # osciloscópio + vectorscope de partículas
-├── scope-win.js            # comunicação com janela externa
+├── scope-win.js            # comunicação com a janela externa
 ├── scope.html              # janela dedicada do osciloscópio
 ├── remote-import.js        # cliente HTTP da integração yt-dlp
 ├── graph-engine.js         # física, câmera e interação do grafo
 ├── library.js              # histórico persistente e tela Biblioteca
+├── library-model.js        # projeções puras da Biblioteca
 ├── assets/
 │   ├── cat-brand-light.png # gato preto / olhos amarelos / fundo branco
 │   ├── cat-brand-dark.png  # gato branco / olhos amarelos / fundo preto
 │   ├── creator-light.png   # retrato pessoal local, não publicado
 │   ├── creator-dark.png    # retrato pessoal local, não publicado
 │   ├── favicon.png         # favicon derivado do mascote
-│   └── varispeed.ico       # ícone multi-resolução do atalho Windows
+│   ├── varispeed.ico       # ícone multi-resolução do atalho Windows
+│   └── icons/              # licença e manifesto do Lucide
 ├── VARISPEED.vbs           # launcher normal no Windows, sem terminal visível
 ├── Create VARISPEED shortcut.vbs # cria atalho com ícone do gato no Desktop
+├── VARISPEED.desktop       # atalho de menu para Linux (ajustar caminhos)
 ├── launcher.py             # bootstrap gráfico, somente stdlib Python
-├── startup.html            # tela de inicialização real
-├── startup.css
-├── startup.js
+├── startup.html / startup.css / startup.js # tela de inicialização
 ├── logs/                   # startup.log / server.log em runtime
 ├── start-tempo.bat         # modo diagnóstico/manual no Windows
 ├── start-tempo.sh          # inicialização manual em Linux/macOS
 ├── server/
-│   ├── __init__.py
 │   ├── main.py             # FastAPI + integração yt-dlp
 │   ├── browser_auth.py     # descoberta/validação de perfis instalados
 │   ├── dedicated_auth.py   # sessão isolada e filtrada do YouTube
 │   ├── youtube_pot.py      # PO Token WPC + runtime EJS local
 │   ├── requirements.txt
 │   └── requirements-dev.txt # lint e auditoria usados na CI
+├── tests/                  # testes node:test e unittest
+├── tools/youtube-cookie-exporter/ # extensão opcional para exportar cookies
+├── docs/                   # HANDOFF, padrão de UI e revisão de ícones
 ├── pyproject.toml          # política Ruff do projeto
-├── VARISPEED.desktop       # atalho de menu para Linux (ajustar caminhos)
-├── docs/
-│   ├── HANDOFF.md          # estado técnico e invariantes
-│   ├── PADRAO_UI.md        # medidas e regras da interface
-│   └── REVISAO_ICONES.md   # origem e licença dos ícones
 ├── CHANGELOG.md
-├── README.md
-└── .gitignore
+└── README.md
 ```
 
-`providers.js` foi removido. A antiga arquitetura de adapters CORS foi substituída pela importação backend via `yt-dlp`.
+O antigo `providers.js`, com adapters CORS, foi substituído pela importação via `yt-dlp` no backend.
 
----
+## Requisitos
 
-# 3. Requisitos
+- Python 3.11 ou mais novo e acesso à internet, para a importação por link e para instalar as dependências de `server/requirements.txt` na primeira execução.
+- `ffmpeg` no `PATH` é recomendado. O fluxo prioriza streams M4A/WebM e evita transcodificar, então muitas fontes funcionam sem ele, mas alguns formatos e protocolos do `yt-dlp` dependem dele.
+- Node.js 22 ou mais novo, só para vídeos que exigem PO Token (ver [Conteúdo restrito](#conteúdo-restrito)).
 
-## Obrigatórios para importação por link
+## Como executar
 
-- Python **3.11+**;
-- acesso à internet;
-- dependências de `server/requirements.txt`.
+### Windows
 
-O `yt-dlp` recomenda versões modernas do Python; a release estável consultada durante esta implementação era a série 2026.x.
-
-## Recomendado
-
-- `ffmpeg` disponível no `PATH`.
-
-O fluxo atual prioriza streams de áudio M4A/WebM e evita transcodificação desnecessária, portanto várias fontes funcionam sem converter nada. Mesmo assim, `ffmpeg` aumenta a compatibilidade do `yt-dlp` com determinados formatos/protocolos.
-
----
-
-# 4. Como executar
-
-## Windows — uso normal
-
-O ponto de entrada recomendado é **`VARISPEED.vbs`** ou o atalho `VARISPEED` criado na Área de Trabalho. O launcher usa o Windows Script Host para iniciar o bootstrap com a janela do console oculta.
-
-Na primeira vez, execute uma vez:
-
-```text
-Create VARISPEED shortcut.vbs
-```
-
-Isso cria `VARISPEED.lnk` na Área de Trabalho usando `assets/varispeed.ico`, derivado do favicon do gato. Depois, abra o aplicativo pelo atalho.
-
-Fluxo normal:
+Use `VARISPEED.vbs` ou o atalho `VARISPEED` da Área de Trabalho. Para criar o atalho, rode uma vez `Create VARISPEED shortcut.vbs`; ele cria `VARISPEED.lnk` com o ícone `assets/varispeed.ico`.
 
 ```text
 Atalho VARISPEED
-      ↓
-VARISPEED.vbs (sem console visível)
-      ↓
-launcher.py em 127.0.0.1:8764
-      ↓
-tela de inicialização no navegador
-      ↓
-uma única linha de estado: INICIALIZANDO... → VERIFICANDO PYTHON... → ... → PRONTO
-      ↓
-barra indeterminada de varredura (mesma linguagem da importação por link)
-      ↓
-/api/health responde em 127.0.0.1:8765
-      ↓
-redirecionamento automático para o VARISPEED
+  -> VARISPEED.vbs (sem console visível)
+  -> launcher.py em 127.0.0.1:8764
+  -> tela de inicialização no navegador
+  -> /api/health responde em 127.0.0.1:8765
+  -> redirecionamento automático para o VARISPEED
 ```
 
-A tela de startup é propositalmente mínima: **não há checklist nem porcentagem**. Só existe uma linha de estado por vez e uma barra indeterminada rápida. A troca de texto usa `Motion.status()`, a assinatura oficial de feedback textual do VARISPEED, derivada diretamente da animação de confirmação de exportação (`Exportado · arquivo · tamanho`). Logs detalhados continuam disponíveis apenas quando ocorre erro e o usuário escolhe `VER DETALHES`.
+O `launcher.py` usa só a biblioteca padrão do Python e sobe um `ThreadingHTTPServer` temporário em `127.0.0.1:8764`, para a tela existir antes de `.venv` e das dependências. Ele confere, nesta ordem: Python 3.11+, `.venv`, FastAPI/Uvicorn/yt-dlp, versão do yt-dlp, FFmpeg (opcional), início do Uvicorn e resposta de `/api/health` e `GET /`. Com tudo pronto, `startup.js` mantém `PRONTO` na tela por uns 720 ms, chama `location.replace()` e o servidor temporário se encerra. Não adicionar FastAPI ou Flask ao launcher, porque ele precisaria das dependências que ainda vai instalar.
 
-### Composição visual da tela de inicialização
+A tela de inicialização mostra o gato e `VARISPEED 1.0` no mesmo eixo, uma única linha de estado e uma barra indeterminada logo abaixo, sem checklist nem porcentagem. A linha troca de texto com `Motion.status()` e a barra usa a mesma varredura da importação por link. Não há linhas de moldura acima do logo nem abaixo da barra; não reintroduzir `border-top`/`border-bottom` em `.boot__panel`. Em caso de erro, o bloco cresce para mostrar `TENTAR NOVAMENTE` e `VER DETALHES`, sem mudar a geometria do estado normal. A ausência do FFmpeg aparece como aviso.
 
-A tela de startup usa a composição central aprovada do VARISPEED: **gato + `VARISPEED 1.0` no mesmo eixo**, uma única linha de status abaixo e a barra indeterminada imediatamente em seguida. O bloco é compacto e centralizado no viewport.
+Se o VARISPEED já estiver rodando em `127.0.0.1:8765`, um segundo clique abre a instância existente. Se outro bootstrap estiver em andamento, o clique reaproveita a tela em `127.0.0.1:8764`.
 
-Não existem linhas decorativas de moldura acima do logotipo nem abaixo da barra de carregamento. A única linha horizontal permanente do estado normal é a própria trilha da barra indeterminada. Não reintroduzir `border-top`/`border-bottom` em `.boot__panel` ou divisores externos equivalentes sem pedido explícito.
+Os logs ficam em `logs/startup.log` (bootstrap, ambiente, pip e diagnóstico) e `logs/server.log` (saída do Uvicorn/FastAPI).
 
-O estado de erro pode expandir o mesmo bloco para mostrar ações e detalhes, mas não deve alterar a geometria base do cabeçalho/status durante a inicialização normal.
-
-O launcher exige Python **3.11+**. Com o Python Install Manager, por exemplo:
+Para instalar o Python com o Python Install Manager:
 
 ```bat
 py install 3.13
 py -3.13 --version
 ```
 
-Se o VARISPEED já estiver rodando em `127.0.0.1:8765`, um segundo clique **não cria outro backend**; ele abre a instância existente. Se outro bootstrap ainda estiver em andamento, o segundo clique reutiliza a tela de startup já ativa em `127.0.0.1:8764`.
+`start-tempo.bat` é o modo de diagnóstico: abre o terminal e deixa o console ligado ao Uvicorn. Use-o para depurar instalação, Python, pip ou backend. Ele detecta `py -3`, cria `.venv` com `py -3 -m venv .venv` e recria uma `.venv` incompleta. O fluxo usa rótulos e `goto` em vez de blocos `IF (...)`, porque o `cmd.exe` expande `%PY_CMD%` antes das atribuições dentro do bloco e o comando ficava vazio.
 
-### Logs e erros
-
-O terminal fica oculto, mas a saída não é descartada:
-
-```text
-logs/startup.log   # bootstrap, criação de ambiente, pip e diagnóstico
-logs/server.log    # stdout/stderr do Uvicorn/FastAPI
-```
-
-Se houver falha, a própria tela mostra `TENTAR NOVAMENTE` e `VER DETALHES`. FFmpeg continua sendo opcional: ausência dele é exibida como aviso, não como falha fatal.
-
-## Windows — diagnóstico/manual
-
-`start-tempo.bat` continua no projeto deliberadamente como **modo de diagnóstico**. Ele abre o terminal, exibe as mensagens tradicionais e mantém o console anexado ao Uvicorn:
-
-```bat
-start-tempo.bat
-```
-
-Use esse modo quando precisar depurar instalação, Python, pip ou backend. Para uso cotidiano, prefira `VARISPEED.vbs`/atalho.
-
-## Linux/macOS
+### Linux e macOS
 
 ```bash
 chmod +x start-tempo.sh
 ./start-tempo.sh
 ```
 
-Depois abra:
-
-```text
-http://127.0.0.1:8765/
-```
+Depois abra `http://127.0.0.1:8765/`.
 
 Para abrir pelo menu de aplicativos, use `VARISPEED.desktop`. O arquivo aponta para `/caminho/para/VARISPEED`; troque pelo caminho do seu clone antes de instalar:
 
@@ -401,130 +200,33 @@ Para abrir pelo menu de aplicativos, use `VARISPEED.desktop`. O arquivo aponta p
 sed "s#/caminho/para/VARISPEED#$PWD#g" VARISPEED.desktop > ~/.local/share/applications/VARISPEED.desktop
 ```
 
-## Execução manual
+### Execução manual
 
 ```bash
 python -m venv .venv
-```
-
-Windows:
-
-```bat
-.venv\Scripts\python -m pip install -r server\requirements.txt
-.venv\Scripts\python -m uvicorn server.main:app --host 0.0.0.0 --port 8765
-```
-
-Linux/macOS:
-
-```bash
 .venv/bin/python -m pip install -r server/requirements.txt
 .venv/bin/python -m uvicorn server.main:app --host 0.0.0.0 --port 8765
 ```
 
-Não abra apenas `index.html` via `file://` se quiser usar links. A interface pode aparecer, mas `/api/media/*` não existirá.
+No Windows, troque `.venv/bin/python` por `.venv\Scripts\python` e use `server\requirements.txt`.
 
----
+Abrir `index.html` direto por `file://` mostra a interface, mas sem `/api/media/*` a importação por link não funciona.
 
-# 5. Importação local
+## Importação local
 
-A importação local permanece totalmente no navegador.
-
-Fluxo:
+O arquivo nunca sai do navegador:
 
 ```text
-<input type=file>
-      │
-      ▼
-load(file)
-      │
-      ▼
-ingest(file)
-      │
-      ▼
-blob.arrayBuffer()
-      │
-      ▼
-AudioContext.decodeAudioData()
+<input type=file> -> load(file) -> ingest(file) -> blob.arrayBuffer() -> AudioContext.decodeAudioData()
 ```
 
-Nenhum arquivo local é enviado ao backend.
+O frontend aceita WAV, MP3, FLAC, OGG, M4A, AAC, OPUS e WebM. A decodificação depende dos codecs do navegador.
 
-Formatos aceitos pela validação do frontend incluem:
+## Importação por link
 
-- WAV;
-- MP3;
-- FLAC;
-- OGG;
-- M4A;
-- AAC;
-- OPUS;
-- WebM.
+`Importar → Link` abre a barra. Ao colar um endereço válido, o app busca os metadados sem baixar a mídia. O download só começa ao clicar em Importar áudio, e a tela passa por `Baixando áudio...`, `Decodificando...`, waveform e `Pronto`.
 
-A decodificação final depende dos codecs suportados pelo navegador.
-
----
-
-# 6. Importação por link com yt-dlp
-
-## 6.1 Fluxo de interface
-
-O fluxo remoto é aberto por `Importar → Link`. Ao colar um endereço válido, o VARISPEED tenta obter os metadados automaticamente, sem baixar a mídia completa.
-
-```text
-colar link
-    │
-    ▼
-Obtendo informações...
-    │
-    ▼
-┌─────────────────────────────────────────┐
-│ thumbnail                               │
-│ título                                  │
-│ autor / canal                           │
-│ duração                                 │
-│ origem / extractor                      │
-│                                         │
-│                 Importar áudio          │
-└─────────────────────────────────────────┘
-```
-
-O download só começa após **Importar áudio**.
-
-Depois:
-
-```text
-Baixando áudio...
-        ↓
-Decodificando...
-        ↓
-waveform
-        ↓
-Pronto
-```
-
-## 6.2 Metadados sem download
-
-O endpoint:
-
-```text
-POST /api/media/info
-```
-
-recebe:
-
-```json
-{
-  "url": "https://..."
-}
-```
-
-O backend usa conceitualmente:
-
-```python
-info = ydl.extract_info(url, download=False)
-```
-
-A resposta do VARISPEED contém apenas os campos necessários para a interface:
+`POST /api/media/info` recebe `{"url": "https://..."}`, chama `ydl.extract_info(url, download=False)` e devolve só o que a interface usa:
 
 ```json
 {
@@ -540,326 +242,210 @@ A resposta do VARISPEED contém apenas os campos necessários para a interface:
 }
 ```
 
-## 6.3 Obtenção do áudio
-
-O endpoint:
+`POST /api/media/audio` recebe o mesmo corpo e escolhe o formato nesta ordem:
 
 ```text
-POST /api/media/audio
+bestaudio[ext=m4a] / bestaudio[ext=webm] / bestaudio / best
 ```
 
-recebe o mesmo corpo JSON.
+A ordem prefere M4A, depois WebM, para evitar transcodificar, gastar menos CPU e entregar algo que o navegador consiga transformar em `Blob`. O backend baixa para um diretório temporário, envia com `FileResponse` e apaga o diretório depois da resposta. O navegador passa o resultado pelo mesmo `ingest()` dos arquivos locais.
 
-A seleção atual é:
+### Progresso
 
-```text
-bestaudio[ext=m4a] /
-bestaudio[ext=webm] /
-bestaudio /
-best
-```
+Quando não há total conhecido (obtendo informações, download antes de o servidor responder, decodificação), a barra é indeterminada. Quando a resposta traz `Content-Length`, o navegador conta os bytes recebidos e mostra a porcentagem. O app não inventa porcentagem de download do `yt-dlp`.
 
-Objetivos dessa ordem:
+### Plataformas
 
-1. preferir M4A quando disponível;
-2. usar WebM como segunda opção;
-3. evitar transcodificação quando possível;
-4. reduzir CPU e tempo de processamento;
-5. entregar ao navegador uma mídia que possa ser convertida em `Blob`.
+O que funciona depende dos extractors da versão instalada do `yt-dlp` e das regras de cada site. YouTube e links diretos costumam funcionar; alguns sites exigem cookies ou `ffmpeg`; conteúdo com DRM não é descriptografado; e mudanças num site podem quebrar um extractor até a próxima versão. Use o recurso só com conteúdo que você tem direito de baixar e processar.
 
-O navegador então chama o mesmo `ingest()` utilizado para arquivos locais.
+## Backend
 
----
-
-# 7. Backend
-
-Arquivo principal:
-
-```text
-server/main.py
-```
-
-Endpoints:
+O arquivo principal é `server/main.py`. O backend não edita áudio: não altera velocidade, pitch, waveform nem WAV.
 
 | Endpoint | Método | Função |
 |---|---|---|
 | `/api/health` | GET | estado do backend e versão do yt-dlp |
 | `/api/system/info` | GET | porta, URL local, URLs da LAN e permissão de desligamento |
-| `/api/system/shutdown` | POST | encerra o backend; restrito ao próprio computador (loopback) |
+| `/api/system/shutdown` | POST | encerra o backend; só via loopback |
 | `/api/auth/status` | GET | estado não sensível da autenticação local |
-| `/api/auth/browser` | POST | seleciona modo de autenticação; loopback + origem local |
-| `/api/auth/browser/auto` | POST | descobre perfis instalados e valida uma sessão no link solicitado |
+| `/api/auth/browser` | POST | escolhe o modo de autenticação; loopback + origem local |
+| `/api/auth/browser/auto` | POST | descobre perfis instalados e valida uma sessão no link pedido |
 | `/api/auth/dedicated/start` | POST | abre a janela isolada do YouTube |
 | `/api/auth/dedicated/finish` | POST | filtra a sessão do YouTube e apaga o perfil temporário |
 | `/api/auth/dedicated/cancel` | POST | fecha a janela temporária sem remover uma sessão válida anterior |
-| `/api/auth/dedicated/disconnect` | POST | remove a sessão dedicada armazenada localmente |
+| `/api/auth/dedicated/disconnect` | POST | remove a sessão dedicada guardada localmente |
 | `/api/media/info` | POST | metadados sem download |
 | `/api/media/audio` | POST | obtém e transmite o áudio |
 | `/` | GET | `index.html` |
 | arquivos públicos | GET | CSS/JS/scope permitidos por whitelist |
 
-O backend não é um editor de áudio. Ele não altera velocidade, pitch, waveform ou WAV.
+Resposta esperada de `GET http://127.0.0.1:8765/api/health`:
 
----
-
-# 8. Segurança do backend local
-
-O backend principal escuta por padrão em:
-
-```text
-0.0.0.0:8765
+```json
+{ "ok": true, "yt_dlp": "...", "ffmpeg": true }
 ```
 
-Isso permite abrir o VARISPEED em **outros dispositivos da mesma rede local**. O navegador do computador host continua usando `http://127.0.0.1:8765/`; em **Configurações → Sistema** o app mostra o IPv4 LAN detectado e a porta, por exemplo `http://192.168.1.20:8765/`.
+### Rede local e segurança
 
-No Windows, o Firewall pode pedir permissão para o Python aceitar conexões. Para uso doméstico/LAN, libere apenas em **redes privadas**. Não encaminhe a porta 8765 no roteador e não exponha diretamente o serviço à internet sem autenticação, rate limiting e isolamento adicionais.
+O backend escuta em `0.0.0.0:8765` (a porta muda com `VARISPEED_PORT`), para que outros dispositivos da rede local abram o app. No computador host, use `http://127.0.0.1:8765/`. Configurações → Sistema mostra o IPv4 da rede, como `http://192.168.1.20:8765/`, priorizando o da rota ativa. Com adaptadores virtuais pode haver outras URLs; a principal é a primeira devolvida pelo backend.
 
-A rota de desligamento (`POST /api/system/shutdown`) é deliberadamente restrita a requisições vindas de loopback (`127.0.0.1`/localhost), portanto um celular ou outro computador na LAN pode usar o editor, mas não desligar o host.
+No Windows, o Firewall pode pedir permissão para o Python. Libere só em redes privadas. Não encaminhe a porta 8765 no roteador nem exponha o serviço à internet sem autenticação, rate limiting e isolamento.
 
-`server/main.py` também:
+A rota de desligamento só aceita loopback (`127.0.0.1`/localhost): um celular na rede usa o editor, mas não desliga o host. `Desligar VARISPEED` pede confirmação, dispara `varispeed:shutdown` para pausar o áudio e fechar o AudioContext, chama `POST /api/system/shutdown` e troca a aba para a tela `VARISPEED DESLIGADO`; o processo termina alguns milissegundos depois de responder. Em clientes da rede o botão fica desabilitado. Um novo clique no atalho inicia o backend de novo.
 
-- aceita apenas `http` e `https`;
-- bloqueia localhost;
-- rejeita IPs locais/privados/reservados;
-- resolve DNS e rejeita destinos não globais;
-- desativa playlists;
-- rejeita lives;
-- usa diretório temporário por download;
-- remove o diretório temporário após enviar o arquivo;
+Na importação, `server/main.py`:
+
+- aceita só `http` e `https`;
+- bloqueia localhost e IPs locais, privados ou reservados, inclusive depois de resolver o DNS;
+- desativa playlists e rejeita lives;
+- usa um diretório temporário por download e o apaga depois do envio;
 - não publica `server/` como conteúdo estático.
 
-Há suporte opcional a cookies através de:
-
-```text
-VARISPEED_COOKIES_FILE=/caminho/para/cookies.txt
-```
-
-Use apenas cookies de contas às quais você tem autorização de acesso e proteja esse arquivo.
+Todas as respostas recebem a mesma política HTTP:
 
-O fluxo principal não exige mais criar esse arquivo. Em **Configurações →
-Importação por link → Conteúdo restrito**, **Usar cookies do navegador**
-descobre os perfis compatíveis instalados e testa localmente cada candidato no
-link solicitado. Somente o navegador e o nome público do perfil validado chegam
-à interface; caminho, banco e valores de cookies permanecem no backend. Nada é
-exportado para um arquivo pelo modo automático.
-
-Navegadores Chromium bloqueiam o banco de cookies enquanto estão abertos. Como
-o próprio VARISPEED pode estar rodando no Edge, **Sessão dedicada** continua
-como fallback recomendado nesse caso. Ela abre uma instância isolada do Edge
-com perfil temporário e porta
-DevTools aleatória limitada a `127.0.0.1`. Depois que o usuário entra no YouTube
-e confirma a conexão, o VARISPEED:
+- a API usa `Cache-Control: no-store`, porque pode conter metadados de mídia ou estado de autenticação;
+- HTML, JS, CSS e imagens usam `no-cache`, então um F5 sempre pega a revisão atual;
+- a CSP limita scripts ao próprio VARISPEED e libera só as fontes, imagens HTTPS, mídia e Workers `blob:` e os estilos inline necessários;
+- `X-Frame-Options`, `nosniff`, `Referrer-Policy` e `Permissions-Policy` fecham recursos que o editor não usa.
 
-1. verifica a autenticação sem receber senha;
-2. navega a mesma página isolada para `youtube.com/robots.txt`;
-3. exporta somente cookies cujo domínio pertence a `youtube.com`;
-4. fecha a janela e remove o perfil temporário;
-5. mantém apenas o arquivo Netscape filtrado em `%LOCALAPPDATA%/VARISPEED/youtube-auth`.
+O bootstrap de tema fica em `theme-boot.js`, fora do HTML, para manter o tema antes do primeiro paint sem afrouxar a política de scripts.
 
-O botão **Desconectar** encerra uma janela pendente e remove esse arquivo. O
-frontend recebe somente `available`, `connected`, `login_open` e o estado de
-validação (`unverified|verified|playback_verification_required|invalid`); nomes e valores
-de cookies nunca passam pela API. Durante uma importação, o arquivo é carregado
-em um buffer efêmero para impedir que o yt-dlp amplie ou regrave a cópia
-persistente, e o modo dedicado é recusado para qualquer host que não seja
-`youtube.com`/`youtu.be`. O fluxo também mantém as opções avançadas de
-Chrome, Edge, Firefox, Brave e Vivaldi via `cookiesfrombrowser`, que exigem o
-navegador completamente fechado. Em ambos os modos o backend tenta primeiro sem
-autenticação e repete somente se o extractor indicar login, confirmação de idade
-ou cookies obrigatórios. Toda configuração sensível é restrita ao loopback;
-clientes da LAN nunca herdam a sessão.
+`VARISPEED_MAX_DURATION_SECONDS=7200` limita a duração aceita; `0` ou ausente significa sem limite.
 
-O indicador não considera mais a mera existência do arquivo como prova de
-funcionamento. O arquivo precisa conter cookies de conta legíveis pelo yt-dlp e
-a validação final acontece contra o conteúdo solicitado.
+### Conteúdo restrito
 
-Vídeos que reconhecem uma conta adulta, mas ainda exigem verificação de
-reprodução, usam automaticamente o provedor local **WPC PO Token**. O backend:
+Configurações → Importação por link → Conteúdo restrito tem três caminhos. Em todos, o backend tenta primeiro sem autenticação e só repete com ela quando o extractor pede login, confirmação de idade ou cookies. Toda configuração sensível só aceita loopback, e clientes da rede nunca herdam a sessão.
 
-1. conserva a sessão autenticada somente no `yt-dlp`;
-2. força o cliente `mweb` apenas nesse retry autenticado;
-3. abre uma instância Chromium isolada e minimizada para executar o WebPoClient;
-4. gera o token vinculado ao vídeo e fecha a instância ao terminar;
-5. habilita o Node local e os scripts `yt-dlp-ejs` para resolver os desafios de assinatura.
+Usar cookies do navegador procura os perfis compatíveis instalados e testa cada um no link pedido. A interface recebe só o navegador e o nome público do perfil validado; caminho, banco e valores de cookies ficam no backend, e nada é gravado em arquivo. Chrome, Edge, Firefox, Brave e Vivaldi também estão disponíveis como opções avançadas via `cookiesfrombrowser`, que exigem o navegador fechado, porque os navegadores Chromium travam o banco de cookies enquanto estão abertos.
 
-O navegador auxiliar não recebe os cookies da conta. Chrome, Edge, Brave ou
-Vivaldi pode ser usado como runtime; `VARISPEED_CHROMIUM_PATH` permite indicar
-outro executável compatível e `VARISPEED_NODE_PATH` permite indicar o Node.
-Esse caminho requer Node.js 22 ou superior. O estado público aparece em
-`/api/health` e `/api/auth/status`, sem expor caminhos locais.
+Sessão dedicada é o caminho recomendado quando o navegador principal está aberto (o próprio VARISPEED pode estar rodando no Edge). Ela abre uma instância isolada do Edge com perfil temporário e porta DevTools aleatória restrita a `127.0.0.1`. Depois que você entra no YouTube e confirma, o VARISPEED:
 
-Para produzir esse arquivo sem conceder acesso a outros domínios, o repositório
-mantém como alternativa avançada a extensão Chromium auditável
-`tools/youtube-cookie-exporter`. Ela pede
-acesso opcional somente a `youtube.com` após um clique explícito, não usa rede,
-telemetria ou armazenamento próprio e gera localmente o formato Netscape. A
-extensão não é instalada nem executada automaticamente; consulte o README da
-própria pasta e prefira uma conta secundária.
+1. verifica a autenticação sem receber a senha;
+2. navega a mesma página para `youtube.com/robots.txt`;
+3. exporta só cookies de domínios de `youtube.com`;
+4. fecha a janela e apaga o perfil temporário;
+5. guarda só o arquivo Netscape filtrado em `%LOCALAPPDATA%/VARISPEED/youtube-auth`.
 
-Também existe limite opcional para metadados:
+Desconectar fecha uma janela pendente e apaga esse arquivo. A interface recebe só `available`, `connected`, `login_open` e o estado de validação (`unverified`, `verified`, `playback_verification_required` ou `invalid`); nomes e valores de cookies nunca passam pela API. Durante a importação, o arquivo é lido para um buffer temporário, para o `yt-dlp` não regravar a cópia guardada, e o modo dedicado é recusado para qualquer host fora de `youtube.com`/`youtu.be`. O indicador só considera a sessão válida se o arquivo tiver cookies de conta legíveis pelo `yt-dlp` e o conteúdo pedido abrir com eles.
 
-```text
-VARISPEED_MAX_DURATION_SECONDS=7200
-```
+Arquivo de cookies manual: `VARISPEED_COOKIES_FILE=/caminho/para/cookies.txt`. Use só cookies de contas que você pode usar e proteja o arquivo. Para gerar esse arquivo sem dar acesso a outros domínios, existe a extensão Chromium `tools/youtube-cookie-exporter`. Ela pede acesso a `youtube.com` só depois de um clique, não usa rede, telemetria nem armazenamento próprio, e não é instalada nem executada automaticamente. Veja o README da pasta e prefira uma conta secundária.
 
-Valor `0`/ausente significa sem limite configurado pelo VARISPEED.
+Vídeos que reconhecem a conta mas ainda pedem verificação de reprodução usam o provedor local WPC PO Token. O backend mantém a sessão só no `yt-dlp`, força o cliente `mweb` apenas nessa nova tentativa, abre um Chromium isolado e minimizado para rodar o WebPoClient, gera o token do vídeo, fecha a instância e habilita o Node local e os scripts `yt-dlp-ejs` para os desafios de assinatura. O navegador auxiliar não recebe os cookies. Chrome, Edge, Brave ou Vivaldi servem de runtime; `VARISPEED_CHROMIUM_PATH` e `VARISPEED_NODE_PATH` apontam outro executável. O estado aparece em `/api/health` e `/api/auth/status`, sem caminhos locais.
 
----
+## Áudio
 
-# 9. Plataformas e limitações
+### Reprodução e pitch
 
-O suporte remoto depende dos extractors disponíveis na versão instalada do `yt-dlp` e das condições impostas por cada plataforma.
+`state.audio` é um `HTMLAudioElement` e a velocidade vem de `playbackRate`. O pitch muda junto. A duração de saída é aproximadamente `sourceDuration / (rate / 100)`; para 4 minutos, 50% dá uns 8 min, 80% uns 5 min, 125% uns 3 min 12 s e 200% uns 2 min.
 
-Isso significa que:
+### Waveform
 
-- YouTube pode ser processado quando o extractor/ambiente conseguem acessar a mídia;
-- links diretos também podem ser tratados pelo extractor genérico;
-- alguns sites podem exigir cookies/autenticação;
-- alguns conteúdos podem exigir `ffmpeg`;
-- conteúdo com DRM não é removido/descriptografado pelo VARISPEED;
-- alterações de uma plataforma podem quebrar temporariamente determinado extractor.
+A waveform vem do `AudioBuffer` decodificado, reduzido a `BUCKETS = 16384` para não desenhar cada sample. Ela é só visual e não altera os samples.
 
-Use o recurso apenas com conteúdo que você tem direito/autorização para baixar e processar.
+### Visualização
 
----
+O visualizador usa a reprodução real e aparece integrado, no modo foco e numa janela separada (`scope-view.js`, `scope-win.js`, `scope.html`). Ele não depende do backend e funciona com áudio de qualquer origem.
 
-# 10. Reprodução e pitch
+A mesma primitiva `ScopeView` tem dois modos. O osciloscópio desenha o envelope no tempo, em colunas ou linha contínua. O vectorscope de partículas projeta L/R em Side/Mid, desenha pontos com composição aditiva e mantém parte dos quadros anteriores para formar o rastro.
 
-`state.audio` é um `HTMLAudioElement`.
+`app.js` cria um único `MediaElementSource`. O áudio passa pelo analisador principal até a saída e, em paralelo, um `ChannelSplitterNode` alimenta dois analisadores sem duplicar a reprodução. Cabeçalho, modo foco e janela separada recebem o mesmo quadro. O número de pontos cresce com a área do canvas, limitado por `Core.stereoVectorStride()`.
 
-A velocidade é aplicada por `playbackRate`.
+### Exportação WAV
 
-A duração de saída é aproximadamente:
+A exportação é offline, no navegador, e sai sempre em WAV, mesmo que a entrada seja M4A, WebM ou MP3. Ela não depende do `yt-dlp`. Não fazer o backend converter tudo para WAV, porque isso aumentaria muito o tráfego, o espaço temporário e o tempo de processamento.
 
-```text
-outputDuration = sourceDuration / (rate / 100)
-```
+O nome do arquivo é limpo, limitado a 176 caracteres antes de `.wav`, sem ponto ou espaço no final e sem nomes reservados do Windows (`CON`, `NUL`, `COM1` etc.). O nome vindo no `Content-Disposition` do backend também é truncado.
 
-Exemplo para 4 minutos:
+## Biblioteca
 
-```text
-50%  -> ~8 min
-80%  -> ~5 min
-100% -> 4 min
-125% -> ~3 min 12 s
-200% -> ~2 min
-```
+Carregar uma faixa no editor e salvá-la na Biblioteca são coisas separadas. Por padrão, importar só carrega o áudio; Adicionar à Biblioteca cria o nó e guarda a mídia. Biblioteca → Adicionar importações automaticamente volta ao fluxo automático.
 
-Pitch varia naturalmente junto com a velocidade.
+Dados:
 
----
+- `library.js` guarda metadados, velocidade, última posição e categoria em `localStorage` (`varispeed.library.v1`), as categorias pessoais em `varispeed.library.categories.v1` e os bytes do áudio no IndexedDB (`varispeed.media.v1`).
+- O áudio importado continua disponível depois de F5 ou de reabrir o app. Links antigos sem áudio guardado podem ser baixados de novo pelo backend. Entradas locais sem áudio são removidas na inicialização.
+- Remover da Biblioteca a faixa que está no editor não a descarrega; ela pode ser adicionada de novo.
 
-# 11. Waveform
+Mapa e lista:
 
-A waveform é gerada a partir do `AudioBuffer` decodificado.
+- O grafo mostra só categorias. As músicas ficam numa lista que abre ao selecionar um ponto do mapa.
+- `Biblioteca` reúne todas as faixas, `Favoritas` mostra as marcadas e cada categoria pessoal filtra as músicas ligadas a ela. O nó `Biblioteca` usa o papel `root` da engine e só se liga às categorias.
+- Cada música tem uma categoria principal. Sem escolha, fica só em `Biblioteca`. Excluir uma categoria pessoal devolve as músicas para `Biblioteca` com áudio, metadados e favorito intactos.
+- Categorias são guardadas na ordem de criação e nunca são escondidas ou fundidas automaticamente. Uma categoria vazia continua no mapa para ser renomeada e receber músicas.
+- A lista tem busca, ordenação por inclusão, título, última abertura ou duração, navegação por setas e abertura com Enter. Títulos longos são cortados sem invadir duração e velocidade.
+- O botão Biblioteca aparece no editor mesmo sem músicas. Entrar na Biblioteca não pausa nem reinicia a reprodução.
 
-O projeto reduz os dados em buckets para evitar desenhar cada sample bruto em tela.
+Interação:
 
-Constante atual:
+- Com uma faixa carregada, o cabeçalho da Biblioteca mostra o mesmo transporte do editor (play/pause, parar, repetir, tempo, timeline e duração), sincronizado com o mesmo áudio. Play/Pause, Stop, Loop e o scrub são clonados dos controles oficiais na inicialização; o modo foco faz o mesmo com os passos de velocidade. Os três scrubs usam o mesmo binder de eventos.
+- Nenhuma música começa selecionada. Clique, Enter ou Espaço selecionam o nó e abrem o painel lateral. A câmera usa `focusNode()`, aproxima até pelo menos `1.35×` e centraliza no espaço útil, descontando os blocos marcados com `data-graph-viewport-block`. Com o painel aberto, a câmera acompanha a flutuação do nó; clicar de novo no mesmo nó não reconstrói o painel, e fechar o painel volta ao enquadramento geral.
+- O painel de detalhes usa a thumbnail guardada das músicas remotas e mostra autor/canal como Crédito. O painel `Fonte` usa a mesma thumbnail como capa e remove o espaço quando não há imagem ou ela falha.
+- `Abrir música`/`Voltar à música` usa o mesmo estado ocupado, pulso e varredura de `Exportar WAV`.
+- Nomes longos rolam (marquee) só quando passam da largura disponível, no cabeçalho, no detalhe e em `Fonte → Arquivo`. O marquee espera, mostra o final e volta; hover pausa e o movimento reduzido é respeitado.
+- Depois de clicar num botão com mouse ou toque, `Espaço` continua sendo Play/Pause. Controles alcançados por `Tab`, campos, sliders, menus e Configurações mantêm o comportamento nativo, e os atalhos globais não capturam teclas desses controles.
+- Ícones com o mesmo significado, como Fechar, usam o mesmo símbolo SVG, e um símbolo não é reaproveitado para outra função só por parecer.
 
-```js
-const BUCKETS = 16384;
-```
+Na primeira entrada, `#libraryTutorial` apresenta a Biblioteca em quatro partes: memória local, categorias como pontos do mapa, organização e navegação até o editor. Cada parte reenquadra a mesma rede ilustrativa (um SVG que não toca nos dados reais), mostra rótulos nos nós e uma frase curta; a trilha segmentada mostra o avanço sem passar sozinha. `Explorar biblioteca` termina com uma transição curta que revela o grafo; pular, `Escape`, sair da Biblioteca ou movimento reduzido fecham na hora. Concluir, pular ou `Escape` grava `varispeed.library.tutorial.v1`; sair por outro caminho não grava. A opção `library.alwaysShowGuide` (Configurações → Biblioteca) mostra o guia em toda entrada. O tutorial tem voltar/avançar, setas, foco modal e uma versão sem transições.
 
-A waveform é representação visual; ela não modifica os samples.
+### Desempenho do grafo
 
----
+`graph-engine.js` é uma adaptação de carregamento de `GraphEngine.txt`; o corpo da engine e os parâmetros físicos são os do original. A simulação é contínua, com colisões, `alpha`, amortecimento e flutuação. O perfil segue a intenção do grafo do Obsidian na escala do VARISPEED: repulsão mais presente, coesão central moderada e ligações mais espaçadas.
 
-# 12. Visualização de áudio
+- Categorias ficam a distância `380` com força `0,52` em volta de `Biblioteca`. As cargas são `420` para Biblioteca e `250` para categorias, e a atração central é ponderada por papel para o mapa não colapsar.
+- Cada categoria nasce na distância de repouso da sua ligação e cada música num anel em volta da sua categoria. Uma categoria nova num grafo já formado nasce no maior setor angular livre, desempatando pela folga até músicas e hubs; categorias existentes viram âncoras das músicas novas.
+- O enquadramento automático mantém uma escala mínima legível (`minFitZoom: 0.68`); o zoom manual ainda alcança a visão geral.
+- `setData()` reaproveita o SVG quando nada mudou. Nós e links novos entram no DOM em fragmentos. Largura de títulos longos fica em cache e o marquee é medido dois frames depois de montar. Raio, carga, atração, fase, distância e força dos links ficam em cache depois da indexação.
+- A colisão usa uma grade espacial do tamanho do maior alcance entre dois nós; só células vizinhas geram candidatos, a rejeição por eixo vem antes de `Math.hypot()` e os candidatos voltam à ordem `i/j` original. A fórmula, o espaçamento de `44 px` e o impulso não mudam.
+- Roda, câmera, física e pintura usam o mesmo `requestAnimationFrame`, e cada quadro faz no máximo uma transformação visual. O zoom ancorado no ponteiro não mede os insets, e a origem do host vem do `resize()`. O zoom usa uma mola criticamente amortecida de `150 ms`, que chega ao alvo sem passar dele.
+- As ligações ficam num Canvas atrás do SVG dos nós, projetadas em coordenadas de tela, agrupadas por aparência e descartadas quando estão fora da tela. Os nós continuam vetoriais: até `1,16×` a câmera usa composição CSS; acima disso o SVG troca para `viewBox`, e só volta abaixo de `1,04×`.
+- A física roda a `60 Hz` ativa e `30 Hz` em repouso, independente do monitor; os quadros interpolam o último passo, menos para o nó arrastado. Posições idênticas até 0,01 px não são reescritas.
+- Só o `ResizeObserver` interno mede o host; a Biblioteca recebe o resultado por `onResize`, e o reenquadramento pertence à câmera, não à física. A simulação pausa com a Biblioteca oculta, e medições `0 × 0` nesse estado não substituem o último tamanho válido.
+- A captura do ponteiro pertence ao SVG estável e mudanças de dados durante um gesto esperam o `pointerup`. Perda de captura, troca de aba, perda de foco da janela ou saída da Biblioteca encerram o gesto. Câmera e foco rejeitam coordenadas não finitas para evitar `translate(NaN NaN)`.
+- Soltar uma categoria arrastada reduz o pico de energia sem velocidade mínima, limite rígido nem frenagem radial.
 
-O visualizador usa a reprodução real como fonte e possui três apresentações:
+Configurações → Diagnóstico mostra FPS, física, renderização, latência de entrada, intervalo entre quadros, custo da câmera, resposta do zoom, quadros perdidos e long tasks. Medir grafo · 8 s fecha as Configurações para você usar zoom, pan e arraste de verdade e depois reabre o Diagnóstico com FPS, cadência, orçamento por quadro e média/p95/máximo de cada etapa. Copiar relatório gera um bloco para comparar máquinas.
 
-- integrado;
-- focus mode;
-- janela separada.
+Numa medição sintética, a física por quadro caiu de cerca de `0,61 ms` para `0,45 ms` com 17 músicas e de `4,07 ms` para `2,56 ms` com 50. No teste de limite (200 músicas, 64 categorias, `266` nós e `315` ligações), a grade mandou `1.819` de `35.245` pares para a colisão; `463` passaram pela rejeição por eixo e `385` estavam sobrepostos. Os números variam com a máquina.
 
-Arquivos relevantes:
+## Configurações
 
-```text
-scope-view.js
-scope-win.js
-scope.html
-```
+`settings.js` controla as preferências e guarda tudo localmente quando possível. O painel mostra uma seção por vez, escolhida num seletor, na ordem do uso:
 
-Não vincular sua lógica ao backend de importação. O scope deve continuar funcionando independentemente da origem do áudio.
+- Interface: tema, densidade e dicas de teclado.
+- Velocidade: unidade, passo, limites, presets e memória da última velocidade.
+- Exportação: WAV, normalização, nome e aviso ao sair durante uma exportação.
+- Biblioteca e Importação por link (inclusive Conteúdo restrito).
+- Timeline: régua, formato, passo de seek e zoom pela roda.
+- Visualização de áudio: vectorscope ou osciloscópio, ganho, janela, persistência, partículas e FPS. A cor segue o tema.
+- Animações: nível, escala, intensidade, status animado, sustentação da exportação, cursor nos status, microanimação numérica e varredura das operações.
+- Ao importar: tocar automaticamente, voltar a 100% e manter o zoom.
+- Sistema, Atalhos, Diagnóstico e Sobre o VARISPEED.
 
-Existem dois modos na mesma primitiva `ScopeView`:
+Cada preferência tem um botão `?` com explicação. Há status local no rodapé, Restaurar com Desfazer, editor visual de `rate.presets` (gravado como a mesma lista separada por vírgulas), botões para inserir tokens em `export.name` e aviso de que tudo é salvo automaticamente. Desligar fica separado das outras ações de Sistema.
 
-- **Osciloscópio** — envelope temporal em colunas ou linha contínua;
-- **Vectorscope de partículas** — projeta os canais L/R em Side/Mid, desenha pontos com composição aditiva e preserva parcialmente os quadros anteriores para formar o rastro luminoso.
+Regras para mexer no módulo:
 
-`app.js` cria um único `MediaElementSource`. O áudio segue pelo analisador principal até o destino e, em paralelo, um `ChannelSplitterNode` alimenta dois analisadores sem duplicar reprodução. Header, Focus Mode e popout recebem o mesmo quadro. O orçamento de pontos cresce com a área do canvas, mas é limitado por `Core.stereoVectorStride()`.
+- manter as chaves internas que ainda têm uso e os valores de velocidade em porcentagem;
+- não quebrar presets já gravados; campos removidos são ignorados em presets antigos e podados do armazenamento local sem migração manual;
+- tratar mudança de apresentação como UI, não como mudança no motor.
 
----
+Comportamentos conferidos na auditoria de agosto de 2026 (todas as chaves do schema têm uso no runtime):
 
-# 13. Exportação WAV
+- `Lembrar última velocidade` só grava `tempo.lastRate` quando ligado e apaga o valor ao desligar.
+- `Manter zoom` guarda só a escala entre músicas, nunca a posição da faixa anterior.
+- As setas usam o passo de seek configurado; `Shift + seta` anda sempre 1 segundo.
+- `Suavização` mostra a porcentagem real, só afeta o traço em colunas e fica desabilitada no modo Linha.
+- `Animações → Desligado` para os efeitos em JavaScript e as transições CSS e desabilita os controles dependentes.
+- `Varredura em operações` controla o mesmo efeito em exportar, abrir e adicionar à Biblioteca.
+- O diagnóstico mostra se as preferências estão em `localStorage` ou em memória temporária.
 
-A exportação é feita offline no navegador.
+Saíram do schema `motion.bloom`, `motion.bloomGain`, `motion.bloomFreq` e `motion.exportName`; presets antigos com essas chaves continuam importáveis. A importação de preset diferencia JSON inválido, preset sem mudanças compatíveis e preset aplicado, com a contagem de ajustes. Presets de velocidade repetidos ou fora dos limites são descartados, até 8 itens.
 
-O arquivo importado pode ser M4A, WebM, MP3 etc., mas a saída do editor continua WAV.
+Atalhos: `Espaço` reproduz/pausa, `←`/`→` andam na posição, `⇧ ←` anda 1 s, `[`/`]` mudam a velocidade um passo, `⇧ ]` cinco passos, `0` volta a 100%, `Ctrl + roda` dá zoom na timeline, `,` abre e `Esc` fecha as Configurações.
 
-O pipeline de exportação deve continuar independente do `yt-dlp`.
+### Créditos
 
-Não faça o backend baixar e converter automaticamente tudo para WAV: isso aumentaria muito tráfego, armazenamento temporário e tempo de processamento.
-
----
-
-# 14. Configurações
-
-`settings.js` controla preferências do app e utiliza persistência local quando disponível.
-
-Ao alterar este módulo:
-
-- preservar chaves internas existentes quando ainda representam comportamento ativo;
-- evitar quebrar presets já gravados;
-- manter valores internos de velocidade em porcentagem;
-- tratar mudanças de apresentação como UI, não como mudança no motor;
-- campos removidos/obsoletos devem ser ignorados em presets antigos e podados da persistência local sem exigir migração manual.
-
-## Organização atual das Configurações
-
-A auditoria pós-REV 7 removeu opções que pertenciam à antiga logo. O refinamento posterior de hierarquia passou a ordenar as preferências pelo fluxo de uso:
-
-- **Interface**: tema, densidade e dicas de teclado;
-- **Velocidade**: unidade, passo, limites, presets e memória da última velocidade;
-- **Exportação**: formato WAV, normalização, nome e aviso ao sair durante uma exportação;
-- **Timeline**: régua, formato, passo de seek e zoom pela roda;
-- **Visualização de áudio**: seleção entre vectorscope/osciloscópio, ganho, janela, persistência, partículas e FPS; a cor acompanha o tema;
-- **Animações** (antigo título `Motion`): nível, escala, intensidade, animação padrão de status, sustentação da confirmação de exportação, cursor nos status temporários, microanimação numérica e varredura das operações;
-- **Ao importar**: autoplay, retorno a 100% e preservação do zoom;
-- **Avançado** (recolhível): Sistema, Atalhos e Diagnóstico.
-
-O disclosure `Avançado` é nativo (`details`/`summary`) e permanece fechado por padrão. Créditos continuam no final do painel, fora desse disclosure.
-
-O painel também oferece uma camada de edição assistida sem alterar as chaves persistidas:
-
-- status local no rodapé, visível inclusive quando o drawer cobre a aplicação;
-- botão de ajuda `?` em todas as preferências, com descrição contextual controlada pelo mesmo componente acessível;
-- restauração com ação temporária `Desfazer`;
-- editor visual de `rate.presets`, ainda serializado como a mesma string separada por vírgulas;
-- botões para inserir tokens em `export.name` no cursor do campo;
-- ajuda contextual nos controles técnicos e limites visíveis nos sliders selecionados;
-- indicação permanente de que as alterações são salvas automaticamente;
-- ação de desligamento isolada das ações comuns de Sistema.
-
-Foram removidos definitivamente do schema: `motion.bloom`, `motion.bloomGain` e `motion.bloomFreq`. Presets antigos que ainda contenham essas chaves continuam importáveis; os campos desconhecidos são simplesmente ignorados. A persistência local também poda chaves obsoletas ao carregar.
-
-## Auditoria funcional de Configurações — agosto de 2026
-
-Todas as chaves atualmente expostas pelo schema possuem consumidor no runtime. A auditoria também consolidou estas regras:
-
-- `Lembrar última velocidade` só grava `tempo.lastRate` quando está ativo; ao desligar, o valor antigo é removido;
-- `Manter zoom` preserva apenas a escala entre músicas, nunca a posição temporal da faixa anterior;
-- as setas usam o passo de seek configurado e `Shift + seta` continua sendo o atalho fixo de 1 segundo;
-- `Suavização` representa visualmente a porcentagem mostrada, atua apenas no traço por colunas e fica desabilitada no modo Linha;
-- `Animações → Desligado` interrompe tanto os efeitos criados por JavaScript quanto transições/animações CSS, e desabilita os controles subordinados;
-- `Varredura em operações` governa o mesmo feedback visual em exportar, abrir e adicionar músicas à Biblioteca;
-- o diagnóstico identifica corretamente `localStorage` ou `memória temporária`, sem sugerir armazenamento da mídia;
-- chaves históricas desconhecidas continuam sendo ignoradas em presets e podadas da persistência.
-
-## Créditos no final do painel
-
-O final da lista de Configurações contém um bloco autoral. Quando os retratos pessoais estão instalados localmente, a fotografia aparece à esquerda e as informações ficam centralizadas verticalmente à direita:
+A seção Sobre o VARISPEED mostra:
 
 ```text
 CRIADOR DO VARISPEED
@@ -868,40 +454,16 @@ Design e desenvolvimento
 [GITHUB · nehalem-x/VARISPEED] · [LOGO YT_DLP]
 ```
 
-O identificador `nehalem-x/VARISPEED` abre o repositório oficial do projeto no GitHub. O logo isolado continua funcionando como link externo acessível para o projeto yt-dlp. Ambos abrem em uma nova aba sem conceder acesso à página de origem.
+`nehalem-x/VARISPEED` abre o repositório e o logo abre o projeto yt-dlp, os dois numa nova aba sem acesso à página de origem. Os assets são `assets/creator-light.png`, `assets/creator-dark.png` e `assets/yt-dlp-logo.png`.
 
-Os assets são:
+Os dois retratos ficam só no computador do criador e estão no `.gitignore`. Num clone limpo o crédito aparece só em texto, sem ícone quebrado; com uma só variante, ela vale para os dois temas. Quando existem, as duas têm o mesmo tamanho e o mesmo box CSS, `object-fit` e `object-position`, e o tema muda só a opacidade. A versão escura tem fundo preto e camiseta branca. A clara é o retrato aprovado pelo criador, com fundo branco e camiseta preta, só normalizado para `640 × 640 px`; rosto, óculos, cabelo, expressão e enquadramento não devem ser refeitos por IA nem trocados por versão estilizada sem pedido explícito. A whitelist do backend tem os dois caminhos; renomear os arquivos exige atualizar `server/main.py`.
 
-```text
-assets/creator-light.png
-assets/creator-dark.png
-assets/yt-dlp-logo.png
-```
+## Responsividade
 
-Os dois retratos são assets pessoais locais: permanecem no computador do criador, mas estão no `.gitignore` e não são publicados no GitHub. Um clone limpo renderiza automaticamente o crédito em modo somente texto, sem ícone quebrado nem espaço vazio. Se apenas uma variante existir, ela é usada como fallback nos dois temas.
-
-Quando presentes, as duas variantes possuem exatamente o mesmo tamanho e usam o mesmo box CSS. O tema troca apenas a opacidade entre as camadas; não há `scale`, `translate`, `filter` ou `object-position` diferente entre Light e Dark. Isso evita deslocamento perceptível do retrato ao alternar o tema.
-
-- Dark: fotografia integrada ao fundo preto, com camiseta branca.
-- Light: usa **o retrato aprovado pelo criador**, com fundo branco e camiseta preta. O arquivo local foi apenas normalizado para `640 × 640 px`, sem regeneração, recorte adicional ou filtro CSS.
-- O rosto, os óculos, o cabelo, a expressão e o enquadramento do asset Light não devem ser reinterpretados por IA nem substituídos por uma versão estilizada sem solicitação explícita.
-- As duas camadas continuam usando o mesmo box CSS, `object-fit`, `object-position` e geometria de layout para impedir deslocamentos causados pela troca de tema.
-
-O backend local possui whitelist explícita para os dois caminhos opcionais. Se os arquivos forem renomeados, `server/main.py` também precisa ser atualizado.
-
-Esta mudança é somente de UI/branding e **não adiciona dependências** ao projeto.
-
----
-
-
-# 14.1 Responsividade estrutural
-
-A interface passou a adotar uma estratégia de **degradação estrutural previsível**. O desktop largo (`>1200px`) continua sendo o baseline visual; abaixo disso, os componentes reduzem densidade e só mudam de estrutura quando realmente falta espaço.
-
-Breakpoints principais:
+O desktop largo é a referência visual. Abaixo dele, os componentes primeiro reduzem densidade, depois se reorganizam e só por último escondem informação secundária. Não alterar o desktop largo para forçar a responsividade.
 
 ```text
-> 1200 px      desktop largo / baseline
+> 1200 px      desktop largo / referência
 901–1199 px    notebook / desktop compacto
 641–900 px     tablet / janela estreita
 521–640 px     mobile largo
@@ -909,316 +471,85 @@ Breakpoints principais:
 <= 420 px      phone estreito
 ```
 
-Comportamento atual:
+- Painel do editor: em `<=900px` sai da lateral e vira uma faixa com Velocidade, Resultado e Fonte; em `<=640px` empilha. A timeline continua primeiro.
+- Barra de link: mantém as colunas no desktop; no tablet o botão de importar ganha linha própria; no celular URL e `Analisar` se reorganizam sem apertar thumbnail e metadados.
+- Cabeçalho: em `<=720px` arquivo e osciloscópio vão para uma segunda linha, mantendo o botão da janela separada à esquerda do visualizador.
+- Waveform: metadados secundários somem antes de a waveform encolher; o volume some no breakpoint existente.
+- Presets de velocidade: grade `3 × 2` no celular.
+- Configurações: tela cheia em `<=520px`.
+- Créditos: foto à esquerda e texto à direita, menores no celular.
+- Altura baixa: em `<=720px` de altura, cabeçalho, régua e transporte ficam mais compactos; em paisagem muito baixa a página rola em vez de esmagar a waveform.
 
-- **Sidebar/Inspector:** em `<=900px` sai da lateral e vira uma faixa horizontal com `Velocidade`, `Resultado` e `Fonte`; em `<=640px` volta a empilhar verticalmente. A timeline permanece primeiro elemento do fluxo.
-- **Linkbar:** preserva as colunas no desktop; em tablet o CTA `Importar áudio` ocupa uma linha própria; em phone o campo de URL e o botão `Analisar` se reorganizam sem comprimir thumbnail/metadados.
-- **Header:** gato, ações e área de arquivo reduzem densidade progressivamente; em `<=720px` o arquivo/osciloscópio passa para uma segunda linha, sem retirar o botão de popout do lado esquerdo do visualizador.
-- **Waveform/transport:** a timeline continua prioritária. Metadados secundários somem antes de comprimir a waveform; volume é ocultado no breakpoint já existente e o scrub recebe gutters menores em phone.
-- **Presets de velocidade:** em mobile passam para uma grade `3 × 2`, evitando botões estreitos demais.
-- **Configurações:** tornam-se painel full-width em `<=520px`; campos inline podem empilhar em phones muito estreitos.
-- **Créditos:** continuam com foto à esquerda e texto à direita nos tamanhos usuais, reduzindo foto/tipografia em phone sem alterar a geometria Light/Dark dos assets.
-- **Baixa altura:** em notebooks com `<=720px` de altura, header/ruler/transport e espaçamentos ficam mais compactos. Em landscape móvel muito baixo, a página prefere rolagem a esmagar a waveform.
-- **Touch:** controles pequenos recebem alvo um pouco maior em dispositivos `pointer: coarse`.
+Conteúdo extremo também está coberto: nomes de arquivo, URLs, títulos e extractors longos; durações com horas (`123:45:56`); duração desconhecida como `—` com explicação no `title`; erros com URLs sem espaço (`overflow-wrap: anywhere`); título remoto em até duas linhas no celular estreito; e nenhum overflow horizontal sem quebrar a rolagem vertical. A matriz de teste vai de `1920×1080` a `360×800`, incluindo `844×390` e `667×375` em paisagem.
 
-Regra de manutenção: **não alterar o desktop largo para “forçar” a responsividade**. Novas mudanças devem primeiro tentar reduzir densidade, depois reorganizar o componente e somente por último ocultar informação secundária.
+### Canvas, redimensionamento e DPR
 
-## REV 2 — refinamento por viewport concluído
-
-A segunda revisão de responsividade foi concluída com foco em conteúdo extremo e compressão real de viewport. Além da estrutura da REV 1, agora existem proteções explícitas para:
-
-- nomes de arquivo muito longos no header;
-- URLs extensas;
-- títulos, uploader/canal e nome de extractor muito longos;
-- duração remota com horas (incluindo valores como `123:45:56`);
-- duração desconhecida, exibida de forma compacta como `—` com descrição em `title`;
-- mensagens de erro com URLs sem espaços (`overflow-wrap: anywhere`);
-- estados de progresso com textos longos sem roubar largura da barra;
-- phone estreito, onde o título remoto pode ocupar até duas linhas;
-- mobile landscape/viewport baixo, com chrome e linkbar mais compactos e piso menor para a waveform;
-- Configurações em landscape estreito, com drawer mais largo antes de virar full-width;
-- créditos e hints com quebra segura de texto;
-- prevenção de overflow horizontal sem quebrar a rolagem vertical do documento.
-
-Matriz de viewport usada no smoke test de layout:
+Redimensionar recria os bitmaps, mas não mexe no estado do áudio:
 
 ```text
-1920×1080
-1600×900
-1366×768
-1280×720
-1024×768
-900×600
-768×1024
-430×932
-390×844
-360×800
-844×390
-667×375
+resize/orientação -> recalcular CSS px + DPR -> recriar o bitmap só se mudou
+                  -> redesenhar -> zoom / view / currentTime / playing intactos
 ```
 
-Também foram simulados conteúdo extremo, estados de progresso/erro, duração com horas e painel de Configurações/Créditos. Nessas verificações não houve overflow horizontal do documento.
+- `ResizeObserver` observa `#wave`, `#ruler` e `#canvasWrap`; `window.resize`, `visualViewport.resize`, `orientationchange` e um watcher `matchMedia('(resolution: …dppx)')` cobrem rotação, barra do navegador móvel e troca de monitor. Os callbacks são agrupados em `requestAnimationFrame`, com uma segunda passada curta depois que o CSS assenta.
+- O redraw reposiciona o playhead e redesenha régua e waveform sem chamar `setZoom()`, `seek()`, `play()` ou `pause()`. O osciloscópio pausado guarda o último envelope e o reamostra para a nova largura. Modo foco e janela separada seguem as mesmas regras.
+- O DPR dos Canvas fica entre `0.5` e `3` (abaixo de 1 acontece com zoom de 80% ou 90% em monitor DPR 1). O backing store usa `round(cssSize × DPR)` com a razão efetiva `backingSize / cssSize`, sem arredondar o tamanho CSS antes. Mudanças menores que `0.05 CSS px` são ignoradas. O erro máximo de arredondamento é de 0,5 pixel físico.
+- O playhead é alinhado à grade física (`round(x × scale) / scale`), o seek converte `clientX` para o espaço lógico da waveform, e retângulos desenhados com `fillRect()` não usam o deslocamento `+0.5`, que só serve para traços de 1 px.
+- Canvas usa `image-rendering:auto` (não usar `pixelated`/`crisp-edges` com DPR fracionário), números dinâmicos usam `tabular-nums` e `text-size-adjust:100%` evita que o texto infle sozinho.
 
-## REV 3 — Canvas / resize real concluído
-
-A terceira revisão foi aplicada ao pipeline de renderização, sem redesign visual. O objetivo é separar o **estado temporal** da **geometria física do Canvas**: `state.view`, `state.zoom`, `audio.currentTime` e `state.playing` continuam intactos enquanto os bitmaps são recriados para o novo viewport.
-
-Mudanças principais:
-
-- `app.js` agora mantém `canvasDpr` e só recria os bitmaps de waveform/ruler quando largura, altura ou DPR realmente mudam;
-- callbacks de resize são agrupados em `requestAnimationFrame`, evitando várias realocações no mesmo frame durante drag da janela;
-- `ResizeObserver` observa diretamente `#wave`, `#ruler` e `#canvasWrap`, cobrindo mudanças em que o pai mantém a mesma altura, mas a régua/waveform redistribuem espaço;
-- `window.resize`, `visualViewport.resize` e `orientationchange` complementam o observer para rotação, browser chrome móvel e alterações de DPR/zoom;
-- existe uma segunda passada curta de *settle* após resize/orientação para capturar o tamanho final depois que o CSS responsivo estabiliza;
-- o redraw reposiciona o playhead e redesenha ruler/waveform, mas **não** chama `setZoom()`, `seek()`, `play()` ou `pause()`;
-- `scope-view.js` agora preserva o último envelope do osciloscópio pausado e o reamostra para a nova largura, evitando o traço “sumir” após resize;
-- Focus Mode e a janela separada do osciloscópio também agrupam resize em `requestAnimationFrame`;
-- a janela independente escuta `visualViewport.resize` e mantém o mesmo frame/estado recebido da sessão principal.
-
-Invariantes da REV 3:
+### Toque e celular
 
 ```text
-resize/orientação
-      ↓
-recalcular CSS px + DPR
-      ↓
-recriar bitmap do canvas apenas se necessário
-      ↓
-redesenhar estado existente
-      ↓
-zoom / view / currentTime / playing permanecem intactos
+toque na waveform
+  movimento < 8 px                 -> toque/seek
+  movimento horizontal dominante   -> scrub
+  movimento vertical dominante     -> rolagem nativa
 ```
 
-QA técnico executado nesta revisão: `node --check` em todos os JavaScript, `py_compile` no backend e verificação estática das rotas de resize/observer. O ambiente de execução usado para empacotamento bloqueia navegação Chromium local (`ERR_BLOCKED_BY_ADMINISTRATOR`), portanto o teste visual automatizado com áudio durante resize deve ser repetido no navegador real do usuário como smoke test final.
+- Waveform e régua usam `touch-action: pan-y pinch-zoom`; com mouse, `pointerdown` continua fazendo seek na hora. `pointercancel` e `lostpointercapture` encerram gestos interrompidos, e o slider de posição limpa `state.scrubbing` também em `change` e `blur`.
+- Sliders usam `touch-action: none` e área de toque maior com `pointer: coarse`. Itens do menu Importar e botões de fechar (barra de link, Configurações, modo foco) têm 44 × 44 px no toque. Botões e campos usam `touch-action: manipulation` sem destaque de toque.
+- No celular, `select` e campos de texto usam 16 px para o iOS não dar zoom ao focar. `@media (hover: none)` desliga hovers que ficariam presos; o estado real usa `:active`, `:focus-visible`, `aria-pressed` e `data-state`. `viewport-fit=cover` com `env(safe-area-inset-*)` protege cabeçalho, Configurações e modo foco em telas com notch.
+- As Configurações usam `100dvh` em telas estreitas, rolagem interna contida e bloqueiam a rolagem do fundo. Tocar no texto de um switch também o alterna.
 
-## REV 4 — Touch / mobile concluída
+Com teclado virtual, em `<=900px` o painel acompanha `visualViewport.height/offsetTop` (via `--cfg-vvh` e `--cfg-vvtop`) para ficar acima do teclado. Campos focados usam `scrollIntoView({block:'nearest'})`. Nesse tamanho o painel funciona como modal: `Tab` fica preso nele, `aria-modal` acompanha o breakpoint e o foco volta para quem abriu. Fechar e reabrir rápido não deixa um timer antigo esconder o painel.
 
-A quarta revisão foi aplicada à camada de interação móvel sem alterar o layout-base do desktop. O objetivo é distinguir intenção de **scroll**, **tap** e **scrub** e tornar controles pequenos utilizáveis em telas de toque.
+### Estados e concorrência
 
-Mudanças principais:
+- Cada importação recebe um `mediaIntent`, e uma decodificação antiga não sobrescreve uma escolha mais nova. Se já há uma faixa carregada, um arquivo inválido não apaga waveform, fonte nem transporte.
+- O estado de reprodução é sincronizado antes de trocar o `src`. Escolher um arquivo local durante um download cancela o download. Fechar a barra de link durante o download ou o `decodeAudioData()` também cancela a mídia. `linkUI.op` descarta respostas atrasadas de operações antigas.
+- O botão `Importado` também é protegido na função, então `Enter` no campo não o contorna. `importedUrl` representa a mídia remota carregada agora: carregar um arquivo local libera a URL anterior.
+- Escolher de novo o mesmo arquivo local funciona porque o `<input type=file>` é limpo. Arrastar texto ou link não abre o overlay. A análise automática só dispara no `input` vindo de colar e é cancelada se você continuar digitando. A URL aceita até 8192 caracteres.
+- Campos de nome e presets têm limite também quando o valor vem de preset JSON ou do `localStorage`. Textos sem espaço quebram com segurança.
 
-- waveform e régua usam `touch-action: pan-y pinch-zoom`: o scroll vertical/pinch do navegador continua disponível, enquanto o gesto horizontal é reservado ao scrub;
-- `app.js` ganhou uma pequena máquina de gesto para waveform/régua: mouse continua imediato; touch/pen usa limiar de 8 px e só assume scrub quando o movimento é predominantemente horizontal;
-- taps curtos na waveform/régua continuam fazendo seek; movimentos verticais não causam seek acidental;
-- `pointercancel`/`lostpointercapture` são tratados para não deixar gesto preso após scroll, rotação ou interrupção do SO;
-- o slider de posição limpa `state.scrubbing` também em `pointercancel`, `lostpointercapture`, `change` e `blur`, evitando estado travado em touch;
-- sliders usam `touch-action: none` e hitbox maior em `pointer: coarse`, mantendo o trilho visual fino;
-- menu `Importar` recebe itens de 44 px em touch e feedback `:active`;
-- botões críticos de fechar (`linkbar`, Configurações e Focus Mode) recebem área física de 44×44 px em touch;
-- botões, menu, scope, switches e inputs usam `touch-action: manipulation` e removem tap highlight;
-- Configurações usam `100dvh` em telas estreitas, scroll interno com momentum/overscroll contido e bloqueiam o scroll do documento ao fundo enquanto abertas;
-- o `label` de cada switch permanece associado ao botão pelo `for`, então tocar no texto também alterna a opção;
-- em phone/touch, `select` e campos de texto usam 16 px para impedir o auto-zoom do iOS ao receber foco;
-- regras `@media (hover: none)` neutralizam hovers cosméticos que poderiam ficar presos após tap; estados reais continuam em `:active`, `:focus-visible`, `aria-pressed` e `data-state`;
-- `viewport-fit=cover` + `env(safe-area-inset-*)` protegem header, Configurações e Focus Mode em telas com notch/home indicator.
+### Acessibilidade e acabamento
 
-Contrato de gesto atual:
+Tema e densidade são aplicados antes do primeiro paint e `theme-color` segue o tema. Botões só com ícone têm `aria-label`, e Play/Loop atualizam o rótulo. O progresso remoto usa `progressbar`, as mensagens usam live regions, e há suporte a `prefers-contrast`, `forced-colors` e `prefers-reduced-motion`. O modo foco é modal. Nenhuma animação move o gato nem os retratos ao trocar o tema.
 
-```text
-touch na waveform
-      ↓
-movimento < 8 px → tap/seek
-      ↓
-movimento horizontal dominante → scrub
-      ↓
-movimento vertical dominante → scroll nativo
-```
+## Feedback textual
 
-O desktop com mouse mantém o comportamento anterior: `pointerdown` inicia seek/scrub imediatamente. Nenhuma dependência nova foi adicionada; `server/requirements.txt` permanece inalterado.
+A animação de confirmação da exportação é o padrão de todo feedback textual. `Motion.status()` a encapsula: revela glifo por glifo no ritmo da exportação, sustenta para leitura e dissolve da esquerda para a direita. Mensagens persistentes entram do mesmo jeito e ficam até o próximo estado, e textos técnicos longos têm a entrada limitada.
 
-## REV 5 — Edge cases de layout/estado concluída
+Ela é usada em `REPRODUZINDO`, `PAUSADO`, `PARADO` e repetição; importação e decodificação local; análise, download, decodificação, sucesso, cancelamento e erro por link; confirmação de exportação; presets; cópia do endereço da rede e desligamento; e na tela de inicialização.
 
-A quinta revisão fecha estados raros de concorrência, falha e foco que não aparecem no fluxo feliz. O objetivo foi tornar cada troca de mídia e cada operação assíncrona **não destrutiva e previsível**, sem redesenhar o desktop.
+`motion.status` é a chave principal e `motion.exportHold` define quanto tempo a exportação mostra nome e tamanho. Não usar `Motion.ephemeral()` direto em novos estados; use `Motion.status()` e ajuste `hold`, `persist`, `lead`, `caret` ou `intensity`.
 
-Mudanças principais:
+`motion.js` concentra as microinterações, inclusive mudança de etapa, porcentagem e `Pronto` da importação por link, e respeita `prefers-reduced-motion`. O antigo `bloom()` da logo foi removido.
 
-- **troca de mídia transacional:** cada importação recebe um `mediaIntent`; uma decodificação antiga não pode sobrescrever uma escolha iniciada depois;
-- **falha de decode não destrutiva:** se já existe uma faixa carregada, tentar abrir um arquivo inválido mantém waveform, fonte e transporte anteriores intactos;
-- ao trocar de faixa enquanto a anterior estava tocando, o estado `playing`/ícone Play é sincronizado antes da troca de `src`, evitando UI presa em “reproduzindo”;
-- escolher um arquivo local durante aquisição `yt-dlp` cancela a operação remota anterior;
-- fechar/cancelar a linkbar durante download **ou `decodeAudioData()`** invalida também a intenção de mídia, impedindo commit tardio;
-- `linkUI.op` protege análise, download, progresso e timers de `Pronto` contra callbacks atrasados de uma operação antiga;
-- o botão `Importado` possui guarda também na função, então pressionar `Enter` no campo não contorna o estado `disabled`;
-- `importedUrl` representa a mídia remota atualmente carregada, não um histórico: ao carregar arquivo local com sucesso, a URL anterior volta a ser importável;
-- selecionar novamente **o mesmo arquivo local** funciona porque o `<input type=file>` é limpo após capturar a seleção;
-- drag/drop só reage a `DataTransfer` com arquivos; arrastar texto/link pela página não abre mais o overlay;
-- autoanálise após colar URL só dispara para o `input` originado do paste e é cancelada se o usuário continuar digitando;
-- URL tem `maxlength=8192`, igual à ordem de grandeza aceita pelo backend;
-- nome de exportação é sanitizado, limitado a 176 caracteres antes de `.wav`, remove ponto/espaço final e evita nomes reservados do Windows (`CON`, `NUL`, `COM1` etc.);
-- o nome entregue pelo backend no `Content-Disposition` também é truncado defensivamente;
-- campos de configuração de nome/presets têm limite, inclusive quando valores entram por preset JSON/localStorage;
-- presets de velocidade duplicados/fora dos limites são filtrados e continuam limitados a 8 itens;
-- importação de preset agora diferencia JSON inválido, preset sem mudanças compatíveis e preset aplicado com contagem de ajustes;
-- rows, hints, atalhos e créditos receberam quebra defensiva para tokens sem espaços;
-- estados `disabled`/`aria-busy` ganharam tratamento visual consistente sem depender de hover.
+## Nomes e compatibilidade
 
-### Configurações + teclado virtual
+O produto se chama VARISPEED 1.0. Os scripts continuam `start-tempo.bat` e `start-tempo.sh` para não quebrar atalhos, mas os logs usam `[VARISPEED]`. Alguns identificadores internos antigos ficam de propósito e não devem ser renomeados sem migração: `tempo.cfg.v1`, `tempo.lastRate` e o namespace `tempo:*` do `postMessage` do osciloscópio. As variáveis `TEMPO_COOKIES_FILE` e `TEMPO_MAX_DURATION_SECONDS` ainda funcionam como apelidos de `VARISPEED_COOKIES_FILE` e `VARISPEED_MAX_DURATION_SECONDS`.
 
-Em `<=900px`, o painel usa a `visualViewport` real enquanto está aberto:
+## Desenvolvimento
 
-```text
-visualViewport.height / offsetTop
-          ↓
---cfg-vvh / --cfg-vvtop
-          ↓
-painel acompanha a área visível acima do teclado
-```
-
-Além disso:
-
-- campos focados usam `scrollIntoView({block:'nearest'})` com `scroll-padding`/`scroll-margin` para não ficar sob teclado/rodapé;
-- Tab é contido dentro do painel somente quando ele funciona como tela/modal (`<=900px`);
-- `aria-modal` acompanha o breakpoint em tempo real;
-- foco retorna ao elemento que abriu o painel;
-- o timeout da animação de fechamento é cancelável: fechar e reabrir rapidamente não faz um timer antigo esconder o painel já reaberto.
-
-Nenhuma dependência nova foi adicionada; `server/requirements.txt` permanece inalterado.
-
-## REV 6 — Scaling / zoom / DPR fracionário concluída
-
-A sexta revisão endurece a camada de renderização contra **escala do Windows, zoom do navegador, DPR fracionário e troca de monitor**. O layout continua expresso em CSS px; o objetivo é fazer Canvas e overlays acompanharem a densidade física real sem alterar estado de áudio nem introduzir blur evitável.
-
-Mudanças principais:
-
-- o limite HiDPI dos Canvas passou de `2` para uma faixa defensiva de **`0.5–3`**. DPR abaixo de 1 é intencional: browser zoom de `80%/90%` em monitor DPR 1 pode produzir `devicePixelRatio < 1`;
-- waveform/ruler deixaram de arredondar `getBoundingClientRect()` para CSS px inteiros antes de criar o bitmap;
-- o backing store usa `round(cssSize × DPR)` e o contexto usa a razão **efetiva** `backingSize / cssSize`, removendo a pequena escala residual causada pelo arredondamento em DPR como `1.25`, `1.5` e `2.25`;
-- mudanças inferiores a `0.05 CSS px` são ignoradas para não recriar bitmaps por ruído de layout, mas DPR é comparado com tolerância mais estrita;
-- `matchMedia('(resolution: …dppx)')` é rearmado sempre que o DPR muda. Isso cobre casos em que mover a janela entre monitores com escalas diferentes não produz um resize de layout confiável;
-- o mesmo watcher de DPR foi aplicado à janela independente do osciloscópio;
-- `scope-view.js` usa a medida CSS fracionária real para dimensionar o backing store, mantendo o envelope visual com custo previsível por coluna CSS;
-- o playhead DOM é alinhado à grade física do Canvas (`round(x × scale) / scale`) em vez de arredondar sempre para 1 CSS px;
-- seek por pointer converte explicitamente `clientX` do retângulo CSS para o espaço lógico da waveform, evitando erro no fim da timeline quando `rect.width` é fracionário;
-- ticks/grid desenhados com `fillRect()` não usam mais offset `+0.5` — esse ajuste pertence a strokes de 1 px e deixava retângulos verticais borrados em DPR 1;
-- Configurações preservam os valores fracionários de `visualViewport.height/offsetTop`, evitando frestas de 1 px sob zoom/teclado virtual;
-- numerais dinâmicos reforçam `tabular-nums`, e Canvas permanece com `image-rendering:auto` (não usar `pixelated`/`crisp-edges` em DPR fracionário);
-- `text-size-adjust:100%` impede inflação automática paralela de texto sem bloquear o zoom explícito do navegador.
-
-### Matriz técnica da REV 6
-
-A matemática de backing store foi verificada para CSS widths fracionárias e DPR:
-
-```text
-0.80
-0.90
-1.00
-1.10
-1.25
-1.50
-2.00
-2.25
-3.00
-```
-
-com larguras lógicas representativas entre `320` e `1919.2 CSS px`. O erro máximo inevitável de arredondamento do backing store permanece `<= 0.5 device px`.
-
-Smoke test manual recomendado no Windows:
-
-```text
-Windows scaling: 100% / 125% / 150%
-Browser zoom:     80% / 90% / 100% / 110% / 125% / 150%
-```
-
-Em cada combinação, verificar waveform, ruler, playhead, osciloscópio inline/Focus/popout, linkbar, Configurações, presets, sliders e transição entre breakpoints. Mover a janela entre dois monitores com escalas diferentes também deve recriar os bitmaps sem resetar áudio/zoom.
-
-Nenhuma dependência nova foi adicionada; `server/requirements.txt` permanece inalterado.
-
-**Estado:** REV 7 concluída e adotada como baseline. Mudanças posteriores devem ser features/correções específicas, preservando as invariantes das REV 1–7.
-
-## Padrão global de feedback textual
-
-A confirmação de exportação foi escolhida como **referência oficial de motion textual do VARISPEED**. O helper `Motion.status()` encapsula essa assinatura e deve ser usado em qualquer feedback textual temporário ou de etapa:
-
-- `REPRODUZINDO`, `PAUSADO`, `PARADO` e repetição;
-- importação/decodificação de arquivo local;
-- análise, download, decodificação, sucesso, cancelamento e erro por link;
-- confirmação de exportação;
-- aplicação/importação de presets;
-- cópia do endereço de rede local e desligamento;
-- linha única da tela de inicialização.
-
-A linguagem visual é fixa: **revelação por glifo com a cadência da exportação, sustentação legível e dissolução progressiva da esquerda para a direita**. Mensagens persistentes usam a mesma entrada, mas permanecem visíveis até o próximo estado. Textos técnicos muito longos têm a duração de entrada limitada para não levar vários segundos para aparecer.
-
-`motion.status` é a chave mestre. A antiga configuração `motion.exportName` deixou de existir no schema porque a exportação não possui mais uma engine exclusiva; presets antigos com essa chave continuam sendo tolerados e a chave é ignorada/podada. `motion.exportHold` permanece porque a exportação precisa sustentar nome e tamanho do arquivo por mais tempo que eventos curtos.
-
-Não usar `Motion.ephemeral()` diretamente em novos feedbacks de estado. Use `Motion.status()` e altere somente `hold`, `persist`, `lead`, `caret` ou `intensity` quando o contexto exigir.
-
-# 15. Animações (`motion.js`)
-
-`motion.js` centraliza microinterações. O antigo efeito `bloom()` da logo/marca foi removido por completo, pois o header atual usa somente o mascote fotográfico estático.
-
-A importação por URL reutiliza esse sistema para:
-
-- mudança de estágios;
-- porcentagem de transferência;
-- estado `Pronto`.
-
-A interface respeita `prefers-reduced-motion`.
-
----
-
-# 16. Tratamento de progresso
-
-Existem dois tipos de progresso no fluxo remoto.
-
-## Indeterminado
-
-Usado quando o frontend não conhece um total real:
-
-```text
-Obtendo informações
-Baixando áudio enquanto o servidor ainda prepara a resposta
-Decodificando
-```
-
-## Determinado
-
-Quando `Content-Length` está disponível na resposta do áudio, o navegador mede os bytes realmente recebidos e mostra a porcentagem.
-
-O app não inventa uma porcentagem de download do `yt-dlp`.
-
----
-
-# 17. Por que não há yt-dlp no navegador
-
-`yt-dlp` é uma aplicação/biblioteca Python e precisa realizar operações que não cabem no sandbox normal do browser.
-
-O navegador também enfrenta limitações como:
-
-- CORS;
-- URLs assinadas;
-- manifests;
-- headers específicos;
-- cookies;
-- protocolos/formatos de mídia distintos.
-
-Por isso a arquitetura correta é:
-
-```text
-browser -> backend local -> yt-dlp
-```
-
-em vez de tentar portar os extractors para `app.js`.
-
----
-
-# 18. Desenvolvimento
-
-## Verificação JavaScript
+JavaScript:
 
 ```bash
-node --check app.js
-node --check settings.js
-node --check motion.js
-node --check scope-view.js
-node --check scope-win.js
-node --check remote-import.js
-node --check theme-boot.js
+for f in app.js core.js graph-engine.js library.js motion.js remote-import.js scope-view.js scope-win.js settings.js startup.js theme-boot.js; do node --check "$f"; done
 node --test tests/*.test.js
 npx --yes html-validate@10.4.0 index.html startup.html scope.html
 ```
 
-## Verificação Python
+Python:
 
 ```bash
 python -m py_compile launcher.py server/main.py server/browser_auth.py server/dedicated_auth.py server/youtube_pot.py
@@ -1228,391 +559,63 @@ python -m ruff check launcher.py server tests
 python -m pip_audit -r server/requirements.txt
 ```
 
-## Integração contínua
+`python3 tests/run-ui-browser.py` testa 18 interações por largura no Firefox, com backend simulado e perfil temporário.
 
-`.github/workflows/ci.yml` executa a mesma base de validação em todo `push`,
-pull request e acionamento manual:
+O CI (`.github/workflows/ci.yml`) roda em todo push, pull request e acionamento manual:
 
-- Python 3.11 e 3.13 no Windows, com instalação por
-  `server/requirements-dev.txt`, Ruff, compilação dos módulos, testes e
-  `pip check`; a matriz 3.13 também executa `pip-audit`;
-- Node.js 24 no Linux, com verificação sintática dos scripts, toda a suíte
-  `node:test` e validação semântica dos três documentos HTML;
-- auditoria de higiene que rejeita `.env`, cookies, chaves privadas, ambientes,
-  caches, logs, ZIPs e o protótipo local `GraphEngine.txt` caso sejam rastreados.
+- Python 3.11 e 3.13 no Windows, com `server/requirements-dev.txt`, Ruff, compilação, testes e `pip check`; o 3.13 também roda `pip-audit`.
+- Node.js 24 no Linux, com verificação de sintaxe, toda a suíte `node:test` e validação dos três HTML.
+- Uma checagem que recusa `.env`, cookies, chaves privadas, ambientes, caches, logs, ZIPs e o protótipo `GraphEngine.txt` no repositório.
 
-As actions externas ficam presas a hashes completos e o workflow possui apenas
-permissão de leitura do conteúdo. O projeto continua sem `package.json` e sem
-dependências npm.
+As actions ficam presas a SHAs completos e o workflow só tem permissão de leitura. O projeto não tem `package.json` nem dependências npm. O Dependabot confere dependências Python e GitHub Actions todo mês, com no máximo três PRs abertos por ecossistema.
 
-O Dependabot verifica mensalmente dependências Python e GitHub Actions, com teto
-de três pull requests abertos por ecossistema para não gerar ruído excessivo.
+### Onde mexer
 
-## Política HTTP local
+- Prévia do link: `index.html`, `styles.css` e `app.js`.
+- Comunicação frontend/backend: `remote-import.js`.
+- Opções do `yt-dlp`: `server/main.py`. Não colocar opções do `yt-dlp` em `app.js`.
+- Áudio e reprodução: `app.js`. Não passar isso para o backend.
 
-O backend aplica a mesma camada de proteção a todas as respostas:
+### Testes manuais
 
-- API usa `Cache-Control: no-store`, porque pode conter metadados de mídia ou
-  estado de autenticação;
-- HTML, JavaScript, CSS e imagens usam `no-cache`, revalidando o conteúdo em
-  cada recarga e evitando que uma revisão pareça não ter sido aplicada após F5;
-- CSP restringe scripts ao próprio VARISPEED, mantendo apenas os domínios das
-  fontes, imagens HTTPS, mídia/Workers `blob:` e estilos inline necessários;
-- `X-Frame-Options`, `nosniff`, `Referrer-Policy` e `Permissions-Policy`
-  reduzem superfícies que o editor não utiliza.
+Antes de dar uma mudança por concluída:
 
-O bootstrap de tema saiu do HTML inline e vive em `theme-boot.js`, preservando
-o tema antes do primeiro paint sem relaxar a política de scripts.
+- Básico: abrir pelo FastAPI; importar WAV e MP3; arrastar um arquivo; tocar, pausar e parar; scrub; zoom; exportar WAV.
+- Pitch: abaixo de 100% o som fica mais grave e acima fica mais agudo.
+- Visualização: osciloscópio integrado, modo foco e janela separada.
+- Link: o link só existe em `Importar → Link`; os metadados aparecem sem download; Importar áudio mostra download e decodificação e termina com a waveform; Escape ou X cancelam no meio; URL inválida, local ou privada é recusada; link que exige login mostra um erro legível.
+- Layout da barra de link: URL, `ANALISAR` e fechar no mesmo eixo; thumbnail, metadados, duração e `IMPORTAR ÁUDIO` alinhados; durações curtas e longas não deslocam o botão; não aparece a linha `Origem: ...` depois do sucesso.
+- Cabeçalho: tema só em Configurações → Interface → Tema; botão da janela separada à esquerda do visualizador nos dois temas.
+- Escala: Windows 100%, 125% e 150% com zoom do navegador em 80%, 90%, 100%, 110%, 125% e 150%; régua, grade, playhead, barra de link e Configurações sem frestas nem overflow; mudar o zoom durante a reprodução sem perder `currentTime`, velocidade e play/pause; mover a janela entre monitores com escalas diferentes e conferir o redraw; abrir a janela separada num monitor com outro DPR; seek no início, meio e fim com DPR fracionário.
 
-## Health check
+## Invariantes
 
-Com o backend em execução:
+Manter, salvo pedido explícito:
 
-```text
-GET http://127.0.0.1:8765/api/health
-```
-
-Resposta esperada:
-
-```json
-{
-  "ok": true,
-  "yt_dlp": "...",
-  "ffmpeg": true
-}
-```
-
----
-
-# 19. Testes manuais recomendados
-
-Antes de considerar uma alteração concluída, testar:
-
-1. abrir o app pelo FastAPI;
-2. importar WAV local;
-3. importar MP3 local;
-4. arrastar arquivo para a janela;
-5. alterar velocidade abaixo de 100%;
-6. confirmar pitch naturalmente mais grave;
-7. alterar velocidade acima de 100%;
-8. confirmar pitch naturalmente mais agudo;
-9. tocar/pausar/parar;
-10. scrub da timeline;
-11. zoom;
-12. osciloscópio integrado;
-13. focus mode;
-14. popout;
-15. exportação WAV;
-16. abrir `Importar → Link` e confirmar que não existe botão separado de link no header;
-17. colar link suportado pelo yt-dlp;
-18. confirmar metadados sem iniciar download;
-19. clicar em Importar áudio;
-20. confirmar os estados de download e decodificação;
-21. confirmar waveform após a importação;
-22. cancelar com Escape/X durante uma requisição;
-23. testar URL inválida;
-24. testar URL local/privada e confirmar bloqueio;
-25. testar link que exige autenticação e confirmar erro legível;
-26. alterar Light/Dark em `Configurações → Interface → Tema` e confirmar que não existe controle duplicado no header;
-27. confirmar que o botão de popout permanece à esquerda do visualizador do osciloscópio em ambos os temas;
-28. abrir `Importar → Link` e verificar que URL, `ANALISAR` e fechar compartilham o mesmo eixo/altura;
-29. analisar uma URL e verificar alinhamento horizontal de thumbnail, metadados, duração e `IMPORTAR ÁUDIO`;
-30. testar durações curtas e longas e confirmar que a coluna de duração não desloca o CTA;
-31. confirmar que, após análise bem-sucedida, não aparece uma segunda linha redundante `Origem: ...` abaixo da prévia;
-32. Windows 100% + browser 100%: conferir ruler/grid/playhead;
-33. repetir browser em 80%, 90%, 110%, 125% e 150%;
-34. repetir pelo menos 100%/125%/150% de scaling do Windows quando disponível;
-35. durante playback, mudar zoom do navegador e confirmar que `currentTime`, rate e play/pause não resetam;
-36. mover a janela entre monitores com scaling diferente e conferir redraw da waveform/osciloscópio;
-37. abrir popout do osciloscópio em monitor com DPR diferente da janela principal;
-38. conferir linkbar/Configurações nos mesmos níveis de zoom, sem frestas/overflow horizontal;
-39. testar seek no início/meio/fim da waveform sob DPR fracionário e confirmar correspondência temporal.
-
----
-
-# 20. Pontos de manutenção
-
-## Para alterar a interface da prévia do link
-
-Arquivos:
-
-```text
-index.html
-styles.css
-app.js
-```
-
-## Para alterar comunicação frontend/backend
-
-Arquivo:
-
-```text
-remote-import.js
-```
-
-## Para alterar opções do yt-dlp
-
-Arquivo:
-
-```text
-server/main.py
-```
-
-Não coloque opções específicas do `yt-dlp` dentro de `app.js`.
-
-## Para alterar áudio/reprodução
-
-Arquivo principal:
-
-```text
-app.js
-```
-
-Não faça o backend assumir essa responsabilidade.
-
----
-
-# 21. Invariantes
-
-As seguintes decisões devem ser preservadas salvo solicitação explícita:
-
-1. sem preservação/correção de pitch;
-2. importação local não envia arquivos para o servidor;
-3. `yt-dlp` é apenas aquisição remota;
+1. sem preservação ou correção de pitch;
+2. arquivos locais não vão para o servidor;
+3. o `yt-dlp` só obtém mídia remota;
 4. toda mídia entra no motor por `ingest(blob, ...)`;
-5. waveform continua client-side;
-6. exportação WAV continua client-side;
-7. interface deve permanecer minimalista/técnica;
-8. dark mode usa preto sólido como fundo principal;
-9. progresso determinado só mostra números reais;
-10. backend deve escutar em `0.0.0.0:8765` para acesso LAN, enquanto controles destrutivos continuam restritos ao loopback.
+5. waveform e exportação WAV continuam no navegador;
+6. interface minimalista e técnica, com fundo preto sólido no tema escuro;
+7. progresso com número só quando o número é real;
+8. backend em `0.0.0.0:8765` para a rede local, com ações destrutivas só via loopback.
 
----
+## Problemas comuns
 
-# 22. Diagnóstico rápido
+"Não foi possível acessar o backend do VARISPEED": o HTML foi aberto direto ou o FastAPI não está rodando. Use `start-tempo.bat` ou `start-tempo.sh`.
 
-## “Não foi possível acessar o backend do VARISPEED”
+O `yt-dlp` parou de funcionar num site: atualize com `python -m pip install -U yt-dlp`. Os sites mudam e o extractor precisa acompanhar.
 
-Provavelmente o HTML foi aberto diretamente ou o FastAPI não está em execução.
+O site exige login: veja [Conteúdo restrito](#conteúdo-restrito).
 
-Use `start-tempo.bat` / `start-tempo.sh`.
+O áudio baixou mas o navegador não decodifica: a origem mandou um codec ou container que o navegador não suporta.
 
-## yt-dlp falha em uma plataforma que funcionava antes
+`ffmpeg: false` no health check: instale o FFmpeg e coloque no `PATH` se a fonte precisar dele.
 
-Atualize a dependência:
+## Site de apresentação
 
-```bash
-python -m pip install -U yt-dlp
-```
-
-Mudanças de sites podem exigir uma versão mais nova do extractor.
-
-## O site exige login
-
-Quando apropriado e autorizado, configure um cookies file através de `VARISPEED_COOKIES_FILE`.
-
-## O arquivo foi baixado mas o browser não decodifica
-
-A origem pode ter fornecido codec/container que o navegador não suporta. Uma evolução futura pode adicionar normalização opcional no backend com FFmpeg, sem alterar o princípio de varispeed do editor.
-
-## `ffmpeg: false` no health check
-
-Instale FFmpeg e adicione-o ao `PATH` se a fonte escolhida depender dele.
-
----
-
-# 23. Referências de implementação
-
-A integração utiliza a API Python oficial do `yt-dlp`, especialmente `YoutubeDL.extract_info(..., download=False)` para metadados e `extract_info(..., download=True)` para aquisição.
-
-O backend usa `FileResponse` do FastAPI/Starlette para transmitir o arquivo temporário ao navegador e removê-lo depois da resposta.
-
----
-
-## Resumo
-
-VARISPEED agora possui duas rotas de entrada convergentes:
-
-```text
-arquivo local ───────────────┐
-                             ├─> ingest -> editor
-link -> FastAPI -> yt-dlp ───┘
-```
-
-Isso resolve a principal limitação da implementação antiga baseada em CORS sem transformar o backend no motor do editor.
-
-
-### Correção do launcher Windows — expansão de variável no `IF`
-
-Em teste real com **Python 3.13.15** instalado pelo Python Install Manager, foi identificado um segundo problema no launcher anterior. O script detectava corretamente `py -3`, mas armazenava o comando em `PY_CMD` dentro de um bloco `IF (...)` e tentava usar `%PY_CMD%` no mesmo bloco. O `cmd.exe` expande variáveis `%...%` quando analisa o bloco inteiro, antes das atribuições internas; por isso o comando ficava vazio e o Windows acabava tentando executar apenas:
-
-```text
--m venv .venv
-```
-
-produzindo:
-
-```text
-'-m' is not recognized as an internal or external command
-```
-
-O `start-tempo.bat` atual não usa mais esse padrão. O fluxo foi refeito com rótulos e saltos (`goto`) e chama diretamente `py -3 -m venv .venv` quando o launcher `py` está disponível. Se existir uma pasta `.venv` incompleta, ela é removida e recriada. Python **3.11 ou superior** continua sendo aceito, incluindo Python 3.13.
-
-Com Python 3.13 instalado, os comandos esperados são:
-
-```bat
-py -3.13 --version
-start-tempo.bat
-```
-
-O launcher deverá detectar `py -3`, criar `.venv`, instalar as dependências e iniciar o Uvicorn.
-
-
----
-
-# REV 7 — acabamento final
-
-A REV 7 fecha a sequência de responsividade e QA do VARISPEED. Ela não altera o motor de áudio nem adiciona dependências; consolida acabamento, semântica e consistência de produto.
-
-Principais pontos:
-
-- branding visível consolidado como **VARISPEED**;
-- tema/densidade são restaurados antes do primeiro paint para reduzir flash visual;
-- `theme-color` do navegador acompanha o tema efetivo;
-- scripts de instrumentação do ambiente de preview foram removidos do HTML de produção;
-- foco, hover, active, disabled e busy foram harmonizados entre controles;
-- botões apenas com ícone possuem `aria-label` explícito e Play/Loop atualizam o rótulo conforme o estado;
-- progresso remoto expõe semântica de `progressbar`;
-- mensagens de status usam live regions sem acrescentar popups;
-- scrollbars do inspector/configurações seguem o tema;
-- suporte adicional a `prefers-contrast`, `forced-colors` e `prefers-reduced-motion`;
-- Focus Mode possui semântica modal;
-- nenhuma microinteração da REV 7 move o gato ou os retratos entre Dark/Light.
-
-## Nome e compatibilidade
-
-O nome de produto é **VARISPEED 1.0**. Os launchers continuam se chamando `start-tempo.bat` e `start-tempo.sh` para não quebrar atalhos/instruções já existentes, embora os logs agora usem `[VARISPEED]`.
-
-Alguns identificadores internos legados também permanecem intencionalmente:
-
-```text
-tempo.cfg.v1
-tempo.lastRate
-tempo:*            # namespace postMessage do osciloscópio
-```
-
-Eles não aparecem como branding e não devem ser renomeados sem migração.
-
-As variáveis de ambiente preferidas agora são:
-
-```text
-VARISPEED_COOKIES_FILE
-VARISPEED_MAX_DURATION_SECONDS
-```
-
-Os aliases antigos `TEMPO_COOKIES_FILE` e `TEMPO_MAX_DURATION_SECONDS` continuam aceitos pelo backend.
-
-## Dependências
-
-A REV 7 não adiciona pacotes. `server/requirements.txt` permanece:
-
-```text
-fastapi>=0.120,<1
-uvicorn[standard]>=0.30,<1
-yt-dlp>=2026.7.4
-```
-
-## Estado da sequência de revisão
-
-```text
-REV 1 — estrutura responsiva             ✅
-REV 2 — viewports / conteúdo extremo     ✅
-REV 3 — Canvas / resize real             ✅
-REV 4 — touch / mobile                   ✅
-REV 5 — edge cases de layout/estado      ✅
-REV 6 — scaling / zoom / DPR             ✅
-REV 7 — polimento final / QA global      ✅
-```
-
-Novas alterações devem partir deste estado como baseline.
-
-
-# Atualização pós-REV 7 — Configurações e mascote
-
-Esta atualização faz uma limpeza semântica/técnica após a estabilização da REV 7:
-
-- removido todo o bloom legado do schema, runtime e CSS;
-- removida a função `Motion.bloom()` e suas custom properties;
-- `.hdr__brand` foi renomeada para `.hdr__mascot`; o app não trata mais o gato como uma logo animável;
-- `Motion` passou a aparecer na UI como **Animações**, mantendo as chaves internas `motion.*` para compatibilidade;
-- rótulos foram corrigidos para refletir o comportamento real (`Status animado` e `Microanimação numérica`);
-- `Avisar ao sair durante exportação` foi movido visualmente para **Exportação**;
-- `Lembrar última velocidade` foi movido visualmente para **Velocidade**;
-- o favicon de waveform foi substituído por um favicon derivado do gato;
-- presets antigos e `tempo.cfg.v1` continuam compatíveis; campos obsoletos são ignorados/podados.
-
-Nenhuma dependência foi adicionada ou removida.
-
-
----
-
-# 21. Launcher gráfico do Windows
-
-O launcher gráfico foi adicionado como camada separada do FastAPI para que a interface de inicialização exista **antes** de `.venv` e dependências estarem prontas. `launcher.py` usa somente a biblioteca padrão do Python e sobe temporariamente um `ThreadingHTTPServer` em `127.0.0.1:8764`.
-
-Etapas monitoradas:
-
-1. Python 3.11+;
-2. criação/validação de `.venv`;
-3. FastAPI/Uvicorn/yt-dlp;
-4. versão do yt-dlp;
-5. presença opcional do FFmpeg;
-6. inicialização do Uvicorn;
-7. `/api/health` e `GET /` da interface.
-
-O backend principal escuta em `0.0.0.0:8765`, mas o launcher testa e abre a instância local via `127.0.0.1:8765`. Quando fica pronto, `startup.js` mantém `PRONTO` visível por cerca de 720 ms e então usa `location.replace()` para entrar na aplicação. Após a transição, o servidor temporário de startup se aposenta automaticamente.
-
-A página de startup carrega o `motion.js` existente apenas para a **troca tipográfica da linha de estado** via `Motion.status()`. Ela não usa motion estrutural para abrir/fechar painéis. A barra é indeterminada e reutiliza a mesma varredura visual do progresso de importação por link.
-
-**Não adicionar FastAPI/Flask ao launcher de bootstrap.** Isso criaria o paradoxo de precisar instalar dependências antes de conseguir mostrar o progresso da instalação.
-
-
-# 23. Rede local e desligamento pelo app
-
-Em **Configurações → Sistema** são consultados dados de runtime por `/api/system/info`:
-
-```text
-Servidor     Ativo
-Rede local   http://192.168.x.x:8765/
-Porta        8765
-
-[ Copiar endereço ]
-[ Desligar VARISPEED ]
-```
-
-`Rede local` prioriza o IPv4 da rota ativa do computador e depois considera outros IPv4 privados detectados. Se houver adaptadores virtuais, outras URLs podem existir; o valor principal é o primeiro endereço retornado pelo backend.
-
-### Layout do grupo Sistema
-
-As ações ficam **empilhadas em uma faixa própria**, ocupando toda a largura útil do drawer. Elas não usam `btn--ghost`, porque esse modificador é voltado a botões compactos/ícones e pode conflitar com botões de texto dentro do painel estreito. `Copiar endereço` e `Desligar VARISPEED` usam `.cfg__system-action`, com altura fixa, texto em uma linha e sem sobreposição.
-
-Os valores de `Servidor`, `Rede local` e `Porta` permanecem alinhados à direita; a URL é truncada com reticências apenas quando realmente não cabe.
-
-`Desligar VARISPEED`:
-
-1. pede confirmação;
-2. dispara `varispeed:shutdown` para pausar o áudio/fechar o AudioContext;
-3. envia `POST /api/system/shutdown`;
-4. o backend responde e encerra o próprio processo alguns milissegundos depois;
-5. a aba atual troca para uma tela local `VARISPEED DESLIGADO`.
-
-O botão só é habilitado quando a interface foi aberta pelo próprio computador via loopback. Em clientes LAN ele fica indisponível. Um novo clique no atalho VARISPEED inicia o backend novamente.
-
-# 24. Site de apresentação
-
-O site de apresentação é mantido no repositório independente
-[nehalem-x/VARISPEED-site](https://github.com/nehalem-x/VARISPEED-site) e pode
-ser executado localmente:
+O site fica no repositório [nehalem-x/VARISPEED-site](https://github.com/nehalem-x/VARISPEED-site):
 
 ```powershell
 git clone https://github.com/nehalem-x/VARISPEED-site.git
@@ -1621,5 +624,4 @@ npm ci
 npm run dev
 ```
 
-Abra o endereço informado pelo servidor de desenvolvimento, normalmente
-`http://localhost:3000`. O repositório não contém configuração de hospedagem.
+Abra o endereço mostrado pelo servidor de desenvolvimento, normalmente `http://localhost:3000`. O repositório não tem configuração de hospedagem.
