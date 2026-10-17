@@ -7,6 +7,9 @@ name: Release
 on:
   push:
     tags: ["v*"]
+    # Temporário: monta rascunhos de teste a cada envio enquanto o pacote é
+    # validado. Sai antes de ir para a main.
+    branches: ["feat/download-pronto"]
   workflow_dispatch:
 
 permissions:
