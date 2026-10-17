@@ -150,6 +150,29 @@
     return `${(b / 1024 ** i).toFixed(i ? 1 : 0)} ${u[i]}`;
   }
 
+  /* ── arquivo de origem ─────────────────────────────────
+     Nome para leitura: sem extensão e com a barra de volta. O yt-dlp troca
+     "/" por "⧸" (U+29F8) porque nome de arquivo não pode ter barra. */
+  function sourceTitle(name) {
+    const text = String(name || '').replace(/\.[a-z0-9]{2,5}$/i, '').replace(/\u29f8/g, '/').trim();
+    return text || DASH;
+  }
+  function sourceFormat(name) {
+    const match = String(name || '').match(/\.([a-z0-9]{2,5})$/i);
+    return match ? match[1].toUpperCase() : '';
+  }
+  /* 48000 → "48 kHz", 44100 → "44.1 kHz". */
+  function fmtSampleRate(hz) {
+    const value = Number(hz);
+    if (!(value > 0)) return DASH;
+    return `${Number((value / 1000).toFixed(1))} kHz`;
+  }
+  function channelLabel(count) {
+    const value = Number(count);
+    if (!(value > 0)) return DASH;
+    return value === 1 ? 'Mono' : value === 2 ? 'Estéreo' : `${value} canais`;
+  }
+
   /* ── régua ──────────────────────────────────────────────
      Menor passo "redondo" que cobre o alvo, para os ticks não
      caírem em valores arbitrários ao mudar o zoom. */
@@ -293,6 +316,7 @@
     MINUS, TIMES, DASH,
     clamp,
     fmtTime, fmtClock, fmtBytes, niceStep,
+    sourceTitle, sourceFormat, fmtSampleRate, channelLabel,
     rateText, rateSuffix, rateUnitLabel, parseRate, presetLabel,
     parsePresets, rateMarks, markOffset,
     stripExt, scrub, sanitizeStem, outNameTokens, outName, outSampleRate,

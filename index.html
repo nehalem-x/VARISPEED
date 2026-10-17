@@ -607,12 +607,10 @@ SOFTWARE.
         <h2 class="panel__title">Resultado</h2>
         <dl class="result__durations">
           <div class="result__duration"><dt>Original</dt><dd class="mono" id="rOriginal">0:00.00</dd></div>
-          <div class="result__duration result__duration--output"><dt>Na saída</dt><dd class="mono" id="rDur">0:00.00</dd></div>
+          <div class="result__duration result__duration--output"><dt>Na saída</dt><dd class="mono"><span id="rDur">0:00.00</span><span class="result__change" id="rDelta">Mesma duração</span></dd></div>
         </dl>
         <dl class="rows">
-          <div class="row"><dt>Tom (semitons)</dt><dd class="mono" id="rPitch">0.00 st</dd></div>
-          <div class="row"><dt>Frequência</dt><dd class="mono" id="rFreq">1.000×</dd></div>
-          <div class="row"><dt>Diferença de duração</dt><dd class="mono" id="rDelta">+0.00 s</dd></div>
+          <div class="row"><dt>Tom</dt><dd class="mono" id="rPitch">0.00 st</dd></div>
         </dl>
       </section>
 
@@ -624,11 +622,9 @@ SOFTWARE.
           <img id="sourceArtworkImage" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==" alt="" draggable="false" referrerpolicy="no-referrer" />
         </figure>
         <dl class="panel-source__metadata">
-          <div class="row panel-source__filename"><dt class="sr-only">Arquivo</dt><dd id="sName">—</dd></div>
-          <div class="row"><dt>Duração</dt><dd class="mono" id="sDur">—</dd></div>
+          <div class="row panel-source__filename"><dt class="sr-only">Arquivo</dt><dd><span id="sName">—</span><span class="panel-source__format mono" id="sFormat"></span></dd></div>
           <div class="row"><dt>Amostragem</dt><dd class="mono" id="sRate">—</dd></div>
           <div class="row"><dt>Canais</dt><dd class="mono" id="sCh">—</dd></div>
-          <div class="row"><dt>Tamanho</dt><dd class="mono" id="sSize">—</dd></div>
         </dl>
       </section>
 

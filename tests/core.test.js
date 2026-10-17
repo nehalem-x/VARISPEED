@@ -542,3 +542,21 @@ test('CONTRATO · niceStep sempre cobre o alvo e é monotônico', () => {
     prev = s;
   }
 });
+
+test('arquivo de origem: nome sem extensão e com a barra que o yt-dlp troca', () => {
+  assert.equal(Core.sourceTitle('pinkpantheress - blue⧸can\'t talk to you [remix] prod. otismadeit.m4a'),
+    'pinkpantheress - blue/can\'t talk to you [remix] prod. otismadeit');
+  assert.equal(Core.sourceTitle('faixa.final.mp3'), 'faixa.final');
+  assert.equal(Core.sourceTitle(''), Core.DASH);
+  assert.equal(Core.sourceFormat('a.m4a'), 'M4A');
+  assert.equal(Core.sourceFormat('sem extensão'), '');
+});
+
+test('arquivo de origem: amostragem em kHz e canais por nome', () => {
+  assert.equal(Core.fmtSampleRate(48000), '48 kHz');
+  assert.equal(Core.fmtSampleRate(44100), '44.1 kHz');
+  assert.equal(Core.fmtSampleRate(0), Core.DASH);
+  assert.equal(Core.channelLabel(1), 'Mono');
+  assert.equal(Core.channelLabel(2), 'Estéreo');
+  assert.equal(Core.channelLabel(6), '6 canais');
+});

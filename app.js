@@ -67,9 +67,9 @@
     rateInput: $('rateInput'), rateSlider: $('rateSlider'),
     rateUp: $('rateUp'), rateDown: $('rateDown'),
     presets: Array.from(document.querySelectorAll('.btn--preset')),
-    rPitch: $('rPitch'), rFreq: $('rFreq'), rDur: $('rDur'), rDelta: $('rDelta'),
+    rPitch: $('rPitch'), rDur: $('rDur'), rDelta: $('rDelta'),
     rOriginal: $('rOriginal'), rateHelp: $('rateHelp'), rateError: $('rateError'),
-    sName: $('sName'), sDur: $('sDur'), sRate: $('sRate'), sCh: $('sCh'), sSize: $('sSize'),
+    sName: $('sName'), sFormat: $('sFormat'), sRate: $('sRate'), sCh: $('sCh'),
     sourcePanel: $('sourcePanel'), sourceArtwork: $('sourceArtwork'), sourceArtworkImage: $('sourceArtworkImage'),
     sourceArtworkWashImage: $('sourceArtworkWashImage'), sourceArtworkWashBloom: $('sourceArtworkWashBloom'),
     btnExport: $('btnExport'), exportLabel: $('exportLabel'),
@@ -768,12 +768,15 @@
     const out = src / r;
     const st = 12 * Math.log2(r);
     el.rateTag.textContent = `${rateText(state.rate)}${cfg('rate.unit') === 'pct' ? '%' : ` ${rateSuffix()}`}`;
-    el.rPitch.textContent = `${st >= 0 ? '+' : '−'}${Math.abs(st).toFixed(2)} st`;
-    el.rFreq.textContent = `${r.toFixed(3)}×`;
+    const pitch = `${st >= 0 ? '+' : '−'}${Math.abs(st).toFixed(2)} st`;
+    el.rPitch.textContent = Math.abs(st) < 0.005 ? '0.00 st' : `${pitch} · ${st < 0 ? 'mais grave' : 'mais agudo'}`;
     el.rOriginal.textContent = fmtTime(src);
     el.rDur.textContent = fmtTime(out);
     const delta = out - src;
-    el.rDelta.textContent = `${delta >= 0 ? '+' : '−'}${Math.abs(delta).toFixed(2)} s`;
+    // A diferença fica embaixo da duração de saída, no mesmo formato de tempo.
+    el.rDelta.textContent = Math.abs(delta) < 0.005
+      ? 'Mesma duração'
+      : `${delta > 0 ? '+' : '−'}${fmtTime(Math.abs(delta))} ${delta > 0 ? 'mais longo' : 'mais curto'}`;
     el.outTime.textContent = fmtTime(out);
     el.tTot.textContent = fmtTime(out);
     el.posTime.textContent = fmtTime((state.audio.currentTime || 0) / r);
@@ -1403,12 +1406,11 @@
         onDone: () => window.Motion.marquee(el.fileName),
       });
       el.fileMeta.textContent = `${(buf.sampleRate / 1000).toFixed(1)} kHz · ${buf.numberOfChannels === 1 ? 'mono' : 'estéreo'} · ${fmtTime(buf.duration)}`;
-      el.sName.textContent = file.name;
+      el.sName.textContent = Core.sourceTitle(file.name);
       el.sName.title = file.name;
-      el.sDur.textContent = fmtTime(buf.duration);
-      el.sRate.textContent = `${buf.sampleRate} Hz`;
-      el.sCh.textContent = String(buf.numberOfChannels);
-      el.sSize.textContent = fmtBytes(file.size);
+      el.sFormat.textContent = [Core.sourceFormat(file.name), fmtBytes(file.size)].filter(Boolean).join(' · ');
+      el.sRate.textContent = Core.fmtSampleRate(buf.sampleRate);
+      el.sCh.textContent = Core.channelLabel(buf.numberOfChannels);
       syncSourceArtwork(state.meta.thumbnail, file.name);
 
       resize();
