@@ -286,10 +286,12 @@ O arquivo principal é `server/main.py`. O backend não edita áudio: não alter
 | `/api/auth/status` | GET | estado não sensível da autenticação local |
 | `/api/auth/browser` | POST | escolhe o modo de autenticação; loopback + origem local |
 | `/api/auth/browser/auto` | POST | descobre perfis instalados e valida uma sessão no link pedido |
-| `/api/auth/dedicated/start` | POST | abre a janela isolada do YouTube |
-| `/api/auth/dedicated/finish` | POST | filtra a sessão do YouTube e apaga o perfil temporário |
+| `/api/auth/dedicated/start` | POST | abre a janela de login e começa a vigiar a conta |
+| `/api/auth/dedicated/finish` | POST | conclui na hora (o vigia faz isso sozinho; fica por compatibilidade) |
 | `/api/auth/dedicated/cancel` | POST | fecha a janela temporária sem remover uma sessão válida anterior |
 | `/api/auth/dedicated/disconnect` | POST | remove a sessão dedicada guardada localmente |
+| `/api/auth/cookies-file` | POST | guarda um `cookies.txt` escolhido nas opções avançadas |
+| `/api/auth/cookies-file/remove` | POST | apaga esse arquivo |
 | `/api/media/info` | POST | metadados sem download |
 | `/api/media/audio` | POST | obtém e transmite o áudio |
 | `/` | GET | `index.html` |
@@ -340,21 +342,25 @@ O bootstrap de tema fica em `theme-boot.js`, fora do HTML, para manter o tema an
 
 ### Conteúdo restrito
 
-Configurações → Importação por link → Conteúdo restrito tem três caminhos. Em todos, o backend tenta primeiro sem autenticação e só repete com ela quando o extractor pede login, confirmação de idade ou cookies. Toda configuração sensível só aceita loopback, e clientes da rede nunca herdam a sessão.
+Alguns vídeos só abrem com login, como os com restrição de idade. Para o usuário isso é um botão só: **Entrar no YouTube**, que aparece na barra de link quando um vídeo pede login e em Configurações → Importação por link → Conta do YouTube. Toda importação tenta primeiro sem login; a conta só entra quando o YouTube pede. Toda configuração sensível só aceita loopback, e clientes da rede nunca herdam a sessão.
 
-Usar cookies do navegador procura os perfis compatíveis instalados e testa cada um no link pedido. A interface recebe só o navegador e o nome público do perfil validado; caminho, banco e valores de cookies ficam no backend, e nada é gravado em arquivo. Chrome, Edge, Firefox, Brave e Vivaldi também estão disponíveis como opções avançadas via `cookiesfrombrowser`, que exigem o navegador fechado, porque os navegadores Chromium travam o banco de cookies enquanto estão abertos.
+Ao clicar em Entrar no YouTube, o VARISPEED:
 
-Sessão dedicada é o caminho recomendado quando o navegador principal está aberto (o próprio VARISPEED pode estar rodando no Edge). Ela abre uma instância isolada do Edge com perfil temporário e porta DevTools aleatória restrita a `127.0.0.1`. Depois que você entra no YouTube e confirma, o VARISPEED:
-
-1. verifica a autenticação sem receber a senha;
-2. navega a mesma página para `youtube.com/robots.txt`;
-3. exporta só cookies de domínios de `youtube.com`;
+1. abre uma janela separada do primeiro navegador compatível que encontrar (Edge, Chrome, Chromium, Brave ou Vivaldi), com perfil temporário e porta DevTools aleatória restrita a `127.0.0.1`;
+2. percebe sozinho quando a conta entra, sem receber a senha e sem botão Concluir;
+3. navega a mesma página para `youtube.com/robots.txt` e exporta só cookies de domínios de `youtube.com`;
 4. fecha a janela e apaga o perfil temporário;
-5. guarda só o arquivo Netscape filtrado em `%LOCALAPPDATA%/VARISPEED/youtube-auth`.
+5. guarda só o arquivo Netscape filtrado em `%LOCALAPPDATA%/VARISPEED/youtube-auth` (no Linux e no macOS, `~/.varispeed/youtube-auth`);
+6. se o login começou pela barra de link, tenta o mesmo link de novo.
 
-Desconectar fecha uma janela pendente e apaga esse arquivo. A interface recebe só `available`, `connected`, `login_open` e o estado de validação (`unverified`, `verified`, `playback_verification_required` ou `invalid`); nomes e valores de cookies nunca passam pela API. Durante a importação, o arquivo é lido para um buffer temporário, para o `yt-dlp` não regravar a cópia guardada, e o modo dedicado é recusado para qualquer host fora de `youtube.com`/`youtu.be`. O indicador só considera a sessão válida se o arquivo tiver cookies de conta legíveis pelo `yt-dlp` e o conteúdo pedido abrir com eles.
+Funciona com o navegador principal aberto, porque usa uma instância separada. Sair da conta apaga o arquivo. Quando o YouTube deixa de aceitar a sessão salva, a barra e as Configurações mostram "Sessão expirada" e o botão Entrar de novo. A interface recebe só o estado da conta (`available`, `browser`, `connected`, `login_open`, `validation`, `expired`, `error`, `manual_cookies`); nomes e valores de cookies nunca passam pela API. Durante a importação, o arquivo é lido para um buffer temporário, para o `yt-dlp` não regravar a cópia guardada, e a conta é recusada para qualquer host fora de `youtube.com`/`youtu.be`.
 
-Arquivo de cookies manual: `VARISPEED_COOKIES_FILE=/caminho/para/cookies.txt`. Use só cookies de contas que você pode usar e proteja o arquivo. Para gerar esse arquivo sem dar acesso a outros domínios, existe a extensão Chromium `tools/youtube-cookie-exporter`. Ela pede acesso a `youtube.com` só depois de um clique, não usa rede, telemetria nem armazenamento próprio, e não é instalada nem executada automaticamente. Veja o README da pasta e prefira uma conta secundária.
+Opções avançadas, para quando o login não funciona:
+
+- **Usar cookies de:** lê os cookies de um navegador instalado (Chrome, Edge, Firefox, Brave, Vivaldi ou detecção automática) via `cookiesfrombrowser`. Chrome, Edge, Brave e Vivaldi travam o banco de cookies enquanto estão abertos, então precisam estar fechados. Quando escolhido, vale no lugar da conta.
+- **Arquivo de cookies:** um `cookies.txt` no formato Netscape, conferido e guardado em `manual.cookies.txt` ao lado da sessão. Vale para todo site. A variável `VARISPEED_COOKIES_FILE=/caminho/para/cookies.txt` tem precedência. Para gerar esse arquivo sem dar acesso a outros domínios, existe a extensão Chromium `tools/youtube-cookie-exporter`, que pede acesso a `youtube.com` só depois de um clique, não usa rede, telemetria nem armazenamento próprio e não é instalada nem executada automaticamente.
+
+Use só contas que você pode usar e prefira uma conta secundária.
 
 Vídeos que reconhecem a conta mas ainda pedem verificação de reprodução usam o provedor local WPC PO Token. O backend mantém a sessão só no `yt-dlp`, força o cliente `mweb` apenas nessa nova tentativa, abre um Chromium isolado e minimizado para rodar o WebPoClient, gera o token do vídeo, fecha a instância e habilita o Node local e os scripts `yt-dlp-ejs` para os desafios de assinatura. O navegador auxiliar não recebe os cookies. Chrome, Edge, Brave ou Vivaldi servem de runtime; `VARISPEED_CHROMIUM_PATH` e `VARISPEED_NODE_PATH` apontam outro executável. O estado aparece em `/api/health` e `/api/auth/status`, sem caminhos locais.
 
@@ -441,7 +447,7 @@ Numa medição sintética, a física por quadro caiu de cerca de `0,61 ms` para 
 - Interface: tema, densidade e dicas de teclado.
 - Velocidade: unidade, passo, limites, presets e memória da última velocidade.
 - Exportação: WAV, normalização, nome e aviso ao sair durante uma exportação.
-- Biblioteca e Importação por link (inclusive Conteúdo restrito).
+- Biblioteca e Importação por link (inclusive a Conta do YouTube).
 - Timeline: régua, formato, passo de seek e zoom pela roda.
 - Visualização de áudio: vectorscope ou osciloscópio, ganho, janela, persistência, partículas e FPS. A cor segue o tema.
 - Animações: nível, escala, intensidade, status animado, sustentação da exportação, cursor nos status, microanimação numérica e varredura das operações.

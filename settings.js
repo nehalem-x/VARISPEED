@@ -128,11 +128,12 @@ window.Settings = (() => {
       id: 'remote', title: 'Importação por link',
       note: 'A autenticação permanece neste computador e só é usada quando o conteúdo exige uma sessão.',
       fields: [
-        { k: 'remote.authBrowser', t: 'select', label: 'Conteúdo restrito', d: 'off',
+        // Nas opções avançadas da Conta do YouTube. 'dedicated' saiu da lista:
+        // um valor antigo vira 'off', e a conta conectada continua valendo.
+        { k: 'remote.authBrowser', t: 'select', label: 'Usar cookies de', d: 'off', advanced: true,
           opts: [
-            ['off', 'Não usar sessão'],
-            ['auto', 'Usar cookies do navegador'],
-            ['dedicated', 'Sessão dedicada (recomendado)'],
+            ['off', 'Nenhum navegador'],
+            ['auto', 'Detectar automaticamente'],
             ['chrome', 'Google Chrome'],
             ['edge', 'Microsoft Edge'],
             ['firefox', 'Mozilla Firefox'],
@@ -218,7 +219,7 @@ window.Settings = (() => {
     'load.confirmExit': 'Pede confirmação se você tentar fechar ou recarregar a página durante uma exportação.',
     'library.autoAdd': 'Salva na Biblioteca todo áudio importado. Desligado, o áudio fica só no editor até você usar “Salvar na Biblioteca”.',
     'library.alwaysShowGuide': 'Mostra o guia toda vez que você abre a Biblioteca. Desligado, ele aparece só na primeira vez.',
-    'remote.authBrowser': 'Para vídeos que exigem login. “Usar cookies do navegador” testa os perfis instalados e usa o que conseguir abrir o link; navegadores Chromium precisam estar fechados. “Sessão dedicada” abre uma janela separada para entrar no YouTube e funciona com o navegador aberto. Os cookies ficam neste computador e nunca passam para a interface. Prefira uma conta secundária.',
+    'remote.authBrowser': 'Lê os cookies de um navegador instalado em vez de usar a Conta do YouTube. “Detectar automaticamente” testa os perfis instalados e usa o que conseguir abrir o link. Chrome, Edge, Brave e Vivaldi precisam estar fechados. Os cookies ficam neste computador e nunca passam para a interface.',
     'tl.ruler': '“Tempo de saída” mostra a régua já com a velocidade aplicada. “Tempo da fonte” mostra a duração do arquivo original.',
     'tl.format': 'Como os tempos aparecem: minutos e segundos, total em segundos ou posição em amostras.',
     'tl.seek': 'Quanto ← e → avançam ou voltam. Com Shift, o passo é sempre de 1 segundo.',
@@ -386,10 +387,13 @@ window.Settings = (() => {
   let sectionNav = null;
   let activeSection = 'rate';
   let activeHelp = null;
-  let authSessionStatus = null, authSessionPrimary = null, authSessionSecondary = null, authSessionHint = null;
-  let authSessionBusy = false;
-  let authSessionState = { available: false, connected: false, login_open: false, validation: 'missing' };
-  let authPoTokenState = { ready: false, message: '' };
+  /* Conta do YouTube: um estado só para o usuário (conectado ou não). Quando e
+     como usar a conta, o backend decide. */
+  const account = {
+    status: null, hint: null, actions: null, advanced: null, advancedToggle: null,
+    cookiesLabel: null, cookiesButton: null, cookiesInput: null,
+    state: null, poToken: { ready: false, message: '' }, busy: false, login: null,
+  };
 
   const compactPanel = () => window.matchMedia && window.matchMedia('(max-width: 900px)').matches;
   const focusableSelector = 'button:not([disabled]), select:not([disabled]), input:not([disabled]), summary, [href], [tabindex]:not([tabindex="-1"])';
@@ -1040,131 +1044,222 @@ window.Settings = (() => {
     }
   }
 
-  function renderDedicatedAuth(state = authSessionState, poToken = authPoTokenState) {
-    authSessionState = Object.assign({ available: false, connected: false, login_open: false, validation: 'missing' }, state || {});
-    authPoTokenState = Object.assign({ ready: false, message: '' }, poToken || {});
-    if (!authSessionStatus || !authSessionPrimary || !authSessionSecondary) return;
+  function accountButton(cls, label, onClick) {
+    const button = h('button', `btn ${cls}`, label);
+    button.type = 'button';
+    button.disabled = account.busy;
+    button.addEventListener('click', onClick);
+    return button;
+  }
 
-    const selected = get('remote.authBrowser') === 'dedicated';
-    let label = 'Não conectado';
-    let status = 'off';
-    if (!authSessionState.available) {
-      label = 'Microsoft Edge não encontrado';
-      status = 'error';
-    } else if (authSessionState.login_open) {
-      label = 'Janela aberta · entre no YouTube';
-      status = 'pending';
-    } else if (authSessionState.connected && authSessionState.validation === 'playback_verification_required') {
-      label = authPoTokenState.ready
-        ? 'Sessão reconhecida · PO Token pronto'
-        : 'Sessão reconhecida · reprodução bloqueada';
-      status = authPoTokenState.ready ? 'connected' : 'warning';
-    } else if (authSessionState.connected && authSessionState.validation === 'verified') {
-      label = selected ? 'Conectado · sessão validada' : 'Sessão validada · inativa';
-      status = 'connected';
-    } else if (authSessionState.connected) {
-      label = selected ? 'Sessão armazenada · aguardando validação' : 'Sessão armazenada · inativa';
-      status = 'pending';
+  function accountView(state, poToken) {
+    if (!state) {
+      return { st: 'error', label: 'Sem conexão · servidor local não respondeu', hint: 'Abra o VARISPEED pelo atalho e tente de novo.', buttons: [] };
     }
+    const browser = state.browser || 'navegador';
+    if (state.login_open) {
+      return {
+        st: 'pending',
+        label: `Aguardando login · janela do ${browser} aberta`,
+        hint: 'Entre na sua conta na janela que abriu. O VARISPEED percebe quando você terminar e fecha a janela sozinho.',
+        buttons: [['btn--outline cfg__auth-primary', 'Cancelar', cancelYoutubeLogin]],
+      };
+    }
+    if (state.expired) {
+      return {
+        st: 'warning',
+        label: 'Sessão expirada · entre de novo',
+        hint: 'O YouTube não aceita mais a sessão salva. Entre de novo para continuar abrindo vídeos com login.',
+        buttons: [['btn--primary cfg__auth-primary', 'Entrar de novo', startYoutubeLogin], ['btn--ghost cfg__auth-secondary', 'Sair da conta', logoutYoutube]],
+      };
+    }
+    if (state.connected) {
+      const logout = [['btn--ghost cfg__auth-primary', 'Sair da conta', logoutYoutube]];
+      if (state.validation === 'playback_verification_required') {
+        return {
+          st: poToken.ready ? 'connected' : 'warning',
+          label: poToken.ready ? 'Conectado · PO Token pronto' : 'Conectado · reprodução bloqueada',
+          hint: poToken.ready
+            ? 'A verificação de reprodução está pronta. Analise o link de novo; uma janela auxiliar minimizada pode aparecer por alguns segundos.'
+            : (poToken.message || 'A conta foi reconhecida, mas a verificação de reprodução ainda não está disponível.'),
+          buttons: logout,
+        };
+      }
+      return {
+        st: 'connected',
+        label: state.validation === 'verified' ? 'Conectado · sessão válida' : 'Conectado · sessão salva',
+        hint: 'O VARISPEED usa esta conta só quando um vídeo pede login. A sessão fica salva só neste computador.',
+        buttons: logout,
+      };
+    }
+    if (!state.available) {
+      return {
+        st: 'error',
+        label: 'Indisponível · nenhum navegador compatível',
+        hint: 'Para entrar, o VARISPEED abre uma janela do Chrome, Edge, Chromium, Brave ou Vivaldi. Instale um deles e volte aqui.',
+        buttons: [],
+      };
+    }
+    return {
+      st: 'off',
+      label: 'Não conectado',
+      hint: state.error || 'Alguns vídeos só abrem com login, como os com restrição de idade. Conecte uma conta e o VARISPEED a usa só quando precisar. Prefira uma conta secundária.',
+      buttons: [['btn--primary cfg__auth-primary', 'Entrar no YouTube', startYoutubeLogin]],
+    };
+  }
 
-    authSessionStatus.dataset.state = status;
-    authSessionStatus.querySelector('span:last-child').textContent = label;
-    authSessionPrimary.textContent = authSessionState.login_open
-      ? 'Concluir conexão'
-      : (authSessionState.validation === 'playback_verification_required'
-        ? 'Renovar sessão'
-        : (authSessionState.connected ? 'Renovar sessão' : 'Conectar YouTube'));
-    authSessionPrimary.disabled = authSessionBusy || !authSessionState.available;
-    authSessionPrimary.setAttribute('aria-busy', String(authSessionBusy));
-    authSessionSecondary.hidden = !authSessionState.login_open && !authSessionState.connected;
-    authSessionSecondary.textContent = authSessionState.login_open ? 'Cancelar' : 'Desconectar';
-    authSessionSecondary.disabled = authSessionBusy;
-    authSessionSecondary.setAttribute('aria-busy', String(authSessionBusy));
-    if (authSessionHint) {
-      authSessionHint.textContent = authSessionState.validation === 'playback_verification_required'
-        ? (authPoTokenState.ready
-          ? 'A compatibilidade por PO Token está pronta. Analise o link novamente; uma janela auxiliar minimizada pode aparecer por alguns segundos.'
-          : (authPoTokenState.message || 'A conta foi reconhecida, mas a compatibilidade por PO Token ainda não está disponível.'))
-        : 'A janela isolada evita o bloqueio do navegador principal. Ao concluir, o perfil temporário é apagado e somente a sessão do YouTube permanece neste computador.';
-    }
+  function renderDedicatedAuth(state = account.state, poToken = account.poToken) {
+    account.state = state;
+    account.poToken = poToken || { ready: false, message: '' };
+    if (!account.status) return;
+    const view = accountView(state, account.poToken);
+    account.status.dataset.state = view.st;
+    account.status.querySelector('span:last-child').textContent = view.label;
+    account.hint.textContent = view.hint;
+    account.actions.replaceChildren(...view.buttons.map(([cls, label, onClick]) => accountButton(cls, label, onClick)));
+    account.actions.hidden = !view.buttons.length;
+    const manual = Boolean(state && state.manual_cookies);
+    account.cookiesLabel.textContent = manual ? 'Arquivo carregado' : 'Arquivo de cookies';
+    account.cookiesButton.textContent = manual ? 'Remover' : 'Escolher...';
+    account.cookiesButton.disabled = account.busy || !state;
   }
 
   async function refreshDedicatedAuth() {
-    if (!authSessionStatus || !window.RemoteImport?.authStatus) return;
+    if (!account.status || !window.RemoteImport?.authStatus) return;
     try {
       const result = await window.RemoteImport.authStatus();
       renderDedicatedAuth(result.dedicated, result.po_token);
     } catch (_) {
-      renderDedicatedAuth({ available: false, connected: false, login_open: false });
+      renderDedicatedAuth(null);
     }
   }
 
-  async function runDedicatedPrimary() {
-    if (authSessionBusy || !window.RemoteImport) return;
-    authSessionBusy = true;
+  async function startYoutubeLogin() {
+    if (account.busy || account.login || !window.RemoteImport) return;
+    const ctrl = new AbortController();
+    account.login = ctrl;
+    try {
+      const state = await window.RemoteImport.youtubeLogin({
+        signal: ctrl.signal,
+        onUpdate: (next) => renderDedicatedAuth(next),
+      });
+      if (state.connected) {
+        // Entrar vale mais que um navegador escolhido nas opções avançadas.
+        if (get('remote.authBrowser') !== 'off') set('remote.authBrowser', 'off');
+        panelFeedback('Conta do YouTube conectada', { hold: 3200 });
+      } else if (state.error) {
+        panelFeedback(state.error, { kind: 'err', hold: 5200 });
+      }
+    } catch (error) {
+      if (error?.name !== 'AbortError') {
+        panelFeedback(error?.message || 'Não foi possível abrir a janela de login.', { kind: 'err', hold: 5200 });
+      }
+    } finally {
+      account.login = null;
+      refreshDedicatedAuth();
+    }
+  }
+
+  function cancelYoutubeLogin() {
+    if (account.login) account.login.abort();
+    else window.RemoteImport?.cancelDedicatedAuth().finally(refreshDedicatedAuth);
+    panelFeedback('Login cancelado');
+  }
+
+  async function logoutYoutube() {
+    if (account.busy || !window.RemoteImport) return;
+    account.busy = true;
     renderDedicatedAuth();
     try {
-      const finishing = authSessionState.login_open;
-      const result = finishing
-        ? await window.RemoteImport.finishDedicatedAuth()
-        : await window.RemoteImport.startDedicatedAuth();
-      set('remote.authBrowser', 'dedicated');
+      const result = await window.RemoteImport.disconnectDedicatedAuth();
+      panelFeedback('Conta removida deste computador');
+      account.busy = false;
       renderDedicatedAuth(result.dedicated);
-      panelFeedback(finishing
-        ? 'Sessão dedicada conectada · perfil temporário removido'
-        : 'Janela dedicada aberta · entre no YouTube e depois conclua', {
-        hold: finishing ? 3200 : 5200,
-      });
     } catch (error) {
-      panelFeedback(error?.message || 'Não foi possível configurar a sessão dedicada.', {
-        kind: 'err', hold: 5200,
-      });
-      await refreshDedicatedAuth();
+      panelFeedback(error?.message || 'Não foi possível sair da conta.', { kind: 'err', hold: 4200 });
     } finally {
-      authSessionBusy = false;
-      renderDedicatedAuth();
+      account.busy = false;
+      refreshDedicatedAuth();
     }
   }
 
-  async function runDedicatedSecondary() {
-    if (authSessionBusy || !window.RemoteImport) return;
-    authSessionBusy = true;
+  async function chooseCookiesFile(file) {
+    if (!file || account.busy) return;
+    account.busy = true;
     renderDedicatedAuth();
     try {
-      const cancelling = authSessionState.login_open;
-      const result = cancelling
-        ? await window.RemoteImport.cancelDedicatedAuth()
-        : await window.RemoteImport.disconnectDedicatedAuth();
-      if (!cancelling && get('remote.authBrowser') === 'dedicated') set('remote.authBrowser', 'off');
+      const result = await window.RemoteImport.saveCookiesFile(await file.text());
+      panelFeedback('Arquivo de cookies carregado');
+      account.busy = false;
       renderDedicatedAuth(result.dedicated);
-      panelFeedback(cancelling ? 'Conexão cancelada' : 'Sessão dedicada removida deste computador');
     } catch (error) {
-      panelFeedback(error?.message || 'Não foi possível alterar a sessão dedicada.', {
-        kind: 'err', hold: 4200,
-      });
-      await refreshDedicatedAuth();
+      panelFeedback(error?.message || 'Não foi possível usar esse arquivo.', { kind: 'err', hold: 5200 });
     } finally {
-      authSessionBusy = false;
-      renderDedicatedAuth();
+      account.busy = false;
+      account.cookiesInput.value = '';
+      refreshDedicatedAuth();
     }
   }
 
-  function buildDedicatedAuthPanel() {
+  async function onCookiesButton() {
+    if (account.state?.manual_cookies) {
+      account.busy = true;
+      renderDedicatedAuth();
+      try {
+        await window.RemoteImport.removeCookiesFile();
+        panelFeedback('Arquivo de cookies removido');
+      } catch (error) {
+        panelFeedback(error?.message || 'Não foi possível remover o arquivo.', { kind: 'err', hold: 4200 });
+      } finally {
+        account.busy = false;
+        refreshDedicatedAuth();
+      }
+      return;
+    }
+    account.cookiesInput.click();
+  }
+
+  function buildDedicatedAuthPanel(advancedFields = []) {
     const box = h('div', 'cfg__auth-session');
-    authSessionStatus = h('div', 'cfg__auth-status mono');
-    authSessionStatus.appendChild(h('i', 'cfg__auth-dot'));
-    authSessionStatus.appendChild(h('span', null, 'Verificando sessão...'));
-    authSessionHint = h('p', 'cfg__auth-hint',
-      'Uma janela isolada será aberta. Ao concluir, o perfil temporário é apagado e apenas a sessão do YouTube permanece neste computador.');
-    const actions = h('div', 'cfg__auth-actions');
-    authSessionPrimary = h('button', 'btn btn--primary cfg__auth-primary', 'Conectar YouTube');
-    authSessionPrimary.type = 'button';
-    authSessionPrimary.addEventListener('click', runDedicatedPrimary);
-    authSessionSecondary = h('button', 'btn btn--ghost cfg__auth-secondary', 'Desconectar');
-    authSessionSecondary.type = 'button';
-    authSessionSecondary.addEventListener('click', runDedicatedSecondary);
-    actions.append(authSessionPrimary, authSessionSecondary);
-    box.append(authSessionStatus, authSessionHint, actions);
+    box.appendChild(h('h4', 'cfg__auth-title', 'Conta do YouTube'));
+    account.status = h('div', 'cfg__auth-status mono');
+    account.status.setAttribute('role', 'status');
+    account.status.append(h('i', 'cfg__auth-dot'), h('span', null, 'Verificando conta...'));
+    account.hint = h('p', 'cfg__auth-hint');
+    account.actions = h('div', 'cfg__auth-actions');
+
+    account.advancedToggle = h('button', 'btn btn--ghost cfg__auth-advanced-toggle');
+    account.advancedToggle.type = 'button';
+    account.advancedToggle.setAttribute('aria-expanded', 'false');
+    account.advancedToggle.setAttribute('aria-controls', 'cfg-auth-advanced');
+    account.advancedToggle.append(document.createTextNode('Opções avançadas'), uiIcon('chevron-down', true));
+    account.advanced = h('div', 'cfg__auth-advanced');
+    account.advanced.id = 'cfg-auth-advanced';
+    account.advanced.hidden = true;
+    account.advancedToggle.addEventListener('click', () => {
+      const open = account.advanced.hidden;
+      account.advanced.hidden = !open;
+      account.advancedToggle.setAttribute('aria-expanded', String(open));
+    });
+
+    advancedFields.forEach((f) => account.advanced.appendChild(buildField(f)));
+    const cookiesRow = h('div', 'cfg__row cfg__row--inline');
+    const cookiesLine = h('div', 'cfg__label-line');
+    account.cookiesLabel = h('span', 'cfg__label', 'Arquivo de cookies');
+    cookiesLine.appendChild(account.cookiesLabel);
+    account.cookiesButton = h('button', 'btn btn--outline cfg__auth-file', 'Escolher...');
+    account.cookiesButton.type = 'button';
+    account.cookiesButton.addEventListener('click', onCookiesButton);
+    account.cookiesInput = h('input');
+    account.cookiesInput.type = 'file';
+    account.cookiesInput.accept = '.txt,text/plain';
+    account.cookiesInput.hidden = true;
+    account.cookiesInput.addEventListener('change', () => chooseCookiesFile(account.cookiesInput.files?.[0]));
+    cookiesRow.append(cookiesLine, account.cookiesButton, account.cookiesInput);
+    account.advanced.append(cookiesRow, h('p', 'cfg__auth-hint',
+      'Use só se o login acima não funcionar. Chrome, Edge, Brave e Vivaldi precisam estar fechados para o VARISPEED ler os cookies deles. O arquivo precisa estar no formato cookies.txt (Netscape) e fica salvo só neste computador.'));
+
+    box.append(account.status, account.hint, account.actions, account.advancedToggle, account.advanced);
     renderDedicatedAuth();
     return box;
   }
@@ -1337,10 +1432,13 @@ window.Settings = (() => {
       return sec;
     }
 
-    const wrap = h('div', 'cfg__fields');
-    g.fields.forEach((f) => wrap.appendChild(buildField(f)));
-    sec.appendChild(wrap);
-    if (g.id === 'remote') sec.appendChild(buildDedicatedAuthPanel());
+    const main = g.fields.filter((f) => !f.advanced);
+    if (main.length) {
+      const wrap = h('div', 'cfg__fields');
+      main.forEach((f) => wrap.appendChild(buildField(f)));
+      sec.appendChild(wrap);
+    }
+    if (g.id === 'remote') sec.appendChild(buildDedicatedAuthPanel(g.fields.filter((f) => f.advanced)));
     return sec;
   }
 

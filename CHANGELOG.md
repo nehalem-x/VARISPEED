@@ -1,5 +1,14 @@
 # Registro de mudanças
 
+## Outubro de 2026: login de um botão
+
+- Conteúdo restrito virou **Conta do YouTube**, com um botão só: Entrar no YouTube. O menu de oito opções saiu; navegador específico e arquivo de cookies ficaram em Opções avançadas.
+- Quando um vídeo pede login, a barra de link mostra Entrar no YouTube. Ao terminar o login, o app tenta o mesmo link de novo sozinho.
+- O app percebe sozinho quando o login termina; não existe mais o passo Concluir.
+- A janela de login usa o primeiro navegador compatível instalado (Edge, Chrome, Chromium, Brave ou Vivaldi), no Windows e no Linux. Antes, exigia o Edge.
+- Sessão que o YouTube deixou de aceitar aparece como "Sessão expirada", com Entrar de novo, em vez de um erro genérico.
+- O arquivo de cookies pode ser escolhido pela interface, sem variável de ambiente.
+
 ## Outubro de 2026: download pronto
 
 - O VARISPEED ganhou um download para Windows (`.zip`) e Linux (`.tar.gz`) que abre sem instalar nada: Python portátil com as dependências e Node.js LTS vêm na pasta `runtime/`.

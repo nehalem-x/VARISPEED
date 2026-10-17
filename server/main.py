@@ -266,10 +266,7 @@ def _clean_error(exc: Exception) -> str:
             "o yt-dlp e o componente de PO Token."
         )
     if _requires_authentication(text):
-        return (
-            "Este conteúdo exige uma sessão autenticada. Use “Usar cookies do navegador” abaixo "
-            "ou configure uma Sessão dedicada em Configurações → Importação por link."
-        )
+        return "Este vídeo precisa de login no YouTube."
     if re.search(r"could not copy .*cookie database", text, re.I):
         return (
             "O navegador escolhido está aberto e mantém a sessão bloqueada. Feche-o completamente, "
@@ -294,10 +291,22 @@ def _requires_authentication(message: object) -> bool:
     ))
 
 
-def _authentication_error_code(exc: Exception) -> str:
-    if not getattr(exc, "varispeed_playback_verification", False):
-        return "authentication_required"
-    return "youtube_po_token_failed" if youtube_pot_status()["ready"] else "youtube_po_token_unavailable"
+SESSION_EXPIRED_MESSAGE = "Sua sessão do YouTube expirou."
+
+
+def _authentication_error_code(exc: Exception, auth_browser: str = "") -> str:
+    if getattr(exc, "varispeed_playback_verification", False):
+        return "youtube_po_token_failed" if youtube_pot_status()["ready"] else "youtube_po_token_unavailable"
+    # A conta conectada foi usada e o YouTube não a reconheceu: a sessão venceu.
+    if auth_browser == "dedicated" and not getattr(exc, "varispeed_account_cookies", False):
+        return "youtube_session_expired"
+    return "authentication_required"
+
+
+def _authentication_error(exc: Exception, auth_browser: str = "") -> HTTPException:
+    code = _authentication_error_code(exc, auth_browser)
+    message = SESSION_EXPIRED_MESSAGE if code == "youtube_session_expired" else _clean_error(exc)
+    return HTTPException(status_code=401, detail={"code": code, "message": message})
 
 
 def _validate_url(raw: str) -> str:
@@ -356,8 +365,14 @@ def _common_opts(auth_browser: str = "", auth_profile: str = "") -> dict[str, An
     }
     cookie_file = os.getenv("VARISPEED_COOKIES_FILE", os.getenv("TEMPO_COOKIES_FILE", "")).strip()
     authenticated_source = False
+    manual_cookies = None if cookie_file else DEDICATED_AUTH.manual_cookie_buffer()
     if cookie_file:
         opts["cookiefile"] = cookie_file
+        authenticated_source = True
+    elif manual_cookies is not None:
+        # Arquivo escolhido em Opções avançadas: vale para todo site, como a
+        # variável de ambiente, e também fica protegido contra regravação.
+        opts["cookiefile"] = manual_cookies
         authenticated_source = True
     elif auth_browser == "dedicated":
         cookie_buffer = DEDICATED_AUTH.cookie_buffer()
@@ -383,7 +398,12 @@ def _configured_auth_source(request: Request) -> tuple[str, str]:
     if not _is_loopback_client(request):
         return "", ""
     with _AUTH_LOCK:
-        return _AUTH_BROWSER, _AUTH_PROFILE
+        browser, profile = _AUTH_BROWSER, _AUTH_PROFILE
+    if browser in {"", "dedicated"}:
+        # Sem navegador escolhido nas opções avançadas, a conta conectada vale
+        # sozinha: quem entrou no YouTube não precisa escolher um modo.
+        return ("dedicated", "") if DEDICATED_AUTH.has_session() else ("", "")
+    return browser, profile
 
 
 def _configured_auth_browser(request: Request) -> str:
@@ -495,19 +515,23 @@ def _extract_info_sync(url: str, auth_browser: str = "", auth_profile: str = "")
     except BrowserAuthError as exc:
         raise HTTPException(status_code=401, detail={"code": exc.code, "message": str(exc)}) from exc
     except yt_dlp.utils.DownloadError as exc:
-        if auth_browser == "dedicated":
-            if getattr(exc, "varispeed_playback_verification", False):
-                DEDICATED_AUTH.mark_validation("playback_verification_required")
-            elif not getattr(exc, "varispeed_account_cookies", False):
-                DEDICATED_AUTH.mark_validation("invalid")
-        code = _authentication_error_code(exc)
+        _mark_dedicated_result(exc, auth_browser)
         if _requires_authentication(exc):
-            raise HTTPException(status_code=401, detail={"code": code, "message": _clean_error(exc)}) from exc
+            raise _authentication_error(exc, auth_browser) from exc
         raise HTTPException(status_code=422, detail=_clean_error(exc)) from exc
     except Exception as exc:
         raise HTTPException(status_code=422, detail=_clean_error(exc)) from exc
 
     return _media_payload(data, url, auth_required=used_browser_auth)
+
+
+def _mark_dedicated_result(exc: Exception, auth_browser: str) -> None:
+    if auth_browser != "dedicated" or not _requires_authentication(exc):
+        return
+    if getattr(exc, "varispeed_playback_verification", False):
+        DEDICATED_AUTH.mark_validation("playback_verification_required")
+    elif not getattr(exc, "varispeed_account_cookies", False):
+        DEDICATED_AUTH.mark_validation("invalid")
 
 
 def _download_sync(
@@ -592,9 +616,9 @@ def _download_sync(
         raise HTTPException(status_code=401, detail={"code": exc.code, "message": str(exc)}) from exc
     except yt_dlp.utils.DownloadError as exc:
         shutil.rmtree(temp_dir, ignore_errors=True)
-        code = _authentication_error_code(exc)
+        _mark_dedicated_result(exc, auth_browser)
         if _requires_authentication(exc):
-            raise HTTPException(status_code=401, detail={"code": code, "message": _clean_error(exc)}) from exc
+            raise _authentication_error(exc, auth_browser) from exc
         raise HTTPException(status_code=422, detail=_clean_error(exc)) from exc
     except Exception as exc:
         shutil.rmtree(temp_dir, ignore_errors=True)
@@ -695,6 +719,26 @@ async def use_browser_auth_automatically(payload: BrowserAutoRequest, request: R
     }
 
 
+class CookiesFileRequest(BaseModel):
+    content: str = Field(min_length=1, max_length=1_100_000)
+
+
+@app.post("/api/auth/cookies-file")
+async def save_cookies_file(payload: CookiesFileRequest, request: Request) -> dict[str, Any]:
+    _require_local_auth_control(request)
+    try:
+        dedicated = await asyncio.to_thread(DEDICATED_AUTH.save_manual_cookies, payload.content)
+    except DedicatedAuthError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return {"ok": True, "dedicated": dedicated}
+
+
+@app.post("/api/auth/cookies-file/remove")
+async def remove_cookies_file(request: Request) -> dict[str, Any]:
+    _require_local_auth_control(request)
+    return {"ok": True, "dedicated": await asyncio.to_thread(DEDICATED_AUTH.remove_manual_cookies)}
+
+
 @app.post("/api/auth/dedicated/start")
 async def start_dedicated_auth(request: Request) -> dict[str, Any]:
     _require_local_auth_control(request)
@@ -702,7 +746,8 @@ async def start_dedicated_auth(request: Request) -> dict[str, Any]:
         state = await asyncio.to_thread(DEDICATED_AUTH.start)
     except DedicatedAuthError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
-    _set_auth_browser("dedicated")
+    # Entrar no YouTube vale mais que um navegador escolhido nas opções avançadas.
+    _set_auth_browser("")
     return {"ok": True, "mode": "dedicated", "browser": "dedicated", "dedicated": state}
 
 
@@ -713,7 +758,7 @@ async def finish_dedicated_auth(request: Request) -> dict[str, Any]:
         state = await asyncio.to_thread(DEDICATED_AUTH.finish)
     except DedicatedAuthError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
-    _set_auth_browser("dedicated")
+    _set_auth_browser("")
     return {"ok": True, "mode": "dedicated", "browser": "dedicated", "dedicated": state}
 
 

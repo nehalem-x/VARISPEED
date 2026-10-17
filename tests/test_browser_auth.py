@@ -77,7 +77,7 @@ class BrowserAuthTests(unittest.TestCase):
             finally:
                 module._windows_browser_roots = original
         self.assertEqual(raised.exception.code, "browser_locked")
-        self.assertIn("Sessão dedicada", str(raised.exception))
+        self.assertIn("Entrar no YouTube", str(raised.exception))
 
 
 if __name__ == "__main__":

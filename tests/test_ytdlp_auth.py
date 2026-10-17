@@ -91,7 +91,8 @@ class YtDlpAuthTests(unittest.TestCase):
 
     def test_erro_tecnico_de_idade_vira_orientacao_do_varispeed(self) -> None:
         message = _clean_error(Exception("ERROR: Sign in to confirm your age. Use --cookies-from-browser"))
-        self.assertIn("Configurações", message)
+        # O botão "Entrar no YouTube" fica na própria barra de link.
+        self.assertEqual(message, "Este vídeo precisa de login no YouTube.")
         self.assertNotIn("--cookies", message)
 
     def test_conta_reconhecida_com_provider_pronto_nao_finge_cookie_invalido(self) -> None:

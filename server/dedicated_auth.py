@@ -1,9 +1,10 @@
 """Sessão dedicada e local do YouTube para o VARISPEED.
 
-O navegador normal do usuário nunca é inspecionado. Uma instância isolada do
-Edge é iniciada com um perfil temporário e uma porta DevTools aleatória limitada
-ao loopback. Ao concluir, somente cookies de ``youtube.com`` são exportados; a
-janela e o perfil temporário são encerrados e removidos.
+O navegador normal do usuário nunca é inspecionado. Uma instância isolada de um
+navegador Chromium (Edge, Chrome, Chromium, Brave ou Vivaldi) é iniciada com um
+perfil temporário e uma porta DevTools aleatória limitada ao loopback. Um
+vigia percebe quando a conta entra; então somente cookies de ``youtube.com``
+são exportados, e a janela e o perfil temporário são encerrados e removidos.
 """
 
 from __future__ import annotations
@@ -11,6 +12,7 @@ from __future__ import annotations
 import io
 import json
 import os
+import platform
 import secrets
 import shutil
 import socket
@@ -52,20 +54,49 @@ def _default_storage_root() -> Path:
     return Path.home() / ".varispeed" / "youtube-auth"
 
 
-def find_edge_executable() -> Path | None:
-    candidates = [
-        shutil.which("msedge"),
-        str(Path(os.getenv("PROGRAMFILES(X86)", "")) / "Microsoft/Edge/Application/msedge.exe"),
-        str(Path(os.getenv("PROGRAMFILES", "")) / "Microsoft/Edge/Application/msedge.exe"),
-        str(Path(os.getenv("LOCALAPPDATA", "")) / "Microsoft/Edge/Application/msedge.exe"),
-    ]
-    for raw in candidates:
-        if not raw:
-            continue
-        path = Path(raw)
-        if path.is_file():
-            return path.resolve()
+# Ordem de preferência. Todos falam o protocolo DevTools usado pelo login.
+LOGIN_BROWSERS: tuple[tuple[str, tuple[str, ...], tuple[str, ...], str], ...] = (
+    ("Edge", ("msedge", "microsoft-edge", "microsoft-edge-stable"),
+     ("Microsoft/Edge/Application/msedge.exe",), "Microsoft Edge.app/Contents/MacOS/Microsoft Edge"),
+    ("Chrome", ("chrome", "google-chrome", "google-chrome-stable"),
+     ("Google/Chrome/Application/chrome.exe",), "Google Chrome.app/Contents/MacOS/Google Chrome"),
+    ("Chromium", ("chromium", "chromium-browser"),
+     ("Chromium/Application/chrome.exe",), "Chromium.app/Contents/MacOS/Chromium"),
+    ("Brave", ("brave", "brave-browser"),
+     ("BraveSoftware/Brave-Browser/Application/brave.exe",), "Brave Browser.app/Contents/MacOS/Brave Browser"),
+    ("Vivaldi", ("vivaldi", "vivaldi-stable"),
+     ("Vivaldi/Application/vivaldi.exe",), "Vivaldi.app/Contents/MacOS/Vivaldi"),
+)
+LOGIN_TIMEOUT_SECONDS = 15 * 60
+LOGIN_POLL_SECONDS = 1.2
+# Depois que a conta aparece, o YouTube ainda redireciona algumas vezes.
+LOGIN_SETTLE_SECONDS = 2.0
+MANUAL_COOKIES_MAX_BYTES = 1_000_000
+
+
+def find_login_browser() -> tuple[Path, str] | None:
+    """Primeiro navegador compatível instalado, com o nome que a interface mostra."""
+    override = os.getenv("VARISPEED_LOGIN_BROWSER", "").strip()
+    if override and Path(override).is_file():
+        return Path(override).resolve(), Path(override).stem.capitalize()
+
+    windows_roots = [os.getenv(name, "") for name in ("PROGRAMFILES", "PROGRAMFILES(X86)", "LOCALAPPDATA")]
+    for label, commands, windows_paths, mac_path in LOGIN_BROWSERS:
+        candidates = [shutil.which(command) for command in commands]
+        if os.name == "nt":
+            candidates += [str(Path(root) / rel) for root in windows_roots if root for rel in windows_paths]
+        elif platform.system() == "Darwin":
+            candidates += [f"/Applications/{mac_path}", str(Path.home() / "Applications" / mac_path)]
+        for raw in candidates:
+            if raw and Path(raw).is_file():
+                return Path(raw).resolve(), label
     return None
+
+
+def find_edge_executable() -> Path | None:
+    """Compatibilidade: o login aceita qualquer navegador de find_login_browser()."""
+    found = find_login_browser()
+    return found[0] if found else None
 
 
 def _safe_cookie_text(cookies: list[dict[str, Any]]) -> tuple[str, bool]:
@@ -141,10 +172,14 @@ class DedicatedYouTubeSession:
         self.root = (storage_root or _default_storage_root()).resolve()
         self.cookie_file = self.root / "youtube.cookies.txt"
         self.validation_file = self.root / "session-state.json"
+        # Arquivo de cookies escolhido em Opções avançadas, guardado como veio.
+        self.manual_cookie_file = self.root / "manual.cookies.txt"
         self._lock = threading.RLock()
         self._process: subprocess.Popen[bytes] | None = None
         self._profile: Path | None = None
         self._port = 0
+        self._browser_label = ""
+        self._last_error = ""
 
     def _ensure_root(self) -> None:
         self.root.mkdir(parents=True, exist_ok=True)
@@ -227,11 +262,16 @@ class DedicatedYouTubeSession:
                         validation = candidate
                 except (OSError, ValueError, TypeError):
                     pass
+            browser = find_login_browser()
             return {
-                "available": find_edge_executable() is not None,
+                "available": browser is not None,
+                "browser": self._browser_label if login_open else (browser[1] if browser else ""),
                 "connected": connected,
                 "login_open": login_open,
                 "validation": validation,
+                "expired": connected and validation == "invalid",
+                "error": self._last_error,
+                "manual_cookies": self.manual_cookie_file.is_file(),
             }
 
     def mark_validation(self, validation: str) -> None:
@@ -253,11 +293,15 @@ class DedicatedYouTubeSession:
         return EphemeralCookieBuffer(content)
 
     def start(self) -> dict[str, Any]:
-        edge = find_edge_executable()
-        if not edge:
-            raise DedicatedAuthError("Microsoft Edge não foi encontrado neste computador.")
+        found = find_login_browser()
+        if not found:
+            raise DedicatedAuthError(
+                "Nenhum navegador compatível foi encontrado. Instale o Chrome, o Edge ou o Chromium para entrar."
+            )
+        browser, label = found
 
         with self._lock:
+            self._last_error = ""
             if self._is_login_open_locked():
                 return self.status()
             if self._process is not None:
@@ -269,7 +313,7 @@ class DedicatedYouTubeSession:
             port = self._free_loopback_port()
             flags = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
             command = [
-                str(edge),
+                str(browser),
                 f"--user-data-dir={profile}",
                 "--profile-directory=Default",
                 f"--remote-debugging-port={port}",
@@ -293,13 +337,61 @@ class DedicatedYouTubeSession:
                 self._safe_remove_profile(profile)
                 raise DedicatedAuthError("Não foi possível abrir a sessão dedicada do YouTube.") from exc
             self._process, self._profile, self._port = process, profile, port
+            self._browser_label = label
 
         try:
             self._wait_until_ready(port)
         except Exception:
             self.abort_login()
             raise
+        threading.Thread(
+            target=self._watch_login,
+            args=(process, port),
+            name="varispeed-youtube-login",
+            daemon=True,
+        ).start()
         return self.status()
+
+    def _logged_in(self, port: int) -> bool:
+        connection = _CdpConnection(self._page_websocket(port))
+        try:
+            cookies = connection.call("Network.getAllCookies").get("cookies") or []
+        finally:
+            connection.close()
+        return _safe_cookie_text(cookies)[1]
+
+    def _watch_login(self, process: subprocess.Popen[bytes], port: int) -> None:
+        """Conclui o login sozinho quando a conta aparece, sem o botão Concluir."""
+        deadline = time.monotonic() + LOGIN_TIMEOUT_SECONDS
+        seen_at = 0.0
+        while time.monotonic() < deadline:
+            time.sleep(LOGIN_POLL_SECONDS)
+            with self._lock:
+                if self._process is not process or process.poll() is not None:
+                    return
+            try:
+                logged_in = self._logged_in(port)
+            except Exception:
+                continue
+            if not logged_in:
+                seen_at = 0.0
+                continue
+            seen_at = seen_at or time.monotonic()
+            if time.monotonic() - seen_at < LOGIN_SETTLE_SECONDS:
+                continue
+            try:
+                self.finish()
+            except Exception as exc:  # noqa: BLE001 - o motivo vai para o status
+                with self._lock:
+                    self._last_error = str(exc) if isinstance(exc, DedicatedAuthError) else (
+                        "Não foi possível salvar a sessão do YouTube. Tente entrar de novo."
+                    )
+                self.abort_login()
+            return
+        with self._lock:
+            if self._process is process:
+                self._last_error = "O login não terminou a tempo. Comece de novo."
+        self.abort_login()
 
     @staticmethod
     def _wait_for_page(connection: _CdpConnection, expected_url: str, timeout: float = 5) -> None:
@@ -392,7 +484,50 @@ class DedicatedYouTubeSession:
         self.abort_login()
         self.cookie_file.unlink(missing_ok=True)
         self.validation_file.unlink(missing_ok=True)
+        with self._lock:
+            self._last_error = ""
         return self.status()
+
+    def save_manual_cookies(self, content: str) -> dict[str, Any]:
+        """Guarda um cookies.txt escolhido pelo usuário depois de conferir o formato."""
+        if len(content.encode("utf-8")) > MANUAL_COOKIES_MAX_BYTES:
+            raise DedicatedAuthError("O arquivo de cookies é grande demais.")
+        self._ensure_root()
+        temporary = self.root / f"manual-{secrets.token_hex(8)}.tmp"
+        try:
+            with temporary.open("x", encoding="utf-8", newline="\n") as handle:
+                handle.write(content)
+            try:
+                jar = YoutubeDLCookieJar(str(temporary))
+                jar.load()
+            except Exception as exc:  # noqa: BLE001 - qualquer falha de leitura é formato inválido
+                raise DedicatedAuthError(
+                    "Esse arquivo não está no formato de cookies do yt-dlp (Netscape cookies.txt)."
+                ) from exc
+            if not any(True for _ in jar):
+                raise DedicatedAuthError("O arquivo de cookies está vazio.")
+            try:
+                temporary.chmod(stat.S_IRUSR | stat.S_IWUSR)
+            except OSError:
+                pass
+            os.replace(temporary, self.manual_cookie_file)
+        finally:
+            temporary.unlink(missing_ok=True)
+        return self.status()
+
+    def remove_manual_cookies(self) -> dict[str, Any]:
+        self.manual_cookie_file.unlink(missing_ok=True)
+        return self.status()
+
+    def manual_cookie_buffer(self) -> EphemeralCookieBuffer | None:
+        try:
+            content = self.manual_cookie_file.read_text(encoding="utf-8")
+        except OSError:
+            return None
+        return EphemeralCookieBuffer(content)
+
+    def has_session(self) -> bool:
+        return self.cookie_file.is_file()
 
     def shutdown(self) -> None:
         self.abort_login()

@@ -318,7 +318,10 @@ Publicar o backend deixa de ser uma mudança simples. Antes, seriam necessários
 ### 6.1 Regras gerais
 
 - Cookies nunca vão para o repositório nem para o frontend, e credenciais não ficam em `settings.js` nem no `localStorage`.
-- `remote.authBrowser` guarda só `off`, `auto`, `dedicated`, `chrome`, `edge`, `firefox`, `brave` ou `vivaldi`, e `app.js` envia a escolha por `POST /api/auth/browser`.
+- Para o usuário existe só a **Conta do YouTube**, conectada ou não. Quando há conta conectada e nenhum navegador escolhido nas opções avançadas, `_configured_auth_source()` usa a sessão dedicada sozinha; ninguém escolhe um modo.
+- `remote.authBrowser` (Opções avançadas) guarda só `off`, `auto`, `chrome`, `edge`, `firefox`, `brave` ou `vivaldi`, e `app.js` envia a escolha por `POST /api/auth/browser`. O valor antigo `dedicated` saiu da lista e vira `off` ao carregar, sem perder a conta. Entrar no YouTube (pela barra ou pelas Configurações) volta a escolha para `off`.
+- Ordem das tentativas: sem login; com a fonte configurada (cookies manuais, navegador escolhido ou conta conectada); e, se o YouTube pedir verificação de reprodução, PO Token.
+- Códigos de erro que a barra de link entende: `authentication_required` (botão Entrar no YouTube), `youtube_session_expired` (a conta foi usada e o YouTube não a reconheceu; botão Entrar de novo), `browser_locked`, `youtube_session_not_found` e os de PO Token (botão Tentar novamente). Mensagens: "Este vídeo precisa de login no YouTube." e "Sua sessão do YouTube expirou.".
 - Configuração e status de autenticação só aceitam loopback; os POSTs também validam a origem local.
 - `_extract_info_sync()` tenta sem sessão e só repete com `cookiesfrombrowser` diante de erro explícito de autenticação. `auth_required` acompanha a prévia até o download, sem levar cookies nem segredos.
 - Dispositivos da rede local nunca recebem `_AUTH_BROWSER` nas opções do `yt-dlp`.
@@ -334,11 +337,13 @@ Publicar o backend deixa de ser uma mudança simples. Antes, seriam necessários
 - distingue `browser_locked`, `browser_not_found`, `youtube_session_not_found`, `youtube_playback_verification_required`, `youtube_po_token_unavailable` e `youtube_po_token_failed`;
 - com Edge ou Chrome aberto, não tenta contornar o bloqueio do Windows e indica a sessão dedicada.
 
-### 6.3 Sessão dedicada
+### 6.3 Conta do YouTube (sessão dedicada)
 
-`server/dedicated_auth.py`, a opção recomendada:
+`server/dedicated_auth.py`, o login de um botão:
 
-- abre só o Edge instalado, com `--user-data-dir` temporário e porta DevTools aleatória restrita a `127.0.0.1`;
+- `find_login_browser()` procura, nesta ordem, Edge, Chrome, Chromium, Brave e Vivaldi no Windows, no Linux e no macOS (`VARISPEED_LOGIN_BROWSER` aponta outro executável) e devolve o nome que a interface mostra; abre esse navegador com `--user-data-dir` temporário e porta DevTools aleatória restrita a `127.0.0.1`;
+- `_watch_login()` roda numa thread: a cada `1,2 s` lê os cookies pela porta DevTools; quando a conta aparece e continua por `2 s` (o YouTube ainda redireciona), chama `finish()` sozinho. Janela fechada pelo usuário encerra o vigia; depois de 15 minutos, desiste e fecha. Falhas vão para `status()["error"]`. Não há mais botão Concluir; `POST /api/auth/dedicated/finish` continua existindo por compatibilidade;
+- `RemoteImport.youtubeLogin()` é o único cliente do fluxo: chama `start`, consulta `/api/auth/status` a cada `1,2 s` enquanto `login_open` e, se for abortado, chama `cancel`. A barra de link e as Configurações usam essa mesma função;
 - coleta os cookies pela instância isolada, sem ler o banco bloqueado do navegador principal;
 - `_safe_cookie_text()` descarta domínios fora de `youtube.com` e recusa quebras de linha e tabulações antes de gerar o formato Netscape;
 - após a confirmação, fecha a janela e apaga o diretório `login-*`; fica só `youtube.cookies.txt` em `%LOCALAPPDATA%/VARISPEED/youtube-auth`;
@@ -347,13 +352,16 @@ Publicar o backend deixa de ser uma mudança simples. Antes, seriam necessários
 - `session-state.json` guarda só `unverified`, `verified`, `playback_verification_required` ou `invalid`;
 - `_auth_mode_for_url()` impede usar a sessão fora de `youtube.com`/`youtu.be`;
 - `disconnect` apaga o arquivo e `cancel` fecha só a tentativa pendente;
-- `start`, `finish`, `cancel` e `disconnect` exigem loopback e origem local, e as respostas trazem só `available`, `connected`, `login_open` e `validation`.
+- `start`, `finish`, `cancel` e `disconnect` exigem loopback e origem local, e as respostas trazem só `available`, `browser` (nome público), `connected`, `login_open`, `validation`, `expired`, `error` e `manual_cookies`, nunca caminhos ou cookies;
+- `validation = invalid` aparece como `expired`: a interface mostra "Sessão expirada · entre de novo".
 
 `ExtractionLogger` guarda só dois booleanos do log do `yt-dlp`: conta reconhecida e exigência de confirmação de idade. Não salvar nem devolver o log completo, que pode ter contexto sensível. Uma conta reconhecida sem idade confirmada não é "cookie inválido".
 
 ### 6.4 Arquivo de cookies manual
 
-O backend aceita `VARISPEED_COOKIES_FILE` (por exemplo `C:\segredo\cookies.txt`). A extensão opcional `tools/youtube-cookie-exporter/` gera esse arquivo: é Manifest V3, com `permissions: [cookies]`, acesso opcional só a `https://*.youtube.com/*` e `incognito: split`. Não tem background, content script, rede, telemetria nem storage; o usuário a carrega manualmente e clica para autorizar e exportar. O backend continua recebendo só o caminho da variável.
+Em Opções avançadas → Arquivo de cookies, o usuário escolhe um `cookies.txt`. O navegador lê o texto e envia para `POST /api/auth/cookies-file` (loopback + origem local, até 1 MB); `save_manual_cookies()` confere o formato com `YoutubeDLCookieJar` e guarda `manual.cookies.txt` com permissão só do dono, ao lado da sessão dedicada. `POST /api/auth/cookies-file/remove` apaga. O arquivo vale para todo site, como a variável de ambiente, e o `yt-dlp` recebe uma cópia em memória.
+
+O backend também aceita `VARISPEED_COOKIES_FILE` (por exemplo `C:\segredo\cookies.txt`), que tem precedência sobre o arquivo escolhido na interface. A extensão opcional `tools/youtube-cookie-exporter/` gera esse arquivo: é Manifest V3, com `permissions: [cookies]`, acesso opcional só a `https://*.youtube.com/*` e `incognito: split`. Não tem background, content script, rede, telemetria nem storage; o usuário a carrega manualmente e clica para autorizar e exportar. O backend continua recebendo só o caminho da variável.
 
 ### 6.5 PO Token e desafios EJS
 
@@ -446,7 +454,7 @@ A ordem vem de `GROUP_ORDER` em `settings.js`, e o painel mostra uma seção por
 2. Velocidade, com `Lembrar última velocidade` (chave antiga `load.rememberRate`).
 3. Exportação, com `Avisar ao sair durante exportação` (chave antiga `load.confirmExit`).
 4. Biblioteca.
-5. Importação por link, com Conteúdo restrito.
+5. Importação por link, com a Conta do YouTube e as Opções avançadas.
 6. Timeline.
 7. Visualização de áudio: vectorscope e osciloscópio sobre o mesmo analisador.
 8. Animações: as chaves continuam `motion.*`, mas o título `Motion` não aparece.

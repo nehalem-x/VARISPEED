@@ -1819,13 +1819,11 @@
           ? (result.auto?.active
             ? `Sessão validada do ${result.auto.active.browser_label}`
             : 'Detecção automática ativada · a sessão será validada no próximo link restrito')
-          : result.mode === 'dedicated'
-          ? (result.dedicated?.connected
-            ? 'Sessão dedicada do YouTube ativada'
-            : 'Sessão dedicada selecionada · conecte a conta nas Configurações')
           : (result.mode === 'browser'
-            ? `Sessão do ${names[browser] || browser} ativada somente para conteúdo restrito`
-            : 'Autenticação por navegador desativada');
+            ? `Cookies do ${names[browser] || browser} em uso só para conteúdo restrito`
+            : (result.dedicated?.connected
+              ? 'Cookies de navegador desligados · a Conta do YouTube continua valendo'
+              : 'Cookies de navegador desligados'));
         window.Settings.feedback?.(message, { hold: 4200 });
       }
       return true;
@@ -1867,7 +1865,7 @@
     el.urlGo.disabled = linkUI.busy;
     el.urlGo.setAttribute('aria-busy', String(linkUI.busy && phase === 'analyze'));
     el.urlCancel.hidden = !linkUI.busy;
-    el.urlCancel.textContent = phase === 'analyze' ? 'Cancelar análise' : 'Cancelar importação';
+    el.urlCancel.textContent = phase === 'analyze' ? 'Cancelar análise' : (phase === 'auth' ? 'Cancelar' : 'Cancelar importação');
     el.urlClose.setAttribute('aria-label', linkUI.busy ? 'Cancelar e fechar importação por link' : 'Fechar importação por link');
     el.urlClose.title = linkUI.busy ? 'Cancelar e fechar' : 'Fechar';
     if (el.urlAuth) el.urlAuth.disabled = linkUI.busy;
@@ -1927,6 +1925,12 @@
     'browser_locked',
     'browser_not_found',
     'youtube_session_not_found',
+    'youtube_session_expired',
+  ]);
+  const PO_TOKEN_CODES = new Set([
+    'youtube_playback_verification_required',
+    'youtube_po_token_unavailable',
+    'youtube_po_token_failed',
   ]);
 
   function linkAuthAction(error = null) {
@@ -1935,20 +1939,17 @@
     linkUI.authErrorCode = visible ? error.code : '';
     el.urlAuthWrap.hidden = !visible;
     if (!visible) return;
-    const poTokenError = error.code === 'youtube_playback_verification_required'
-      || error.code === 'youtube_po_token_unavailable'
-      || error.code === 'youtube_po_token_failed';
-    el.urlAuth.textContent = error.code === 'browser_locked'
-      ? 'Abrir sessão dedicada'
-      : poTokenError
-      ? 'Tentar novamente'
-      : 'Usar cookies do navegador';
+    const poTokenError = PO_TOKEN_CODES.has(error.code);
+    const expired = error.code === 'youtube_session_expired';
+    el.urlAuth.textContent = poTokenError ? 'Tentar novamente' : (expired ? 'Entrar de novo' : 'Entrar no YouTube');
     if (el.urlAuthHint) {
-      el.urlAuthHint.textContent = error.code === 'browser_locked'
-        ? 'O navegador principal está em uso. Feche-o por completo ou use a Sessão dedicada nas Configurações.'
-        : poTokenError
-        ? 'O VARISPEED tentará novamente com o provedor local de PO Token; uma janela auxiliar minimizada pode aparecer por alguns segundos.'
-        : 'O VARISPEED verificará os perfis instalados e só usará uma sessão que consiga abrir este link.';
+      el.urlAuthHint.textContent = poTokenError
+        ? 'O VARISPEED tenta de novo com a verificação de reprodução; uma janela auxiliar minimizada pode aparecer por alguns segundos.'
+        : error.code === 'browser_locked'
+        ? 'O navegador escolhido está aberto. Feche-o ou entre pela janela do VARISPEED; depois este link é tentado de novo sozinho.'
+        : (expired
+          ? 'Entre de novo na janela que vai abrir. Depois o VARISPEED tenta este link sozinho.'
+          : 'Abre uma janela para você entrar. Depois o VARISPEED tenta este link de novo sozinho.');
     }
   }
 
@@ -2129,18 +2130,17 @@
 
   async function useBrowserSession() {
     if (linkUI.busy) return;
-    if (linkUI.authErrorCode === 'browser_locked') {
-      window.Settings.set('remote.authBrowser', 'dedicated');
-      window.Settings.open();
-      return;
-    }
-    if (linkUI.authErrorCode === 'youtube_playback_verification_required'
-      || linkUI.authErrorCode === 'youtube_po_token_unavailable'
-      || linkUI.authErrorCode === 'youtube_po_token_failed') {
+    if (PO_TOKEN_CODES.has(linkUI.authErrorCode)) {
       linkAuthAction();
       await analyzeUrl(el.url.value);
       return;
     }
+    await loginFromLink();
+  }
+
+  /* Login de um botão pela barra: abre a janela, espera a conta entrar e tenta
+     o mesmo link de novo, sem passar pelas Configurações. */
+  async function loginFromLink() {
     const parsed = window.RemoteImport.parse(el.url.value);
     if (!parsed.ok) {
       el.url.setAttribute('aria-invalid', 'true');
@@ -2151,22 +2151,29 @@
     linkMsg('');
     const { op, ctrl } = linkBegin('auth');
     if (!state.loaded) dot('busy');
-    linkStage('Procurando sessão válida', 'indet');
+    linkStage('Abrindo a janela de login', 'indet');
     try {
-      const result = await window.RemoteImport.useBrowserCookies(parsed.url, ctrl.signal);
+      const result = await window.RemoteImport.youtubeLogin({
+        signal: ctrl.signal,
+        onUpdate: (next) => {
+          if (linkIsCurrent(op) && next.login_open) linkStage(`Aguardando login no ${next.browser || 'navegador'}`, 'indet');
+        },
+      });
       if (!linkIsCurrent(op)) return;
-      window.Settings.set('remote.authBrowser', 'auto');
-      const meta = { ...(result.media || {}), requestUrl: parsed.url };
-      linkShowPreview(meta);
-      linkMsg(`Sessão validada · ${result.source?.browser_label || 'navegador'}`);
+      if (!result.connected) {
+        linkFail(result.error || 'O login foi fechado antes de terminar.', false, op);
+        linkAuthAction({ code: 'authentication_required' });
+        return;
+      }
+      if (cfg('remote.authBrowser') !== 'off') window.Settings.set('remote.authBrowser', 'off');
       linkClear();
       linkIdle(op);
-      status('Sessão do YouTube validada · confirme a importação');
-      if (!state.loaded) dot('idle');
+      status('Conta do YouTube conectada · tentando o link de novo');
+      await analyzeUrl(parsed.url);
     } catch (error) {
       if (!linkIsCurrent(op)) return;
-      linkFail(netFail(error), false, op);
-      linkAuthAction(error);
+      linkFail(error?.name === 'AbortError' ? 'Login cancelado.' : netFail(error), false, op);
+      if (error?.name === 'AbortError') linkAuthAction({ code: 'authentication_required' });
     }
   }
 

@@ -134,8 +134,54 @@
     return { blob, filename, type, size: blob.size };
   }
 
+  const sleep = (ms, signal) => new Promise((resolve, reject) => {
+    const timer = setTimeout(resolve, ms);
+    signal?.addEventListener('abort', () => {
+      clearTimeout(timer);
+      reject(new DOMException('Login cancelado.', 'AbortError'));
+    }, { once: true });
+  });
+
+  /* Login de um botão: abre a janela, acompanha até o backend perceber a conta
+     (ou a janela fechar) e devolve o estado final. Abortar fecha a janela. */
+  async function youtubeLogin({ signal, onUpdate } = {}) {
+    let state = (await dedicatedAuthAction('start')).dedicated || {};
+    onUpdate?.(state);
+    try {
+      while (state.login_open) {
+        await sleep(1200, signal);
+        state = (await authStatus()).dedicated || {};
+        onUpdate?.(state);
+      }
+    } catch (err) {
+      if (err && err.name === 'AbortError') {
+        try { await dedicatedAuthAction('cancel'); } catch (_) { /* a janela pode já ter fechado */ }
+      }
+      throw err;
+    }
+    return state;
+  }
+
+  async function saveCookiesFile(content) {
+    const res = await fetch('/api/auth/cookies-file', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content: String(content || '') }),
+      cache: 'no-store',
+    });
+    if (!res.ok) await apiError(res);
+    return res.json();
+  }
+
+  async function removeCookiesFile() {
+    const res = await fetch('/api/auth/cookies-file/remove', { method: 'POST', cache: 'no-store' });
+    if (!res.ok) await apiError(res);
+    return res.json();
+  }
+
   window.RemoteImport = {
-    parse, info, audio, configureAuth, authStatus, useBrowserCookies,
+    parse, info, audio, configureAuth, authStatus, useBrowserCookies, youtubeLogin,
+    saveCookiesFile, removeCookiesFile,
     startDedicatedAuth: () => dedicatedAuthAction('start'),
     finishDedicatedAuth: () => dedicatedAuthAction('finish'),
     cancelDedicatedAuth: () => dedicatedAuthAction('cancel'),

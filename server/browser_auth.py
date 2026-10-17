@@ -178,7 +178,7 @@ class BrowserSessionResolver:
             raise BrowserAuthError(
                 "browser_locked",
                 f"O {names} foi encontrado, mas está em uso e bloqueia o banco de cookies. "
-                "Como o VARISPEED está aberto nele, use a Sessão dedicada; ela não depende do navegador principal.",
+                "Feche-o ou use Entrar no YouTube, que abre uma janela separada e não depende do navegador principal.",
                 detected=detected,
             )
         raise BrowserAuthError(
