@@ -379,6 +379,7 @@ window.Settings = (() => {
   const systemCells = new Map();
   const testButtons = new Map();
   let systemShutdownBtn = null, systemCopyBtn = null;
+  const ytdlp = { cells: new Map(), hint: null, action: null, auto: null, channel: null, state: null, busy: false };
   let graphCaptureProvider = null, graphCaptureButton = null, graphCaptureCopyButton = null;
   let graphCaptureOutput = null, graphCaptureReport = null;
   const sectionElements = new Map();
@@ -862,10 +863,181 @@ window.Settings = (() => {
     systemShutdownBtn.addEventListener('click', shutdownVarispeed);
     const danger = h('div', 'cfg__system-danger');
     danger.appendChild(systemShutdownBtn);
-    actions.append(systemCopyBtn, danger);
+    actions.append(systemCopyBtn, buildYtDlpBlock(), danger);
     sec.appendChild(actions);
     refreshSystemInfo();
+    refreshYtDlp();
     return sec;
+  }
+
+  // O sufixo .devN do PyPI some: o yt-dlp nightly se apresenta sem ele.
+  const versionText = (v) => String(v || '').replace(/\.dev\d+$/, '');
+  const sameVersion = (a, b) => versionText(a).match(/\d+/g)?.map(Number).join('.') === versionText(b).match(/\d+/g)?.map(Number).join('.');
+
+  /* yt-dlp: o importador por link. O YouTube muda com frequência, e uma versão
+     velha é a causa mais comum de links que param de abrir. */
+  function buildYtDlpBlock() {
+    const box = h('div', 'cfg__ytdlp');
+    const list = h('dl', 'rows cfg__system-rows');
+    [['version', 'yt-dlp'], ['latest', 'Mais recente']].forEach(([id, label]) => {
+      const r = h('div', 'row');
+      r.appendChild(h('dt', null, label));
+      const dd = h('dd', 'mono cfg__system-value', '—');
+      ytdlp.cells.set(id, dd);
+      r.appendChild(dd);
+      list.appendChild(r);
+    });
+    ytdlp.hint = h('p', 'cfg__system-hint', 'Verificando versão...');
+    ytdlp.hint.setAttribute('aria-live', 'polite');
+
+    const autoRow = h('div', 'cfg__row cfg__row--inline cfg__row--switch');
+    const autoLine = h('div', 'cfg__label-line');
+    autoLine.appendChild(h('label', 'cfg__label', 'Atualizar ao abrir'));
+    ytdlp.auto = h('button', 'sw');
+    ytdlp.auto.type = 'button';
+    ytdlp.auto.setAttribute('role', 'switch');
+    ytdlp.auto.setAttribute('aria-label', 'Atualizar o yt-dlp ao abrir o VARISPEED');
+    ytdlp.auto.setAttribute('aria-checked', 'true');
+    ytdlp.auto.appendChild(h('span', 'sw__knob'));
+    ytdlp.auto.addEventListener('click', () => saveYtDlpPrefs({ auto: ytdlp.auto.getAttribute('aria-checked') !== 'true' }));
+    autoRow.append(autoLine, ytdlp.auto);
+
+    const channelRow = h('div', 'cfg__row cfg__row--inline');
+    const channelLine = h('div', 'cfg__label-line');
+    const channelLabel = h('label', 'cfg__label', 'Canal');
+    channelLabel.htmlFor = 'cfg-ytdlp-channel';
+    channelLine.appendChild(channelLabel);
+    ytdlp.channel = h('select', 'sel');
+    ytdlp.channel.id = 'cfg-ytdlp-channel';
+    [['stable', 'Estável'], ['nightly', 'Nightly']].forEach(([value, label]) => {
+      const o = h('option', null, label);
+      o.value = value;
+      ytdlp.channel.appendChild(o);
+    });
+    ytdlp.channel.addEventListener('change', () => saveYtDlpPrefs({ channel: ytdlp.channel.value }));
+    channelRow.append(channelLine, ytdlp.channel);
+
+    ytdlp.action = h('button', 'btn btn--outline cfg__system-action', 'Verificar atualização');
+    ytdlp.action.type = 'button';
+    ytdlp.action.disabled = true;
+    ytdlp.action.addEventListener('click', runYtDlpAction);
+
+    box.append(list, ytdlp.hint, autoRow, channelRow, ytdlp.action);
+    return box;
+  }
+
+  function renderYtDlp(state = ytdlp.state) {
+    if (!ytdlp.action) return;
+    ytdlp.state = state;
+    const version = ytdlp.cells.get('version');
+    const latest = ytdlp.cells.get('latest');
+    if (!state) {
+      version.textContent = '—';
+      latest.textContent = '—';
+      ytdlp.hint.textContent = 'Sem conexão · o servidor local não respondeu';
+      ytdlp.action.disabled = true;
+      return;
+    }
+    version.textContent = versionText(state.version) || '—';
+    latest.textContent = versionText(state.latest) || '—';
+    ytdlp.auto.setAttribute('aria-checked', String(!!state.auto));
+    ytdlp.channel.value = state.channel === 'nightly' ? 'nightly' : 'stable';
+    [ytdlp.auto, ytdlp.channel].forEach((control) => { control.disabled = !state.can_update || ytdlp.busy; });
+
+    let hint;
+    if (!state.can_update) hint = 'A atualização só pode ser feita no computador em que o VARISPEED está rodando.';
+    else if (state.restart_required) hint = `Atualizado · reinicie o VARISPEED para usar a versão ${versionText(state.installed)}`;
+    else if (state.update_available) hint = `Nova versão · ${versionText(state.latest)} está disponível`;
+    else if (state.error) hint = `Sem consulta · ${state.error.replace(/\.$/, '').toLocaleLowerCase('pt-BR')}`;
+    else if (state.latest) hint = 'Atualizado · você já tem a versão mais recente';
+    else hint = 'Ainda não verificado';
+    ytdlp.hint.textContent = hint;
+
+    ytdlp.action.textContent = ytdlp.busy
+      ? (state.update_available ? 'Atualizando...' : 'Verificando...')
+      : (state.update_available ? `Atualizar para ${versionText(state.latest)}` : 'Verificar atualização');
+    ytdlp.action.disabled = ytdlp.busy || !state.can_update || state.restart_required;
+    ytdlp.action.setAttribute('aria-busy', String(ytdlp.busy));
+  }
+
+  async function ytdlpRequest(path, options = {}) {
+    const response = await fetch(path, { cache: 'no-store', ...options });
+    if (!response.ok) {
+      let message = 'O servidor local não respondeu.';
+      try { const body = await response.json(); message = body.detail || message; } catch (_) {}
+      throw new Error(message);
+    }
+    return response.json();
+  }
+
+  async function refreshYtDlp({ refresh = false } = {}) {
+    try {
+      renderYtDlp(await ytdlpRequest(`/api/system/ytdlp${refresh ? '?refresh=1' : ''}`));
+    } catch (_) {
+      renderYtDlp(null);
+    }
+  }
+
+  async function saveYtDlpPrefs(changes) {
+    try {
+      renderYtDlp(await ytdlpRequest('/api/system/ytdlp/prefs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(changes),
+      }));
+    } catch (err) {
+      panelFeedback(err.message || 'Não foi possível salvar a preferência.', { kind: 'err', hold: 4200 });
+      refreshYtDlp();
+    }
+  }
+
+  /* Depois do pip, o servidor se reinicia para carregar a versão nova. A página
+     espera ele voltar já com essa versão antes de confirmar. */
+  // O yt-dlp se apresenta como 2026.08.19 e o pip registra 2026.8.19.
+  async function waitForYtDlp(version, timeoutMs = 45000) {
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() < deadline) {
+      await new Promise((resolve) => setTimeout(resolve, 600));
+      try {
+        const health = await ytdlpRequest('/api/health');
+        if (sameVersion(health.yt_dlp, version)) return true;
+      } catch (_) { /* servidor reiniciando */ }
+    }
+    return false;
+  }
+
+  async function runYtDlpAction() {
+    if (ytdlp.busy || !ytdlp.state) return;
+    const updating = ytdlp.state.update_available;
+    ytdlp.busy = true;
+    renderYtDlp();
+    try {
+      if (!updating) {
+        const state = await ytdlpRequest('/api/system/ytdlp?refresh=1');
+        ytdlp.busy = false;
+        renderYtDlp(state);
+        if (state.error) panelFeedback(state.error, { kind: 'err', hold: 4200 });
+        return;
+      }
+      panelFeedback('Atualizando yt-dlp...', { persist: true });
+      const result = await ytdlpRequest('/api/system/ytdlp/update', { method: 'POST' });
+      if (result.restarting) {
+        panelFeedback(`Reiniciando o servidor · yt-dlp ${versionText(result.version)}`, { persist: true });
+        const back = await waitForYtDlp(result.version);
+        panelFeedback(back
+          ? `yt-dlp atualizado · ${versionText(result.version)}`
+          : 'O servidor não voltou · abra o VARISPEED de novo', { kind: back ? '' : 'err', hold: 5200 });
+      } else if (result.restart_required) {
+        panelFeedback(`yt-dlp ${versionText(result.version)} instalado · reinicie o VARISPEED para usar`, { hold: 6200 });
+      } else {
+        panelFeedback(`Atualizado · yt-dlp ${versionText(result.version)} já era a versão mais recente`, { hold: 4200 });
+      }
+    } catch (err) {
+      panelFeedback(err.message || 'Não foi possível atualizar o yt-dlp.', { kind: 'err', hold: 6200 });
+    } finally {
+      ytdlp.busy = false;
+      refreshYtDlp();
+    }
   }
 
   function renderDedicatedAuth(state = authSessionState, poToken = authPoTokenState) {
@@ -1397,7 +1569,7 @@ window.Settings = (() => {
       scope: 'Ajuste a representação visual do sinal.',
       motion: 'Controle o ritmo e a presença das animações.',
       keys: 'Comandos para usar o editor pelo teclado.',
-      system: 'Endereço local e informações do servidor.',
+      system: 'Endereço local, servidor e atualização do yt-dlp.',
       diag: 'Informações de desempenho e ferramentas de medição.',
     };
     const navigator = h('nav', 'cfg__navigator');

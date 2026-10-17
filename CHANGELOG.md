@@ -1,5 +1,12 @@
 # Registro de mudanças
 
+## Outubro de 2026: atualização do yt-dlp
+
+- Configurações → Sistema mostra a versão do yt-dlp e a mais recente, com um botão para atualizar. Depois da instalação o servidor se reinicia sozinho e a página confirma quando ele volta com a versão nova.
+- O launcher atualiza o yt-dlp ao abrir, no máximo uma vez por dia. Sem internet ou com erro, o app abre com a versão instalada. A opção pode ser desligada.
+- O canal Nightly instala as pré-versões, que costumam corrigir o YouTube antes da estável.
+- Só o computador em que o VARISPEED roda pode atualizar; um celular na rede local só vê a versão.
+
 ## Outubro de 2026: padronização da interface
 
 Medidas, estados e ícones agora seguem as regras de [docs/PADRAO_UI.md](docs/PADRAO_UI.md). A troca de ícones está documentada em [docs/REVISAO_ICONES.md](docs/REVISAO_ICONES.md).

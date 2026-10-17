@@ -28,6 +28,8 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
 
+from server import ytdlp_update
+
 ROOT = Path(__file__).resolve().parent
 STARTUP_HOST = "127.0.0.1"
 STARTUP_PORT = 8764
@@ -256,6 +258,33 @@ def _deps_ok() -> tuple[bool, str]:
     return True, version
 
 
+def _auto_update_ytdlp(current: str) -> str:
+    """Atualiza o yt-dlp no máximo uma vez por dia. Sem rede ou com falha, segue
+    com a versão instalada: abrir o app é mais importante que atualizar."""
+    prefs = ytdlp_update.load_prefs()
+    if not ytdlp_update.auto_check_due(prefs):
+        return current
+    STATE.set_step("ytdlp", "active", "Procurando atualização")
+    try:
+        latest = ytdlp_update.latest_version(prefs["channel"], timeout=4)
+    except Exception as exc:  # noqa: BLE001 - offline ou PyPI fora do ar
+        STATE.log(f"Consulta de versão do yt-dlp falhou: {exc}")
+        return current
+    ytdlp_update.save_prefs(latest=latest, checked_at=time.time())
+    if not ytdlp_update.is_newer(latest, current):
+        return current
+
+    STATE.set_stage("ATUALIZANDO YT-DLP", f"Instalando yt-dlp {latest}...")
+    STATE.set_step("ytdlp", "active", f"Atualizando para {latest}")
+    ok, output = ytdlp_update.run_upgrade(VENV_PY, prefs["channel"], timeout=240)
+    for line in output.splitlines():
+        STATE.log(line)
+    if not ok:
+        STATE.log("Atualização do yt-dlp falhou; seguindo com a versão instalada.")
+        return current
+    return ytdlp_update.installed_version(VENV_PY) or current
+
+
 def _start_backend() -> subprocess.Popen[Any]:
     global APP_PROCESS
     LOG_DIR.mkdir(parents=True, exist_ok=True)
@@ -273,9 +302,13 @@ def _start_backend() -> subprocess.Popen[Any]:
         "warning",
     ]
     STATE.log("$ " + " ".join(command))
+    # VARISPEED_MANAGED deixa o servidor se reiniciar sozinho depois de
+    # atualizar o yt-dlp, porque o launcher já não estará por perto.
+    env = {**os.environ, "VARISPEED_MANAGED": "1", "VARISPEED_BIND_HOST": APP_BIND_HOST}
     APP_PROCESS = subprocess.Popen(
         command,
         cwd=ROOT,
+        env=env,
         stdin=subprocess.DEVNULL,
         stdout=server_log,
         stderr=subprocess.STDOUT,
@@ -357,6 +390,7 @@ def _bootstrap() -> None:
             if not ok:
                 STATE.set_step("ytdlp", "error", "Não disponível")
                 raise RuntimeError("yt-dlp não está disponível no ambiente local.")
+        ytdlp_version = _auto_update_ytdlp(ytdlp_version)
         STATE.set_step("ytdlp", "ok", f"yt-dlp {ytdlp_version}")
 
         STATE.set_stage("VERIFICANDO FFMPEG", "Procurando suporte opcional a formatos adicionais...")

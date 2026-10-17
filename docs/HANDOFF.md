@@ -169,6 +169,9 @@ Regras:
 - Se uma tentativa criou o backend mas falhou antes de terminar, o launcher encerra só o processo daquela tentativa antes do retry. Nunca mata uma instância que já existia.
 - O backend sobrevive ao fim do launcher; no Windows ele nasce sem console e num novo process group.
 - O launcher e os scripts conferem `yt-dlp-ejs` e `yt-dlp-getpot-wpc`, então uma `.venv` antiga recebe as dependências novas no próximo início.
+- `_auto_update_ytdlp()` consulta o PyPI no máximo uma vez a cada 24 h (preferência "Atualizar ao abrir", ligada por padrão) e instala a versão nova antes de subir o servidor. Rede fora, PyPI fora ou pip com erro nunca bloqueiam a abertura: o launcher registra no log e segue com a versão instalada. `server/ytdlp_update.py` usa só a biblioteca padrão justamente para o launcher poder importá-lo.
+- O backend iniciado pelo launcher recebe `VARISPEED_MANAGED=1` e `VARISPEED_BIND_HOST`. Só esse processo se reinicia sozinho depois de `POST /api/system/ytdlp/update`: dispara `python -m server.relaunch`, que espera a porta liberar e sobe o Uvicorn com os mesmos parâmetros, e então encerra. Sem a marca (start-tempo, execução manual), a resposta traz `restart_required` e a interface pede o reinício.
+- O yt-dlp se apresenta como `2026.08.19` e o pip registra `2026.8.19`; as nightlies vêm do PyPI como `….dev0` e se apresentam sem o sufixo. Comparar versões sempre com `ytdlp_update.same_version()`/`version_key()` (e `sameVersion()` em `settings.js`), nunca como texto.
 
 ### 3.2 Tela de inicialização
 
@@ -740,7 +743,7 @@ Outros comandos:
 
 ```bash
 node --check app.js            # e os demais scripts listados no CI
-python -m py_compile launcher.py server/main.py server/browser_auth.py server/dedicated_auth.py server/youtube_pot.py
+python -m py_compile launcher.py server/main.py server/browser_auth.py server/dedicated_auth.py server/youtube_pot.py server/ytdlp_update.py server/relaunch.py
 python -m ruff check launcher.py server tests
 python -m uvicorn server.main:app --host 0.0.0.0 --port 8765
 ```

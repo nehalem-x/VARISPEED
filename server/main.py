@@ -18,6 +18,8 @@ import os
 import re
 import shutil
 import socket
+import subprocess
+import sys
 import tempfile
 import threading
 import time
@@ -32,14 +34,22 @@ from pydantic import BaseModel, Field
 from starlette.background import BackgroundTask
 from starlette.responses import Response
 
+from server import ytdlp_update
 from server.browser_auth import BrowserAuthError, BrowserSessionResolver
 from server.dedicated_auth import DedicatedAuthError, DedicatedYouTubeSession
+from server.relaunch import detached_flags
 from server.youtube_pot import authenticated_youtube_options
 from server.youtube_pot import status as youtube_pot_status
 
 ROOT = Path(__file__).resolve().parent.parent
 
 APP_PORT = int(os.getenv("VARISPEED_PORT", "8765") or 8765)
+APP_BIND_HOST = os.getenv("VARISPEED_BIND_HOST", "0.0.0.0") or "0.0.0.0"  # noqa: S104
+# O launcher marca o processo que ele mesmo iniciou; só esse reinicia sozinho.
+# Quem sobe o Uvicorn à mão (start-tempo, execução manual) reinicia à mão.
+MANAGED = os.getenv("VARISPEED_MANAGED") == "1"
+LATEST_CACHE_SECONDS = 6 * 60 * 60
+_UPDATE_LOCK = threading.Lock()
 SUPPORTED_AUTH_BROWSERS = frozenset({"chrome", "edge", "firefox", "brave", "vivaldi"})
 SUPPORTED_AUTH_MODES = SUPPORTED_AUTH_BROWSERS | {"auto", "dedicated"}
 _AUTH_LOCK = threading.Lock()
@@ -106,6 +116,21 @@ def _has_authorized_local_origin(request: Request) -> bool:
 
 def _shutdown_process(delay: float = 0.45) -> None:
     time.sleep(delay)
+    DEDICATED_AUTH.shutdown()
+    os._exit(0)
+
+
+def _restart_process(delay: float = 0.6) -> None:
+    """Sobe um ajudante que espera a porta liberar e inicia o servidor de novo."""
+    time.sleep(delay)
+    subprocess.Popen(  # noqa: S603 - comando fixo, sem shell
+        [sys.executable, "-m", "server.relaunch", "--host", APP_BIND_HOST, "--port", str(APP_PORT)],
+        cwd=ROOT,
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        **detached_flags(),
+    )
     DEDICATED_AUTH.shutdown()
     os._exit(0)
 
@@ -709,6 +734,103 @@ async def cancel_dedicated_auth(request: Request) -> dict[str, Any]:
     browser = _configured_auth_browser(request)
     mode = "dedicated" if browser == "dedicated" else ("auto" if browser == "auto" else ("browser" if browser else "off"))
     return {"ok": True, "mode": mode, "browser": browser or "off", "dedicated": state}
+
+
+def _schedule_restart() -> None:
+    threading.Thread(target=_restart_process, name="varispeed-restart", daemon=True).start()
+
+
+def _ytdlp_state(request: Request, *, refresh: bool = False) -> dict[str, Any]:
+    prefs = ytdlp_update.load_prefs()
+    error = ""
+    stale = time.time() - prefs["checked_at"] >= LATEST_CACHE_SECONDS
+    if refresh or (stale and _is_loopback_client(request)):
+        try:
+            latest = ytdlp_update.latest_version(prefs["channel"])
+            prefs = ytdlp_update.save_prefs(latest=latest, checked_at=time.time())
+        except Exception:  # noqa: BLE001 - sem rede, PyPI fora ou JSON inesperado
+            error = "Não foi possível consultar a versão mais recente."
+    loaded = yt_dlp.version.__version__
+    on_disk = ytdlp_update.installed_version() or loaded
+    return {
+        "ok": True,
+        "version": loaded,
+        "installed": on_disk,
+        "latest": prefs["latest"],
+        "update_available": ytdlp_update.is_newer(prefs["latest"], on_disk),
+        # pip já trocou os arquivos, mas o processo ainda roda a versão antiga.
+        "restart_required": not ytdlp_update.same_version(on_disk, loaded),
+        "channel": prefs["channel"],
+        "auto": prefs["auto"],
+        "checked_at": prefs["checked_at"],
+        "can_update": _is_loopback_client(request),
+        "managed": MANAGED,
+        "error": error,
+    }
+
+
+class YtDlpPrefsRequest(BaseModel):
+    auto: bool | None = None
+    channel: str | None = Field(default=None, max_length=16)
+
+
+@app.get("/api/system/ytdlp")
+async def ytdlp_status(request: Request, refresh: bool = False) -> dict[str, Any]:
+    return await asyncio.to_thread(_ytdlp_state, request, refresh=refresh)
+
+
+@app.post("/api/system/ytdlp/prefs")
+async def ytdlp_prefs(payload: YtDlpPrefsRequest, request: Request) -> dict[str, Any]:
+    _require_local_system_control(request)
+    changes: dict[str, Any] = {}
+    if payload.auto is not None:
+        changes["auto"] = payload.auto
+    if payload.channel is not None:
+        if payload.channel not in ytdlp_update.CHANNELS:
+            raise HTTPException(status_code=422, detail="Canal de atualização desconhecido.")
+        # Trocar de canal invalida a última versão consultada.
+        changes.update(channel=payload.channel, latest="", checked_at=0.0)
+    if changes:
+        await asyncio.to_thread(lambda: ytdlp_update.save_prefs(**changes))
+    return await asyncio.to_thread(_ytdlp_state, request, refresh=payload.channel is not None)
+
+
+@app.post("/api/system/ytdlp/update")
+async def ytdlp_update_now(request: Request) -> dict[str, Any]:
+    _require_local_system_control(request)
+    if not _UPDATE_LOCK.acquire(blocking=False):
+        raise HTTPException(status_code=409, detail="Uma atualização do yt-dlp já está em andamento.")
+    try:
+        before = yt_dlp.version.__version__
+        channel = ytdlp_update.load_prefs()["channel"]
+        ok, output = await asyncio.to_thread(ytdlp_update.run_upgrade, sys.executable, channel)
+        if not ok:
+            tail = output.splitlines()[-1] if output else ""
+            raise HTTPException(status_code=502, detail=f"O pip não conseguiu atualizar o yt-dlp. {tail}".strip())
+        after = await asyncio.to_thread(ytdlp_update.installed_version) or before
+        ytdlp_update.save_prefs(latest=after, checked_at=time.time())
+    finally:
+        _UPDATE_LOCK.release()
+
+    changed = not ytdlp_update.same_version(after, before)
+    restarting = changed and MANAGED
+    if restarting:
+        _schedule_restart()
+    return {
+        "ok": True,
+        "previous": before,
+        "version": after,
+        "changed": changed,
+        "restarting": restarting,
+        "restart_required": changed and not MANAGED,
+    }
+
+
+def _require_local_system_control(request: Request) -> None:
+    if not _is_loopback_client(request):
+        raise HTTPException(status_code=403, detail="Só é possível alterar o sistema neste computador.")
+    if not _has_authorized_local_origin(request):
+        raise HTTPException(status_code=403, detail="Origem não autorizada para alterar o sistema.")
 
 
 @app.post("/api/system/shutdown")

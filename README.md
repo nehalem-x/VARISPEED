@@ -135,6 +135,8 @@ O `yt-dlp` roda no backend porque é uma aplicação Python e precisa lidar com 
 │   ├── browser_auth.py     # descoberta/validação de perfis instalados
 │   ├── dedicated_auth.py   # sessão isolada e filtrada do YouTube
 │   ├── youtube_pot.py      # PO Token WPC + runtime EJS local
+│   ├── ytdlp_update.py     # versão, preferências e pip do yt-dlp (só stdlib)
+│   ├── relaunch.py         # reinicia o servidor depois de atualizar o yt-dlp
 │   ├── requirements.txt
 │   └── requirements-dev.txt # lint e auditoria usados na CI
 ├── tests/                  # testes node:test e unittest
@@ -168,7 +170,7 @@ Atalho VARISPEED
   -> redirecionamento automático para o VARISPEED
 ```
 
-O `launcher.py` usa só a biblioteca padrão do Python e sobe um `ThreadingHTTPServer` temporário em `127.0.0.1:8764`, para a tela existir antes de `.venv` e das dependências. Ele confere, nesta ordem: Python 3.11+, `.venv`, FastAPI/Uvicorn/yt-dlp, versão do yt-dlp, FFmpeg (opcional), início do Uvicorn e resposta de `/api/health` e `GET /`. Com tudo pronto, `startup.js` mantém `PRONTO` na tela por uns 720 ms, chama `location.replace()` e o servidor temporário se encerra. Não adicionar FastAPI ou Flask ao launcher, porque ele precisaria das dependências que ainda vai instalar.
+O `launcher.py` usa só a biblioteca padrão do Python e sobe um `ThreadingHTTPServer` temporário em `127.0.0.1:8764`, para a tela existir antes de `.venv` e das dependências. Ele confere, nesta ordem: Python 3.11+, `.venv`, FastAPI/Uvicorn/yt-dlp, versão do yt-dlp (com atualização automática, no máximo uma vez por dia), FFmpeg (opcional), início do Uvicorn e resposta de `/api/health` e `GET /`. Com tudo pronto, `startup.js` mantém `PRONTO` na tela por uns 720 ms, chama `location.replace()` e o servidor temporário se encerra. Não adicionar FastAPI ou Flask ao launcher, porque ele precisaria das dependências que ainda vai instalar.
 
 A tela de inicialização mostra o gato e `VARISPEED 1.0` no mesmo eixo, uma única linha de estado e uma barra indeterminada logo abaixo, sem checklist nem porcentagem. A linha troca de texto com `Motion.status()` e a barra usa a mesma varredura da importação por link. Não há linhas de moldura acima do logo nem abaixo da barra; não reintroduzir `border-top`/`border-bottom` em `.boot__panel`. Em caso de erro, o bloco cresce para mostrar `TENTAR NOVAMENTE` e `VER DETALHES`, sem mudar a geometria do estado normal. A ausência do FFmpeg aparece como aviso.
 
@@ -267,6 +269,9 @@ O arquivo principal é `server/main.py`. O backend não edita áudio: não alter
 | `/api/health` | GET | estado do backend e versão do yt-dlp |
 | `/api/system/info` | GET | porta, URL local, URLs da LAN e permissão de desligamento |
 | `/api/system/shutdown` | POST | encerra o backend; só via loopback |
+| `/api/system/ytdlp` | GET | versão carregada, instalada e mais recente do yt-dlp; `?refresh=1` consulta o PyPI |
+| `/api/system/ytdlp/prefs` | POST | atualização ao abrir e canal (estável ou nightly); loopback + origem local |
+| `/api/system/ytdlp/update` | POST | roda o pip e reinicia o servidor; loopback + origem local |
 | `/api/auth/status` | GET | estado não sensível da autenticação local |
 | `/api/auth/browser` | POST | escolhe o modo de autenticação; loopback + origem local |
 | `/api/auth/browser/auto` | POST | descobre perfis instalados e valida uma sessão no link pedido |
@@ -284,6 +289,16 @@ Resposta esperada de `GET http://127.0.0.1:8765/api/health`:
 ```json
 { "ok": true, "yt_dlp": "...", "ffmpeg": true }
 ```
+
+### Atualização do yt-dlp
+
+O YouTube muda com frequência, e um `yt-dlp` velho é a causa mais comum de links que param de abrir. Configurações → Sistema mostra a versão carregada e a mais recente, e tem um botão para atualizar.
+
+- **Ao abrir:** com "Atualizar ao abrir" ligado (padrão), o launcher consulta o PyPI no máximo uma vez a cada 24 h e instala a versão nova antes de subir o servidor. Sem internet ou com falha no pip, segue com a versão instalada.
+- **Pelo botão:** o backend roda `pip install --upgrade "yt-dlp[default]"` na própria `.venv`. O `yt-dlp` fica carregado na memória, então o servidor se reinicia em seguida: dispara `server/relaunch.py`, que espera a porta liberar e sobe o Uvicorn de novo. A página espera `/api/health` voltar com a versão nova antes de confirmar.
+- **Canal:** Estável usa a versão publicada; Nightly inclui as pré-versões (`--pre`), que costumam trazer correções para o YouTube dias antes. Voltar para Estável não rebaixa a versão; a próxima atualização vem quando a estável passar da nightly instalada.
+- **Reinício automático** só acontece quando o servidor foi iniciado pelo launcher (`VARISPEED_MANAGED=1`). Em `start-tempo` ou na execução manual, o app instala e pede para reiniciar à mão.
+- **Permissões:** qualquer dispositivo vê a versão; só o próprio computador (loopback e origem local) muda preferências ou atualiza. As preferências ficam em `%LOCALAPPDATA%/VARISPEED/ytdlp-update.json` (no Linux e no macOS, `~/.varispeed/`).
 
 ### Rede local e segurança
 
@@ -553,7 +568,7 @@ npx --yes html-validate@10.4.0 index.html startup.html scope.html
 Python:
 
 ```bash
-python -m py_compile launcher.py server/main.py server/browser_auth.py server/dedicated_auth.py server/youtube_pot.py
+python -m py_compile launcher.py server/main.py server/browser_auth.py server/dedicated_auth.py server/youtube_pot.py server/ytdlp_update.py server/relaunch.py
 python -m unittest discover -s tests -p "test_*.py"
 python -m pip check
 python -m ruff check launcher.py server tests
@@ -606,7 +621,7 @@ Manter, salvo pedido explícito:
 
 "Não foi possível acessar o backend do VARISPEED": o HTML foi aberto direto ou o FastAPI não está rodando. Use `start-tempo.bat` ou `start-tempo.sh`.
 
-O `yt-dlp` parou de funcionar num site: atualize com `python -m pip install -U yt-dlp`. Os sites mudam e o extractor precisa acompanhar.
+O `yt-dlp` parou de funcionar num site: use Configurações → Sistema → Atualizar. Os sites mudam e o extractor precisa acompanhar. Se a versão estável ainda não tiver a correção, troque o canal para Nightly. Sem a interface, `python -m pip install -U "yt-dlp[default]"` na `.venv` faz o mesmo.
 
 O site exige login: veja [Conteúdo restrito](#conteúdo-restrito).
 
