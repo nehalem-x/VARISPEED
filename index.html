@@ -575,9 +575,15 @@ SOFTWARE.
               <button class="btn btn--step" id="rateDown" type="button" title="Reduzir" aria-label="Reduzir velocidade"><svg class="ui-icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#ui-icon-minus"/></svg></button>
               <button class="btn btn--step" id="rateUp" type="button" title="Aumentar" aria-label="Aumentar velocidade"><svg class="ui-icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#ui-icon-plus"/></svg></button>
             </div>
+            <span class="rate__effect mono" id="rateEffect">Original</span>
           </div>
           <div class="rate__slider">
-            <input class="slider" id="rateSlider" type="range" min="25" max="400" step="0.5" value="100" aria-label="Velocidade" aria-describedby="rateHelp" />
+            <div class="rate__track">
+              <span class="rate__rail" aria-hidden="true"></span>
+              <span class="rate__fill" id="rateFill" aria-hidden="true"></span>
+              <span class="rate__origin" id="rateOrigin" aria-hidden="true"></span>
+              <input class="slider" id="rateSlider" type="range" min="25" max="400" step="0.5" value="100" aria-label="Velocidade" aria-describedby="rateHelp" />
+            </div>
             <div class="ticks mono" aria-hidden="true">
               <span>25</span><span>100</span><span>200</span><span>300</span><span>400</span>
             </div>

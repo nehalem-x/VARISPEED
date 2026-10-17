@@ -1711,16 +1711,18 @@ button, input { font: inherit; color: inherit; }
 
 /* rate */
 .rate { display: grid; gap: var(--space-4); }
+/* Leitura: número e % juntos, passos à direita, efeito no tom embaixo.
+   Sem linha fixa; o sublinhado só aparece ao editar o número ou em erro. */
 .rate__read {
   display: grid;
-  align-items: center;
-  grid-template-columns: minmax(0, 1fr) auto auto;
-  align-items: center;
-  gap: var(--space-2);
+  grid-template-columns: auto auto minmax(0, 1fr) auto;
+  align-items: baseline;
+  column-gap: var(--space-1);
+  row-gap: var(--space-1);
   border: 0;
-  border-bottom: var(--border) solid var(--border-c);
+  border-bottom: var(--border) solid transparent;
   background: transparent;
-  padding: 0 0 var(--space-3);
+  padding: 0 0 var(--space-2);
   transition: border-color var(--dur-fast) var(--ease);
 }
 .rate__read:focus-within { border-color: var(--focus); }
@@ -1739,8 +1741,10 @@ button, input { font: inherit; color: inherit; }
 }
 .rate__input.is-ghosted { color: transparent; caret-color: transparent; }
 .rate__input {
-  width: 100%;
-  min-width: 0;
+  /* A largura acompanha o texto para o % ficar colado no número. Sem
+     field-sizing, app.js ajusta --rate-chars a cada velocidade confirmada. */
+  width: calc(var(--rate-chars, 5) * 1ch + 2px);
+  min-width: 3ch;
   background: transparent;
   border: 0;
   padding: 0;
@@ -1749,15 +1753,47 @@ button, input { font: inherit; color: inherit; }
   line-height: var(--lh-tight);
   color: var(--text);
 }
+@supports (field-sizing: content) {
+  .rate__input { width: auto; field-sizing: content; }
+}
 .rate__unit {
   font-family: var(--font-mono);
-  font-size: var(--text-md);
-  color: var(--text-3);
-  padding-bottom: 2px;
+  font-size: var(--text-lg);
+  color: var(--text-2);
 }
-.rate__step { display: grid; grid-template-columns: repeat(2, var(--ctl-step)); gap: var(--space-1); background: transparent; }
+.rate__step {
+  grid-column: 4;
+  grid-row: 1;
+  align-self: center;
+  display: grid;
+  grid-template-columns: repeat(2, var(--ctl-step));
+  border: var(--border) solid var(--border-c);
+  background: transparent;
+}
+.rate__step .btn--step { --btn-text: var(--text); }
+.rate__step .btn--step + .btn--step { border-left: var(--border) solid var(--border-c); }
+.rate__effect {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  font-size: var(--text-xs);
+  letter-spacing: var(--tr-wide);
+  text-transform: uppercase;
+  color: var(--text-3);
+  white-space: nowrap;
+}
 
-.rate__slider { display: grid; gap: var(--space-1); }
+.rate__slider { display: grid; gap: var(--space-2); }
+/* Trilho próprio: marca o 100% (original) e pinta a distância até a velocidade atual. */
+.rate__track { position: relative; height: 18px; }
+.rate__rail { position: absolute; left: 0; right: 0; top: 8px; height: 2px; background: var(--border-c); }
+.rate__fill { position: absolute; top: 7px; height: 4px; background: var(--text); }
+.rate__origin { position: absolute; top: 3px; width: 1px; height: 12px; background: var(--text-3); transform: translateX(-50%); }
+.rate__track .slider { position: relative; z-index: 1; height: 18px; }
+.rate__track .slider::-webkit-slider-runnable-track { background: transparent; }
+.rate__track .slider::-moz-range-track { background: transparent; }
+.rate__track .slider::-webkit-slider-thumb { width: 4px; height: 18px; margin-top: -8px; }
+.rate__track .slider::-moz-range-thumb { width: 4px; height: 18px; }
+.ticks span.is-origin { color: var(--text); }
 .ticks {
   position: relative;
   height: 1em;
@@ -1773,7 +1809,26 @@ button, input { font: inherit; color: inherit; }
 }
 .ticks span:first-child { transform: none; }
 .ticks span:last-child { transform: translateX(-100%); }
-.presets { display: flex; gap: var(--space-1); background: transparent; }
+/* Fileira de botões colados. Cada botão desenha o próprio contorno com
+   box-shadow, e os contornos vizinhos se encontram no espaço de 1 px: no
+   celular, quando os presets quebram em linhas, a célula vazia fica limpa. */
+.presets {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: var(--border);
+  padding: var(--border);
+  background: transparent;
+}
+.presets .btn--preset {
+  --btn-bg: transparent;
+  border: 0;
+  border-radius: 0;
+  min-width: 0;
+  box-shadow: 0 0 0 var(--border) var(--border-c);
+  --btn-text: var(--text-2);
+}
+.presets .btn--preset.is-on { --btn-bg: var(--text); --btn-text: var(--text-inv); }
 
 /* rows */
 .rows { display: grid; gap: var(--space-2); }
@@ -1886,8 +1941,7 @@ kbd {
 @media (max-width: 560px) {
 }
 @media (max-width: 480px) {
-  .presets { flex-wrap: wrap; }
-  .btn--preset { flex: 1 1 28%; }
+  .presets { grid-auto-flow: row; grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .hdr__filemeta { display: none; }
 }
 
@@ -3018,9 +3072,8 @@ kbd {
   .insp__foot { width: 100%; }
 
   .presets {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: var(--space-1);
+    grid-auto-flow: row;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
   .btn--preset {
     width: 100%;
@@ -3825,7 +3878,6 @@ a:focus-visible { text-decoration: underline; text-underline-offset: 3px; }
   height: var(--ctl-h);
 }
 
-.panel--rate .rate__read { border-color: var(--border-strong); }
 .panel--result .row dt,
 .panel--source .row dt { color: var(--text-3); }
 .panel--source .row dd { color: var(--text-2); }

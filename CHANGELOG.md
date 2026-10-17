@@ -1,5 +1,12 @@
 # Registro de mudanças
 
+## Outubro de 2026: painel de Velocidade
+
+- O `%` fica junto do número, e uma linha embaixo diz o efeito: "Mais lento · mais grave", "Original" ou "Mais rápido · mais agudo".
+- O − e o + viraram dois botões com borda, à direita do número. A linha fixa abaixo do número saiu; o sublinhado só aparece ao editar o valor.
+- O slider marca o 100% e pinta a distância entre o original e a velocidade atual.
+- Os presets viraram uma fileira de botões com borda, sempre em ordem crescente, como o slider. O ativo fica invertido.
+
 ## Outubro de 2026: login de um botão
 
 - Conteúdo restrito virou **Conta do YouTube**, com um botão só: Entrar no YouTube. O menu de oito opções saiu; navegador específico e arquivo de cookies ficaram em Opções avançadas.

@@ -76,6 +76,7 @@
     exportName: $('exportName'), exportFormat: $('exportFormat'), exportProcessing: $('exportProcessing'),
     statusMsg: $('statusMsg'), drop: $('drop'),
     rateUnit: document.querySelector('.rate__unit'),
+    rateEffect: $('rateEffect'), rateFill: $('rateFill'), rateOrigin: $('rateOrigin'),
     presetHost: document.querySelector('.presets'),
     ticks: document.querySelector('.ticks'),
     sbarItems: Array.from(document.querySelectorAll('.sbar__item')),
@@ -906,12 +907,26 @@
       clearRateError();
     }
     el.rateSlider.value = String(val);
+    syncRateTrack();
     // microinteração: só em passos discretos, nunca em arraste contínuo
     if (opts.step && val !== prev && cfg('motion.rateTick')) {
       tickRateValue(rateText(prev), rateText(val), val - prev);
     }
     renderReadouts();
     draw();
+  }
+
+  /* O trilho marca o 100% e pinta a distância até a velocidade atual; a frase
+     diz o efeito no tom, que é a regra central do VARISPEED. */
+  function syncRateTrack() {
+    const lo = rateMin(), hi = rateMax(), val = state.rate;
+    const origin = Core.markOffset(100, lo, hi);
+    const current = Core.markOffset(val, lo, hi);
+    el.rateOrigin.style.left = `${origin}%`;
+    el.rateFill.style.left = `${Math.min(origin, current)}%`;
+    el.rateFill.style.width = `${Math.abs(current - origin)}%`;
+    el.rateEffect.textContent = val === 100 ? 'Original' : (val < 100 ? 'Mais lento · mais grave' : 'Mais rápido · mais agudo');
+    el.rateInput.style.setProperty('--rate-chars', String(Math.max(3, el.rateInput.value.length)));
   }
 
   function tickRateValue(prev, next, delta) {
@@ -972,7 +987,8 @@
   const presetLabel = (v) => Core.presetLabel(v, cfg('rate.unit'));
 
   function buildPresets() {
-    const list = Core.parsePresets(cfg('rate.presets'), rateMin(), rateMax());
+    // Sempre em ordem crescente, como o slider; a ordem digitada fica nas Configurações.
+    const list = Core.parsePresets(cfg('rate.presets'), rateMin(), rateMax()).sort((a, b) => a - b);
     el.presetHost.textContent = '';
     el.presets = list.map((v) => {
       const b = document.createElement('button');
@@ -1000,6 +1016,7 @@
       const s = document.createElement('span');
       s.textContent = presetLabel(m);
       s.style.left = `${Core.markOffset(m, lo, hi)}%`;
+      if (m === 100) s.classList.add('is-origin');
       el.ticks.appendChild(s);
     });
     buildPresets();
