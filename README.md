@@ -124,12 +124,15 @@ O `yt-dlp` roda no backend porque é uma aplicação Python e precisa lidar com 
 │   └── icons/              # licença e manifesto do Lucide
 ├── VARISPEED.vbs           # launcher normal no Windows, sem terminal visível
 ├── Create VARISPEED shortcut.vbs # cria atalho com ícone do gato no Desktop
-├── VARISPEED.desktop       # atalho de menu para Linux (ajustar caminhos)
+├── VARISPEED.sh            # launcher gráfico no Linux (usa runtime/ se existir)
+├── criar-atalho.sh         # cria o atalho no menu de aplicativos do Linux
+├── VARISPEED.desktop       # modelo de atalho para Linux (ajustar caminhos)
 ├── launcher.py             # bootstrap gráfico, somente stdlib Python
 ├── startup.html / startup.css / startup.js # tela de inicialização
 ├── logs/                   # startup.log / server.log em runtime
 ├── start-tempo.bat         # modo diagnóstico/manual no Windows
 ├── start-tempo.sh          # inicialização manual em Linux/macOS
+├── tools/build_bundle.py   # monta o download pronto (Windows e Linux)
 ├── server/
 │   ├── main.py             # FastAPI + integração yt-dlp
 │   ├── browser_auth.py     # descoberta/validação de perfis instalados
@@ -148,6 +151,19 @@ O `yt-dlp` roda no backend porque é uma aplicação Python e precisa lidar com 
 ```
 
 O antigo `providers.js`, com adapters CORS, foi substituído pela importação via `yt-dlp` no backend.
+
+## Download pronto
+
+Para usar, baixe o arquivo do seu sistema na página de [Releases](https://github.com/nehalem-x/VARISPEED/releases), descompacte e abra:
+
+- **Windows:** `VARISPEED-<versão>-windows-x64.zip` → dois cliques em `VARISPEED.vbs`. Para um atalho na Área de Trabalho, `Create VARISPEED shortcut.vbs`.
+- **Linux:** `VARISPEED-<versão>-linux-x64.tar.gz` → `./VARISPEED.sh`. Para o menu de aplicativos, `./criar-atalho.sh`.
+
+O navegador abre sozinho. Não precisa instalar Python nem Node: a pasta `runtime/` traz um Python portátil (python-build-standalone) com todas as dependências e o Node.js LTS. O yt-dlp se atualiza sozinho (ver [Atualização do yt-dlp](#atualização-do-yt-dlp)). FFmpeg não vem no pacote; se estiver instalado no sistema, é usado.
+
+Os pacotes são montados pelo GitHub Actions (`.github/workflows/release.yml`, que chama `tools/build_bundle.py`). Uma tag `v*` gera um rascunho de release com os dois arquivos e os `.sha256`; rodar o workflow à mão gera um rascunho de teste `build-<número>`. Antes de anexar, o script descompacta o pacote numa pasta nova e sobe o servidor de lá, para provar que ele funciona fora do lugar em que foi montado. Nada é publicado sem revisão.
+
+As seções abaixo são para quem roda a partir do código.
 
 ## Requisitos
 
@@ -190,17 +206,12 @@ py -3.13 --version
 ### Linux e macOS
 
 ```bash
-chmod +x start-tempo.sh
-./start-tempo.sh
+./VARISPEED.sh
 ```
 
-Depois abra `http://127.0.0.1:8765/`.
+Abre o mesmo launcher gráfico do Windows, com a tela de inicialização, e o navegador em seguida. Precisa de `python3` 3.11 ou mais novo (no download pronto, usa o Python de `runtime/`). Para o menu de aplicativos, `./criar-atalho.sh` cria o `.desktop` com o caminho real da pasta.
 
-Para abrir pelo menu de aplicativos, use `VARISPEED.desktop`. O arquivo aponta para `/caminho/para/VARISPEED`; troque pelo caminho do seu clone antes de instalar:
-
-```bash
-sed "s#/caminho/para/VARISPEED#$PWD#g" VARISPEED.desktop > ~/.local/share/applications/VARISPEED.desktop
-```
+`./start-tempo.sh` é o modo diagnóstico, com terminal: cria a `.venv`, instala as dependências e sobe o Uvicorn; depois abra `http://127.0.0.1:8765/`.
 
 ### Execução manual
 

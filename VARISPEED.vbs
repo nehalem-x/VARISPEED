@@ -11,6 +11,21 @@ If Not fso.FileExists(launcher) Then
   WScript.Quit 1
 End If
 
+' Download pronto: o Python vem em runtime\python e nada precisa estar
+' instalado. pythonw.exe abre o launcher sem console.
+Dim bundled
+bundled = fso.BuildPath(root, "runtime\python\pythonw.exe")
+If fso.FileExists(bundled) Then
+  On Error Resume Next
+  shell.Run """" & bundled & """ """ & launcher & """", 0, False
+  If Err.Number <> 0 Then
+    Err.Clear
+    MsgBox "Nao foi possivel iniciar o VARISPEED.", vbCritical, "VARISPEED"
+    WScript.Quit 1
+  End If
+  WScript.Quit 0
+End If
+
 ' Valida o runtime sem exibir console. Isso evita falha silenciosa quando o
 ' Python Install Manager existe, mas nenhum Python 3 compativel esta instalado.
 checkCmd = "py -3 -c ""import sys; raise SystemExit(0 if sys.version_info >= (3,11) else 1)"""

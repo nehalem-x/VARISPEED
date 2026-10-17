@@ -39,7 +39,7 @@ jobs:
           python -m pip install -r server/requirements-dev.txt
 
       - name: Lint Python sources
-        run: python -m ruff check launcher.py server tests
+        run: python -m ruff check launcher.py server tests tools/build_bundle.py
 
       - name: Compile Python sources
         run: >-
@@ -49,6 +49,9 @@ jobs:
           server/browser_auth.py
           server/dedicated_auth.py
           server/youtube_pot.py
+          server/ytdlp_update.py
+          server/relaunch.py
+          tools/build_bundle.py
 
       - name: Run Python tests
         run: python -m unittest discover -s tests -p "test_*.py"

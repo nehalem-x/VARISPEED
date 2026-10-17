@@ -193,7 +193,23 @@ Ele chama direto `py -3 -m venv .venv`, usa `python -m venv .venv` só como alte
 
 ### 3.4 Linux e macOS
 
-Continua `./start-tempo.sh`. O launcher gráfico é só do Windows; não adicionar Electron ou PyInstaller para igualar as plataformas sem pedido.
+Num clone, `./VARISPEED.sh` abre o mesmo launcher gráfico do Windows com o `python3` do sistema, e `./start-tempo.sh` continua como modo diagnóstico com terminal. `./criar-atalho.sh` gera o `.desktop` com o caminho real da pasta. Não adicionar Electron ou PyInstaller: o download pronto (3.5) resolve a instalação sem empacotar o app num executável.
+
+### 3.5 Download pronto
+
+`tools/build_bundle.py` monta, por sistema, uma pasta `VARISPEED/` que abre sem instalar nada:
+
+- `runtime/python/`: Python portátil do python-build-standalone, obtido com `uv python install` (uv e Python fixados no script). O marcador `EXTERNALLY-MANAGED` que o uv cria é removido, porque o pip do pacote instala e atualiza o yt-dlp. As dependências de `server/requirements.txt` já vêm instaladas.
+- `runtime/node/`: só o executável e a licença do Node.js LTS fixado, com o SHA-256 conferido contra o `SHASUMS256.txt` oficial.
+- Os arquivos do app saem de `git ls-files`, sem `tests/`, `docs/`, `.github/`, `tools/`, `pyproject.toml` e `start-tempo.*`, e sem os arquivos do outro sistema. O script escreve `LEIA-ME.txt`, `THIRD-PARTY.txt` e `VERSION`.
+- Windows sai em `.zip`; Linux em `.tar.gz`, que guarda permissões de execução e os links simbólicos do Python. Cada um ganha um `.sha256`.
+- Antes de terminar, o script extrai o pacote numa pasta nova e sobe o servidor de lá (`/api/health` e `GET /`).
+
+O launcher detecta o pacote por `runtime/python`: usa esse Python no lugar da `.venv` (`PORTABLE`), não cria ambiente nem roda o pip se as dependências validarem, e passa `runtime/node` ao backend em `VARISPEED_NODE_PATH`. `VARISPEED.vbs` prefere `runtime\python\pythonw.exe` e só cai para `py -3` num clone. `VARISPEED.sh` faz o mesmo com `runtime/python/bin/python3`.
+
+O Node do pacote serve ao mesmo caminho de antes: desafios de JavaScript na verificação de reprodução com login (`youtube_pot.py`). Links públicos continuam sem runtime auxiliar.
+
+`.github/workflows/release.yml` roda o script em `windows-latest` e `ubuntu-22.04` (glibc mais antiga, para o pacote abrir em mais distribuições) e anexa os arquivos a um rascunho de release com `gh release upload`. Tag `v*` gera o rascunho da versão; execução manual gera `build-<número>` como pré-lançamento. Publicar é sempre manual.
 
 ### 3.5 Ícones
 

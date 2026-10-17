@@ -1,5 +1,11 @@
 # Registro de mudanças
 
+## Outubro de 2026: download pronto
+
+- O VARISPEED ganhou um download para Windows (`.zip`) e Linux (`.tar.gz`) que abre sem instalar nada: Python portátil com as dependências e Node.js LTS vêm na pasta `runtime/`.
+- O GitHub Actions monta os dois pacotes a cada tag `v*`, testa cada um fora da pasta em que foi montado e os anexa a um rascunho de release.
+- `VARISPEED.vbs` usa o Python do pacote quando ele existe. No Linux, `VARISPEED.sh` abre o mesmo launcher gráfico do Windows e `criar-atalho.sh` coloca o app no menu.
+
 ## Outubro de 2026: atualização do yt-dlp
 
 - Configurações → Sistema mostra a versão do yt-dlp e a mais recente, com um botão para atualizar. Depois da instalação o servidor se reinicia sozinho e a página confirma quando ele volta com a versão nova.

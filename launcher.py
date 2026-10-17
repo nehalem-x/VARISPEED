@@ -42,7 +42,13 @@ HEALTH_URL = f"http://{APP_HOST}:{APP_PORT}/api/health"
 LOG_DIR = ROOT / "logs"
 LOG_FILE = LOG_DIR / "startup.log"
 VENV_DIR = ROOT / ".venv"
-VENV_PY = VENV_DIR / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
+# O download pronto traz o Python e o Node em runtime/, já com as
+# dependências instaladas. Nesse caso não há .venv nem pip na primeira vez.
+RUNTIME_DIR = ROOT / "runtime"
+BUNDLED_PY = RUNTIME_DIR / "python" / ("python.exe" if os.name == "nt" else "bin/python3")
+BUNDLED_NODE = RUNTIME_DIR / "node" / ("node.exe" if os.name == "nt" else "bin/node")
+PORTABLE = BUNDLED_PY.is_file()
+VENV_PY = BUNDLED_PY if PORTABLE else VENV_DIR / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
 REQ_FILE = ROOT / "server" / "requirements.txt"
 
 STEP_ORDER = [
@@ -305,6 +311,9 @@ def _start_backend() -> subprocess.Popen[Any]:
     # VARISPEED_MANAGED deixa o servidor se reiniciar sozinho depois de
     # atualizar o yt-dlp, porque o launcher já não estará por perto.
     env = {**os.environ, "VARISPEED_MANAGED": "1", "VARISPEED_BIND_HOST": APP_BIND_HOST}
+    # Node embutido resolve os desafios de JavaScript do YouTube sem instalar nada.
+    if BUNDLED_NODE.is_file() and not env.get("VARISPEED_NODE_PATH"):
+        env["VARISPEED_NODE_PATH"] = str(BUNDLED_NODE)
     APP_PROCESS = subprocess.Popen(
         command,
         cwd=ROOT,
@@ -354,7 +363,12 @@ def _bootstrap() -> None:
         STATE.set_stage("PREPARANDO AMBIENTE", "Verificando o ambiente Python local...")
         STATE.set_step("environment", "active", "Verificando .venv")
         venv_version = _python_version(VENV_PY) if VENV_PY.exists() else None
-        if venv_version is None or venv_version < (3, 11):
+        if PORTABLE:
+            if venv_version is None:
+                STATE.set_step("environment", "error", "Python embutido não abriu")
+                raise RuntimeError("O Python que vem com o VARISPEED não abriu. Baixe o VARISPEED de novo.")
+            STATE.log(f"Python embutido em {VENV_PY}")
+        elif venv_version is None or venv_version < (3, 11):
             if VENV_DIR.exists():
                 STATE.log("Ambiente .venv incompleto/incompatível encontrado; recriando.")
                 shutil.rmtree(VENV_DIR, ignore_errors=True)

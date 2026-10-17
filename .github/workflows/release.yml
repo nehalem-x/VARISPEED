@@ -1,0 +1,84 @@
+name: Release
+
+# Monta o download pronto (Windows e Linux) e anexa a um rascunho de release.
+# Tag v* gera o rascunho da versão; rodar à mão gera um rascunho de teste
+# build-<número>. Nada é publicado sem alguém revisar e clicar em Publicar.
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  draft:
+    name: Draft release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
+    steps:
+      - name: Choose release name
+        id: tag
+        shell: bash
+        run: |
+          if [[ "$GITHUB_REF_TYPE" == "tag" ]]; then
+            echo "tag=$GITHUB_REF_NAME" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=build-$GITHUB_RUN_NUMBER" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create draft release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            exit 0
+          fi
+          extra=()
+          [[ "$GITHUB_REF_TYPE" == "tag" ]] || extra+=(--prerelease)
+          gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --draft "${extra[@]}" \
+            --target "$GITHUB_SHA" --title "VARISPEED $TAG" \
+            --notes "Baixe o arquivo do seu sistema, descompacte e abra: VARISPEED.vbs no Windows, VARISPEED.sh no Linux. Não precisa instalar Python nem Node. Veja LEIA-ME.txt dentro da pasta."
+
+  bundle:
+    name: Bundle (${{ matrix.target }})
+    needs: draft
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            target: windows
+          - os: ubuntu-22.04
+            target: linux
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+
+      - name: Build and test bundle
+        run: python tools/build_bundle.py --target ${{ matrix.target }} --version ${{ needs.draft.outputs.tag }}
+
+      - name: Attach to draft release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.draft.outputs.tag }}
+        run: gh release upload "$TAG" dist/* --repo "$GITHUB_REPOSITORY" --clobber

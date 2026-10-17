@@ -14,3 +14,7 @@ youtube-cookies.txt
 # Local creator portraits (personal assets; never publish)
 assets/creator-dark.png
 assets/creator-light.png
+
+# Download pronto: montado por tools/build_bundle.py, nunca versionado
+dist/
+runtime/
