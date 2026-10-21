@@ -748,8 +748,8 @@ button, input { font: inherit; color: inherit; }
   opacity: 0.5;
   mix-blend-mode: screen;
   /* A cor alcança a linha inteira, mas termina antes da coluna de metadados. */
-  -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 6%, #000 max(8%, calc(100% - 300px)), transparent calc(100% - 160px));
-  mask-image: linear-gradient(90deg, transparent 0%, #000 6%, #000 max(8%, calc(100% - 300px)), transparent calc(100% - 160px));
+  -webkit-mask-image: linear-gradient(90deg, transparent 0%, rgb(0 0 0 / 0.074) 1%, rgb(0 0 0 / 0.259) 2%, rgb(0 0 0 / 0.5) 3%, rgb(0 0 0 / 0.741) 4%, rgb(0 0 0 / 0.926) 5%, #000 6%, #000 max(8%, 100% - 300px), rgb(0 0 0 / 0.926) calc((max(8%, 100% - 300px)) * 0.8333 + (100% - 160px) * 0.1667), rgb(0 0 0 / 0.741) calc((max(8%, 100% - 300px)) * 0.6667 + (100% - 160px) * 0.3333), rgb(0 0 0 / 0.5) calc((max(8%, 100% - 300px)) * 0.5 + (100% - 160px) * 0.5), rgb(0 0 0 / 0.259) calc((max(8%, 100% - 300px)) * 0.3333 + (100% - 160px) * 0.6667), rgb(0 0 0 / 0.074) calc((max(8%, 100% - 300px)) * 0.1667 + (100% - 160px) * 0.8333), transparent calc(100% - 160px));
+  mask-image: linear-gradient(90deg, transparent 0%, rgb(0 0 0 / 0.074) 1%, rgb(0 0 0 / 0.259) 2%, rgb(0 0 0 / 0.5) 3%, rgb(0 0 0 / 0.741) 4%, rgb(0 0 0 / 0.926) 5%, #000 6%, #000 max(8%, 100% - 300px), rgb(0 0 0 / 0.926) calc((max(8%, 100% - 300px)) * 0.8333 + (100% - 160px) * 0.1667), rgb(0 0 0 / 0.741) calc((max(8%, 100% - 300px)) * 0.6667 + (100% - 160px) * 0.3333), rgb(0 0 0 / 0.5) calc((max(8%, 100% - 300px)) * 0.5 + (100% - 160px) * 0.5), rgb(0 0 0 / 0.259) calc((max(8%, 100% - 300px)) * 0.3333 + (100% - 160px) * 0.6667), rgb(0 0 0 / 0.074) calc((max(8%, 100% - 300px)) * 0.1667 + (100% - 160px) * 0.8333), transparent calc(100% - 160px));
   transition: opacity var(--dur-quick) var(--ease-out);
 }
 .library__track-wash img {
@@ -849,14 +849,14 @@ button, input { font: inherit; color: inherit; }
   pointer-events: none;
   opacity: 0.5;
   mix-blend-mode: screen;
-  -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 10%, #000 30%, transparent 64%);
-  mask-image: linear-gradient(180deg, transparent 0%, #000 10%, #000 30%, transparent 64%);
+  -webkit-mask-image: linear-gradient(180deg, transparent 0%, rgb(0 0 0 / 0.074) 2.667%, rgb(0 0 0 / 0.259) 5.333%, rgb(0 0 0 / 0.5) 8%, rgb(0 0 0 / 0.741) 10.67%, rgb(0 0 0 / 0.926) 13.33%, #000 16%, #000 28%, rgb(0 0 0 / 0.926) 35%, rgb(0 0 0 / 0.741) 42%, rgb(0 0 0 / 0.5) 49%, rgb(0 0 0 / 0.259) 56%, rgb(0 0 0 / 0.074) 63%, transparent 70%);
+  mask-image: linear-gradient(180deg, transparent 0%, rgb(0 0 0 / 0.074) 2.667%, rgb(0 0 0 / 0.259) 5.333%, rgb(0 0 0 / 0.5) 8%, rgb(0 0 0 / 0.741) 10.67%, rgb(0 0 0 / 0.926) 13.33%, #000 16%, #000 28%, rgb(0 0 0 / 0.926) 35%, rgb(0 0 0 / 0.741) 42%, rgb(0 0 0 / 0.5) 49%, rgb(0 0 0 / 0.259) 56%, rgb(0 0 0 / 0.074) 63%, transparent 70%);
 }
 .library__detail-wash img {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transform: scale(1.16);
+  transform: scale(1.45);
   filter: blur(32px) saturate(1.3) brightness(1.2);
 }
 /* Mesmo bloom das faixas: segunda cópia mais borrada e clara. */
@@ -865,7 +865,7 @@ button, input { font: inherit; color: inherit; }
   inset: 0;
   opacity: 0.35;
   mix-blend-mode: screen;
-  transform: scale(1.3);
+  transform: scale(1.7);
   filter: blur(48px) saturate(1.6) brightness(1.7);
 }
 .library__detail-bar,
@@ -4124,12 +4124,13 @@ a:focus-visible { text-decoration: underline; text-underline-offset: 3px; }
   overflow: hidden;
   opacity: 0;
   pointer-events: none;
-  -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 10%, #000 35%, transparent 78%);
-  mask-image: linear-gradient(180deg, transparent 0%, #000 10%, #000 35%, transparent 78%);
+  /* Entrada e saída em curva suave (smoothstep): sem quina no degradê, não se vê onde o brilho acaba. */
+  -webkit-mask-image: linear-gradient(180deg, transparent 0%, rgb(0 0 0 / 0.074) 3.667%, rgb(0 0 0 / 0.259) 7.333%, rgb(0 0 0 / 0.5) 11%, rgb(0 0 0 / 0.741) 14.67%, rgb(0 0 0 / 0.926) 18.33%, #000 22%, #000 32%, rgb(0 0 0 / 0.926) 41.33%, rgb(0 0 0 / 0.741) 50.67%, rgb(0 0 0 / 0.5) 60%, rgb(0 0 0 / 0.259) 69.33%, rgb(0 0 0 / 0.074) 78.67%, transparent 88%);
+  mask-image: linear-gradient(180deg, transparent 0%, rgb(0 0 0 / 0.074) 3.667%, rgb(0 0 0 / 0.259) 7.333%, rgb(0 0 0 / 0.5) 11%, rgb(0 0 0 / 0.741) 14.67%, rgb(0 0 0 / 0.926) 18.33%, #000 22%, #000 32%, rgb(0 0 0 / 0.926) 41.33%, rgb(0 0 0 / 0.741) 50.67%, rgb(0 0 0 / 0.5) 60%, rgb(0 0 0 / 0.259) 69.33%, rgb(0 0 0 / 0.074) 78.67%, transparent 88%);
 }
-.panel-source__wash img { width: 100%; height: 100%; object-fit: cover; filter: blur(32px) saturate(1.3) brightness(1.2); transform: scale(1.16); }
+.panel-source__wash img { width: 100%; height: 100%; object-fit: cover; filter: blur(32px) saturate(1.3) brightness(1.2); transform: scale(1.45); }
 /* Mesmo bloom das faixas da Biblioteca: segunda cópia mais borrada e clara. */
-.panel-source__wash .panel-source__bloom { position: absolute; inset: 0; opacity: 0.35; mix-blend-mode: screen; transform: scale(1.3); filter: blur(48px) saturate(1.6) brightness(1.7); }
+.panel-source__wash .panel-source__bloom { position: absolute; inset: 0; opacity: 0.35; mix-blend-mode: screen; transform: scale(1.7); filter: blur(48px) saturate(1.6) brightness(1.7); }
 .panel--source.has-artwork > .panel-source__wash { opacity: 0.5; mix-blend-mode: screen; }
 .panel--source.has-artwork > :is(.panel__title, .panel-source__metadata) { text-shadow: 0 1px 2px rgb(0 0 0 / 0.7), 0 0 10px rgb(0 0 0 / 0.75); }
 [data-theme='light'] .panel--source.has-artwork > .panel-source__wash { opacity: 0.12; mix-blend-mode: multiply; }

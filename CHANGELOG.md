@@ -2,6 +2,7 @@
 
 ## Outubro de 2026: indicador de espera
 
+- O brilho borrado da capa (Arquivo original, detalhes e faixas da Biblioteca) agora entra e sai numa curva suave. Antes dava para ver uma risca onde ele acabava, e as laterais escureciam.
 - Enquanto o app trabalha, um indicador pequeno de pontos aparece antes do texto de status no rodapé. Três pontos girando aparecem ao abrir ou decodificar um áudio. Uma grade de quatro pontos, em que os cantos trocam de lugar, aparece ao exportar.
 - Na importação por link, os três pontos aparecem ao lado da etapa enquanto ainda não há porcentagem.
 - A tela de inicialização mostra a grade ao lado de "INICIALIZANDO...".
