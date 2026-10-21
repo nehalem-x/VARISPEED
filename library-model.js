@@ -34,8 +34,11 @@
     const nodes = groups.filter((category) => category.id === ROOT_ID || !needle ||
       fold(category.name).includes(needle) || visible.some((item) => belongs(item, category.id)))
       .map((category) => {
-        const count = visible.filter((item) => belongs(item, category.id)).length;
-        return { ...category, title: category.name, label: category.name,
+        const members = visible.filter((item) => belongs(item, category.id));
+        const count = members.length;
+        // Até quatro capas distintas, das músicas mais recentes, viram o mosaico do nó.
+        const covers = [...new Set(members.map((item) => item.thumbnail).filter(Boolean))].slice(0, 4);
+        return { ...category, title: category.name, label: category.name, covers,
           countLabel: `${count} ${count === 1 ? 'música' : 'músicas'}`,
           role: category.id === ROOT_ID ? 'root' : 'category', isCategory: true };
       });

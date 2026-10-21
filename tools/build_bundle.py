@@ -201,7 +201,8 @@ def write_notes(bundle: Path, target: str, version: str, python: Path) -> None:
         f"Node.js {NODE_VERSION} — MIT. Ver runtime/node/LICENSE.\n"
         f"yt-dlp {ytdlp_version} — Unlicense. Instalado em runtime/python com as demais dependências\n"
         "de server/requirements.txt (FastAPI, Uvicorn e outras), cada uma com sua licença.\n"
-        "Ícones Lucide — ISC. Ver assets/icons/LICENSE.lucide.txt.\n",
+        "Ícones Lucide — ISC. Ver assets/icons/LICENSE.lucide.txt.\n"
+        "Fontes Space Grotesk e JetBrains Mono — SIL Open Font License 1.1. Ver assets/fonts.\n",
         encoding="utf-8",
     )
     (bundle / "VERSION").write_text(json.dumps({"version": version}) + "\n", encoding="utf-8")

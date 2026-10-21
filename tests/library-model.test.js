@@ -18,6 +18,19 @@ test('graph contains categories only, including empty and favorite categories', 
   assert.ok(data.nodes.every(n => n.isCategory));
   assert.ok(data.links.every(l => l.source === ROOT_ID && data.nodes.some(n => n.id === l.target)));
 });
+test('category nodes carry up to four distinct covers, newest first', () => {
+  const art = [
+    ...items,
+    { id: 'd', title: 'D', categoryId: 'ambient', thumbnail: 'https://i/d.jpg', createdAt: 9 },
+    { id: 'e', title: 'E', categoryId: 'ambient', thumbnail: 'https://i/d.jpg', createdAt: 8 },
+    ...[4, 5, 6, 7].map((n) => ({ id: `t${n}`, title: `T${n}`, categoryId: '', thumbnail: `https://i/${n}.jpg`, createdAt: n })),
+  ];
+  const nodes = graph(art, categories).nodes;
+  const byId = Object.fromEntries(nodes.map((n) => [n.id, n.covers]));
+  assert.deepEqual(byId[ROOT_ID], ['https://i/d.jpg', 'https://i/7.jpg', 'https://i/6.jpg', 'https://i/5.jpg']);
+  assert.deepEqual(byId.ambient, ['https://i/d.jpg']);
+  assert.deepEqual(byId.empty, []);
+});
 test('all tracks remain in Biblioteca; favorites can overlap custom membership', () => {
   assert.equal(tracks(items, categories).length, 3);
   assert.deepEqual(tracks(items, categories, { categoryId: FAVORITES_ID }).map(n => n.id), ['a']);

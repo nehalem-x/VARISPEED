@@ -578,6 +578,12 @@
       nodeLabelMaxWidth: 156,
       reduceMotion: () => window.Motion?.reduced?.() ?? window.matchMedia?.('(prefers-reduced-motion: reduce)').matches,
       getNodeRole: (node) => node.role || 'track',
+      getNodeRadius: (node) => {
+        const root = node.role === 'root';
+        if (node.covers?.length) return root ? 28 : 22;
+        return root ? 14.5 : 8.6;
+      },
+      renderNodeIcon: renderCoverMosaic,
       getNodeLabel: (node) => node.label,
       getNodeCountLabel: (node) => node.countLabel,
       getNodeTitle: (node) => node.isCategory
@@ -600,6 +606,50 @@
       },
     });
 
+  }
+
+  /* Mosaico de capas no nó da categoria: 1 capa inteira, 2 em metades, 3 em
+     metade e dois quartos, 4 em quadrantes. Frações do raio, recortadas pelo
+     círculo; o fundo do nó aparece como fresta entre elas. */
+  const COVER_TILES = [
+    [],
+    [[-1, -1, 2, 2]],
+    [[-1, -1, 1, 2], [0, -1, 1, 2]],
+    [[-1, -1, 1, 2], [0, -1, 1, 1], [0, 0, 1, 1]],
+    [[-1, -1, 1, 1], [0, -1, 1, 1], [-1, 0, 1, 1], [0, 0, 1, 1]],
+  ];
+  let coverClipSequence = 0;
+  function renderCoverMosaic({ node, group, dot, engine: graph }) {
+    const covers = node.covers || [];
+    if (!covers.length) return;
+    const NS = 'http://www.w3.org/2000/svg';
+    const r = Number(dot.getAttribute('r'));
+    const gap = 1;
+    const clipId = `graph-cover-${graph.instanceId}-${++coverClipSequence}`;
+    const clip = document.createElementNS(NS, 'clipPath');
+    clip.setAttribute('id', clipId);
+    const disc = document.createElementNS(NS, 'circle');
+    disc.setAttribute('r', String(r - 0.5));
+    clip.appendChild(disc);
+    graph.defs.appendChild(clip);
+    const mosaic = document.createElementNS(NS, 'g');
+    mosaic.classList.add('graph-cover');
+    mosaic.setAttribute('clip-path', `url(#${clipId})`);
+    COVER_TILES[covers.length].forEach(([x, y, w, h], index) => {
+      const image = document.createElementNS(NS, 'image');
+      image.setAttribute('x', String(x * r + gap / 2));
+      image.setAttribute('y', String(y * r + gap / 2));
+      image.setAttribute('width', String(w * r - gap));
+      image.setAttribute('height', String(h * r - gap));
+      image.setAttribute('preserveAspectRatio', 'xMidYMid slice');
+      image.setAttribute('href', covers[index]);
+      image.addEventListener('error', () => image.remove(), { once: true });
+      mosaic.appendChild(image);
+    });
+    const ring = document.createElementNS(NS, 'circle');
+    ring.classList.add('graph-cover__ring');
+    ring.setAttribute('r', String(r));
+    dot.after(mosaic, ring);
   }
 
   function refreshGraph({ fit = false, reset = false } = {}) {

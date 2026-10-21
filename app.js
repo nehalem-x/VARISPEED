@@ -71,7 +71,9 @@
     rOriginal: $('rOriginal'), rateHelp: $('rateHelp'), rateError: $('rateError'),
     sName: $('sName'), sFormat: $('sFormat'), sRate: $('sRate'), sCh: $('sCh'),
     sourcePanel: $('sourcePanel'), sourceArtwork: $('sourceArtwork'), sourceArtworkImage: $('sourceArtworkImage'),
-    sourceArtworkWashImage: $('sourceArtworkWashImage'), sourceArtworkWashBloom: $('sourceArtworkWashBloom'),
+    mascot: document.querySelector('.hdr__mascot'), exportIcon: $('exportIcon'), emptyGhost: $('emptyGhost'),
+    tape: $('tape'), tapeReelL: $('tapeReelL'), tapeReelR: $('tapeReelR'), tapePackL: $('tapePackL'), tapePackR: $('tapePackR'),
+    sourceArtworkWashImage: $('sourceArtworkWashImage'), waveWashImage: $('waveWashImage'), waveHost: $('waveHost'), sourceArtworkWashBloom: $('sourceArtworkWashBloom'),
     btnExport: $('btnExport'), exportLabel: $('exportLabel'),
     exportName: $('exportName'), exportFormat: $('exportFormat'), exportProcessing: $('exportProcessing'),
     statusMsg: $('statusMsg'), drop: $('drop'),
@@ -260,6 +262,8 @@
       button.disabled = !state.loaded;
       syncPlayControl(button, playing);
     });
+    el.tape?.classList.toggle('is-playing', playing);
+    el.tape?.classList.toggle('is-loaded', state.loaded);
     window.MediaLibrary?.setPlaybackState(state.playing);
     syncLibraryTransport();
   };
@@ -737,18 +741,18 @@
     const playedX = srcToX(state.audio.currentTime || 0);
     const cWave = css('--wave'), cPlayed = css('--wave-played');
 
-    for (let x = 0; x < W; x++) {
-      const t0 = xToSrc(x), t1 = xToSrc(x + 1);
+    /* Barras de 2 px com 1 px de respiro, simétricas ao eixo: a parte tocada
+       acende e o que falta fica apagado, como uma fita que já passou. */
+    const BAR = 2, PITCH = 3;
+    for (let x = 0; x < W; x += PITCH) {
+      const t0 = xToSrc(x), t1 = xToSrc(x + PITCH);
       let i0 = Math.floor((t0 / d) * n), i1 = Math.ceil((t1 / d) * n);
       i0 = clamp(i0, 0, n - 1); i1 = clamp(i1, i0 + 1, n);
-      let lo = 1, hi = -1;
-      for (let i = i0; i < i1; i++) { if (min[i] < lo) lo = min[i]; if (max[i] > hi) hi = max[i]; }
-      if (hi < lo) { lo = 0; hi = 0; }
-      const yTop = mid - hi * amp;
-      const yBot = mid - lo * amp;
-      const h = Math.max(1, yBot - yTop);
-      ctxW.fillStyle = x < playedX ? cPlayed : cWave;
-      ctxW.fillRect(x, yTop, 1, h);
+      let peak = 0;
+      for (let i = i0; i < i1; i++) peak = Math.max(peak, -min[i], max[i]);
+      const half = Math.max(0.5, Math.min(1, peak) * amp);
+      ctxW.fillStyle = x + BAR / 2 < playedX ? cPlayed : cWave;
+      ctxW.fillRect(x, mid - half, BAR, half * 2);
     }
   }
 
@@ -830,12 +834,38 @@
         if (x > W * 0.82 || x < W * 0.12) { centerOn(cur); draw(); }
       }
       movePlayhead();
+      spinTape(ts, cur);
       if (state.playing) drawWave();
       if (state.focus) syncFocus(cur, r);
     }
     requestAnimationFrame(tick);
   }
   requestAnimationFrame(tick);
+
+  /* ── fita ────────────────────────────────────────────
+     Dois carretéis na barra de transporte. A fita passa do da esquerda para o
+     da direita conforme a música avança, e cada um gira na velocidade real:
+     como num cassete, a fita corre constante e o carretel menor gira mais
+     rápido. Parados na pausa; sem giro com movimento reduzido. */
+  const TAPE = { hub: 3.2, full: 8, angleL: 0, angleR: 0, last: 0 };
+  function spinTape(ts, cur) {
+    if (!el.tape) return;
+    const progress = state.meta.duration ? clamp(cur / state.meta.duration, 0, 1) : 0;
+    const area = TAPE.full ** 2 - TAPE.hub ** 2;
+    const rL = Math.sqrt(TAPE.hub ** 2 + area * (1 - progress));
+    const rR = Math.sqrt(TAPE.hub ** 2 + area * progress);
+    el.tapePackL.setAttribute('r', rL.toFixed(2));
+    el.tapePackR.setAttribute('r', rR.toFixed(2));
+    const dt = TAPE.last ? Math.min(0.1, (ts - TAPE.last) / 1000) : 0;
+    TAPE.last = ts;
+    if (!state.playing || window.Motion.reduced()) return;
+    // 0,6 volta por segundo num carretel de raio 6 a 100%.
+    const speed = 360 * 0.6 * 6 * (state.audio.playbackRate || state.rate / 100);
+    TAPE.angleL = (TAPE.angleL + (speed / rL) * dt) % 360;
+    TAPE.angleR = (TAPE.angleR + (speed / rR) * dt) % 360;
+    el.tapeReelL.setAttribute('transform', `rotate(${TAPE.angleL.toFixed(1)} 12 10)`);
+    el.tapeReelR.setAttribute('transform', `rotate(${TAPE.angleR.toFixed(1)} 34 10)`);
+  }
 
   /* ── rate ───────────────────────────────────────────── */
   const RATE_SMOOTH_TAU_RATIO = 120 / 520;
@@ -911,6 +941,7 @@
     }
     el.rateSlider.value = String(val);
     syncRateTrack();
+    if (val === 100 && prev !== 100) pulse(el.rateOrigin.parentElement, 'is-snap');
     // microinteração: só em passos discretos, nunca em arraste contínuo
     if (opts.step && val !== prev && cfg('motion.rateTick')) {
       tickRateValue(rateText(prev), rateText(val), val - prev);
@@ -932,6 +963,33 @@
     el.rateInput.style.setProperty('--rate-chars', String(Math.max(3, el.rateInput.value.length)));
   }
 
+  /* Reinicia uma animação curta de CSS (encaixe, gato, exportação). */
+  function pulse(node, cls) {
+    if (!node || window.Motion.reduced()) return;
+    node.classList.remove(cls);
+    void node.offsetWidth;
+    node.classList.add(cls);
+    node.addEventListener('animationend', () => node.classList.remove(cls), { once: true });
+  }
+
+  /* Forma de onda fantasma do editor vazio: barras fixas, desenhadas uma vez,
+     que respiram em onda pelo CSS. */
+  (function buildEmptyGhost() {
+    if (!el.emptyGhost) return;
+    const bars = 72;
+    const frag = document.createDocumentFragment();
+    for (let i = 0; i < bars; i++) {
+      const x = i / (bars - 1);
+      const envelope = Math.sin(Math.PI * x) ** 0.7;
+      const texture = 0.55 + 0.45 * Math.abs(Math.sin(i * 1.7) * Math.cos(i * 0.43));
+      const bar = document.createElement('span');
+      bar.style.setProperty('--h', (0.08 + envelope * texture * 0.92).toFixed(3));
+      bar.style.setProperty('--i', String(i));
+      frag.appendChild(bar);
+    }
+    el.emptyGhost.appendChild(frag);
+  })();
+
   function tickRateValue(prev, next, delta) {
     el.rateGhost.hidden = false;
     el.rateInput.classList.add('is-ghosted');
@@ -945,7 +1003,18 @@
   /* passo dos botões e teclas; Shift multiplica por cinco */
   const rateStep = (big) => parseFloat(cfg('rate.step')) * (big ? 5 : 1);
 
-  el.rateSlider.addEventListener('input', () => setRate(+el.rateSlider.value));
+  // Ao arrastar, perto dos 100% o slider encaixa no original, como um detente.
+  // Pelo teclado não encaixa: as setas precisam andar de 0,5 em 0,5.
+  let rateDragging = false;
+  el.rateSlider.addEventListener('pointerdown', () => { rateDragging = true; });
+  for (const type of ['pointerup', 'pointercancel', 'change', 'keydown']) {
+    el.rateSlider.addEventListener(type, () => { rateDragging = false; });
+  }
+  el.rateSlider.addEventListener('input', () => {
+    const value = +el.rateSlider.value;
+    const snap = (rateMax() - rateMin()) * 0.008;
+    setRate(rateDragging && Math.abs(value - 100) <= snap ? 100 : value);
+  });
   el.rateInput.addEventListener('input', () => {
     clearRateError();
     const num = parseRate(el.rateInput.value);
@@ -1267,7 +1336,7 @@
     const src = String(thumbnail || '').trim();
     el.sourceArtwork.hidden = !src;
     el.sourceArtwork.classList.remove('has-image');
-    el.sourcePanel.classList.remove('has-artwork');
+    setArtworkReady(false);
 
     if (!src) {
       el.sourceArtworkImage.alt = '';
@@ -1275,6 +1344,7 @@
       el.sourceArtworkImage.removeAttribute('src');
       el.sourceArtworkWashImage.removeAttribute('src');
       el.sourceArtworkWashBloom.removeAttribute('src');
+      el.waveWashImage.removeAttribute('src');
       return;
     }
 
@@ -1284,20 +1354,28 @@
       el.sourceArtworkImage.src = src;
       el.sourceArtworkWashImage.src = src;
       el.sourceArtworkWashBloom.src = src;
+      el.waveWashImage.src = src;
     } else if (el.sourceArtworkImage.complete && el.sourceArtworkImage.naturalWidth > 0) {
       el.sourceArtwork.classList.add('has-image');
-      el.sourcePanel.classList.add('has-artwork');
+      setArtworkReady(true);
     }
+  }
+
+  /* A capa carregada acende o blur do Arquivo original e, bem de leve, o
+     fundo da forma de onda: o editor ganha a mesma cor da Biblioteca. */
+  function setArtworkReady(on) {
+    el.sourcePanel.classList.toggle('has-artwork', on);
+    el.waveHost.classList.toggle('has-artwork', on);
   }
 
   el.sourceArtworkImage.addEventListener('load', () => {
     if (!el.sourceArtworkImage.dataset.src) return;
     el.sourceArtwork.classList.add('has-image');
-    el.sourcePanel.classList.add('has-artwork');
+    setArtworkReady(true);
   });
   el.sourceArtworkImage.addEventListener('error', () => {
     el.sourceArtwork.classList.remove('has-image');
-    el.sourcePanel.classList.remove('has-artwork');
+    setArtworkReady(false);
     el.sourceArtwork.hidden = true;
   });
 
@@ -1418,6 +1496,7 @@
       el.scopeWrap.dataset.heard = 'false';
       dot('ready');
       status(`Carregado · ${file.name}`);
+      pulse(el.mascot, 'is-cheer');
       if (cfg('load.autoplay')) play();
       return true;
     } catch (err) {
@@ -1651,13 +1730,32 @@
       dot(state.playing ? 'live' : 'ready');
       repaintScope();
     }
-    if (done) announceExport(done.name, done.size);
+    if (done) {
+      announceExport(done.name, done.size);
+      celebrateExport();
+    }
   });
 
   /* aviso ao sair com exportação em curso */
   window.addEventListener('beforeunload', (e) => {
     if (state.exporting && cfg('load.confirmExit')) { e.preventDefault(); e.returnValue = ''; }
   });
+
+  /* Confirmação no próprio botão: check e "Exportado" por alguns segundos, e o
+     gato espia mais alto. */
+  let exportDoneTimer = 0;
+  function celebrateExport() {
+    clearTimeout(exportDoneTimer);
+    el.exportIcon.setAttribute('href', '#ui-icon-check');
+    el.exportLabel.textContent = 'Exportado';
+    el.btnExport.classList.add('is-done');
+    pulse(el.mascot, 'is-cheer');
+    exportDoneTimer = setTimeout(() => {
+      el.exportIcon.setAttribute('href', '#ui-icon-download');
+      el.btnExport.classList.remove('is-done');
+      if (!state.exporting) el.exportLabel.textContent = 'Exportar WAV';
+    }, 2600);
+  }
 
   /* Exportação é a referência visual do status padrão. A única diferença
      é a sustentação maior para dar tempo de ler nome e tamanho do arquivo. */

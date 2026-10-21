@@ -55,7 +55,8 @@ Toda mídia passa por `ingest(blob, srcName, srcSize)`. Isso deixa a importaçã
 2. O desktop largo é a referência; os breakpoints só mudam a estrutura quando falta espaço.
 3. Toque, teclado e mouse chegam às mesmas ações, sem depender só de hover.
 4. O foco visível não muda tamanho nem borda efetiva do layout.
-5. Animações respeitam `prefers-reduced-motion`.
+5. Animações respeitam `prefers-reduced-motion`. Isso inclui os carretéis do transporte, o encaixe do slider nos 100%, o check da exportação, o pulo do gato e a onda fantasma do editor vazio.
+   O pulo do gato é igual nos dois temas, então não fere a regra 1.
 6. Alto contraste continua usável, mesmo perdendo detalhes cosméticos.
 7. O HTML distribuído não leva scripts nem atributos de ferramentas de preview ou edição.
 
@@ -122,7 +123,7 @@ Biblioteca persistente, projeções puras dos dados e a engine de física e câm
 
 ### 2.10 `index.html` e `styles.css`
 
-`index.html` tem a interface principal; não colocar lógica de negócio em scripts inline. `styles.css` é o design system: fundo preto sólido no tema escuro, bordas mínimas, cantos retos (`--radius: 0`), nada de visual de dashboard, tipografia mono para valores técnicos e espaçamento por tokens. As media queries da responsividade ficam no fim do arquivo, como última camada.
+`index.html` tem a interface principal; não colocar lógica de negócio em scripts inline. A forma de onda (`drawWave` em `app.js`) desenha barras de 2 px a cada 3 px, com o pico de cada fatia. Os carretéis (`spinTape`) giram a velocidade linear de fita constante: o carretel com menos fita gira mais rápido, e o raio de cada um conserva a área de fita. O mosaico de capas do mapa da Biblioteca é montado por `renderCoverMosaic` em `library.js`, a partir de `covers` em `library-model.js`. `styles.css` é o design system: fundo preto sólido no tema escuro, bordas mínimas, cantos retos (`--radius: 0`), nada de visual de dashboard, tipografia mono para valores técnicos e espaçamento por tokens. As media queries da responsividade ficam no fim do arquivo, como última camada.
 
 ### 2.11 `tests/`
 

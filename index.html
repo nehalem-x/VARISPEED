@@ -115,6 +115,7 @@ SOFTWARE.
     <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H19a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H6.5a1 1 0 0 1 0-5H20" />
     <path d="M9 10h6" />
   </symbol>
+  <symbol id="ui-icon-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></symbol>
   <symbol id="ui-icon-download" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
     <path d="M12 15V3" />
     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
@@ -518,9 +519,11 @@ SOFTWARE.
         <canvas id="ruler" class="cv cv--ruler"></canvas>
         <div class="hr" aria-hidden="true"></div>
         <div class="wave" id="waveHost">
+          <div class="wave__wash" aria-hidden="true"><img id="waveWashImage" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==" alt="" draggable="false" referrerpolicy="no-referrer" decoding="async" /></div>
           <canvas id="wave" class="cv cv--wave"></canvas>
           <div class="playhead" id="playhead" hidden><span class="playhead__cap"></span></div>
           <div class="empty" id="empty">
+            <div class="empty__ghost" id="emptyGhost" aria-hidden="true"></div>
             <p class="empty__title">Dê outro tempo<br>à sua música.</p>
             <p class="empty__description">Arraste um áudio ou importe um arquivo ou link.</p>
             <button class="btn btn--primary empty__import" id="btnEmptyImport" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="importMenu">Importar áudio</button>
@@ -542,6 +545,13 @@ SOFTWARE.
           <button class="btn btn--icon" id="btnLoop" type="button" title="Repetir" aria-label="Ativar repetição" aria-pressed="false" disabled>
             <svg class="ui-icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#ui-icon-loop"/></svg>
           </button>
+          <svg class="tape" id="tape" viewBox="0 0 46 20" width="46" height="20" aria-hidden="true" focusable="false">
+            <rect class="tape__body" x="0.5" y="0.5" width="45" height="19" rx="2.5"/>
+            <circle class="tape__pack" id="tapePackL" cx="12" cy="10" r="8"/>
+            <circle class="tape__pack" id="tapePackR" cx="34" cy="10" r="3.2"/>
+            <g class="tape__reel" id="tapeReelL" transform="rotate(0 12 10)"><circle cx="12" cy="10" r="2.6"/><path d="M12 10V7.4M12 10l2.25 1.3M12 10l-2.25 1.3"/></g>
+            <g class="tape__reel" id="tapeReelR" transform="rotate(0 34 10)"><circle cx="34" cy="10" r="2.6"/><path d="M34 10V7.4M34 10l2.25 1.3M34 10l-2.25 1.3"/></g>
+          </svg>
         </div>
 
         <div class="transport__scrub">
@@ -636,7 +646,7 @@ SOFTWARE.
           <span class="export-summary__processing" id="exportProcessing" hidden></span>
         </div>
         <button class="btn btn--primary" id="btnExport" type="button" aria-describedby="exportName exportFormat exportProcessing" disabled>
-          <svg class="ui-icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#ui-icon-download"/></svg>
+          <svg class="ui-icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use id="exportIcon" href="#ui-icon-download"/></svg>
           <span id="exportLabel">Exportar WAV</span>
         </button>
       </div>

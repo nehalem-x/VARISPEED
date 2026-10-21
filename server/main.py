@@ -153,6 +153,8 @@ PUBLIC_FILES = {
     "assets/cat-brand-light.png",
     "assets/cat-brand-dark.png",
     "assets/favicon.png",
+    "assets/fonts/space-grotesk.woff2",
+    "assets/fonts/jetbrains-mono.woff2",
     "assets/varispeed.ico",
     "assets/creator-light.png",
     "assets/creator-dark.png",
@@ -932,4 +934,6 @@ async def public_asset(asset_name: str) -> FileResponse:
     # publicados acidentalmente pelo servidor local.
     if asset_name not in PUBLIC_FILES:
         raise HTTPException(status_code=404, detail="Arquivo não encontrado.")
-    return FileResponse(ROOT / asset_name)
+    # O mimetypes do Windows nem sempre conhece woff2.
+    media_type = "font/woff2" if asset_name.endswith(".woff2") else None
+    return FileResponse(ROOT / asset_name, media_type=media_type)

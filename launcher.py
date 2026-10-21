@@ -513,6 +513,9 @@ class StartupHandler(BaseHTTPRequestHandler):
         if path == "/assets/favicon.png":
             self._send_file(ROOT / "assets" / "favicon.png", "image/png")
             return
+        if path in {"/assets/fonts/space-grotesk.woff2", "/assets/fonts/jetbrains-mono.woff2"}:
+            self._send_file(ROOT / path.lstrip("/"), "font/woff2")
+            return
         if path == "/status":
             body = json.dumps(STATE.snapshot(), ensure_ascii=False).encode("utf-8")
             self._send_bytes(body, "application/json; charset=utf-8")

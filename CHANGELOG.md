@@ -1,5 +1,20 @@
 # Registro de mudanças
 
+## Outubro de 2026: identidade da interface
+
+- Fontes próprias, embutidas no app: Space Grotesk para a interface e os números grandes, JetBrains Mono para os valores técnicos. Antes, o app usava as fontes do sistema, que mudavam de um computador para outro.
+- A forma de onda virou barras finas. A parte já tocada fica clara e o resto fica apagado. Quando a música tem capa, um brilho borrado da capa aparece por trás.
+- Ao lado do transporte, dois carretéis de fita giram enquanto a música toca, mais rápido quando a velocidade sobe. A fita passa de um carretel para o outro conforme a música avança.
+- Pequenas respostas ao uso:
+  - ao arrastar, o slider de velocidade encaixa no 100% quando passa perto, e a marca do original pisca (pelo teclado não encaixa);
+  - ao terminar a exportação, o botão mostra um check e "Exportado" por alguns segundos;
+  - o gato espia mais alto quando uma música carrega e quando a exportação termina;
+  - o editor vazio mostra uma forma de onda apagada que respira atrás da frase.
+
+  Tudo isso fica parado com "reduzir movimento".
+- No mapa da Biblioteca, cada categoria com capas mostra um mosaico de até quatro capas das músicas mais recentes. Categorias sem capa continuam como um círculo vazio.
+- No celular, o visualizador do cabeçalho mostra "Sem áudio" inteiro. Em telas de 900 px de altura, o painel do editor cabe inteiro acima do botão de exportar. Quando não cabe, o conteúdo some num degradê em vez de ser cortado.
+
 ## Outubro de 2026: painéis de Velocidade, Resultado e Arquivo original
 
 - O `%` fica junto do número, e uma linha embaixo diz o efeito: "Mais lento · mais grave", "Original" ou "Mais rápido · mais agudo".

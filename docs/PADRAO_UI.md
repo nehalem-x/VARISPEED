@@ -38,7 +38,7 @@ Espaçamento entre letras: zero no texto comum, `--tr-wide` só nas etiquetas e 
 
 Cor: títulos de bloco usam `--text`, rótulos e apoio usam `--text-2` ou `--text-3`. Não diferenciar blocos do mesmo nível pela cor do título.
 
-As fontes são locais, sem imports remotos.
+As fontes são locais, sem imports remotos: Space Grotesk (interface, títulos e os números grandes de velocidade e duração) e JetBrains Mono (valores técnicos), em `assets/fonts/`, sob a SIL Open Font License 1.1. As pilhas de fallback em `--font-ui` e `--font-mono` cobrem o intervalo até o arquivo carregar.
 
 ## Visualizador do cabeçalho
 

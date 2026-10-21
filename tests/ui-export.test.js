@@ -25,7 +25,7 @@ function harness() {
     createBufferSource(){return {playbackRate:{value:0},connect(){},start(){}};}
     startRendering(){return new Promise(resolve => {finishRender=resolve});}
   }
-  const context={Core,el,state,cfg:k=>values[k],scope:{},performance:{now:()=>0},motionSweep:()=>false,syncStatusPriority(){},status(){},dot(){},repaintScope(){},announceExport(){},setTimeout(){},window:{OfflineAudioContext,Motion:{cancel(){}}},URL:{createObjectURL:()=>'blob:fixture',revokeObjectURL(){}},document:{createElement:()=>({click(){calls.downloads.push(this.download)}})},encodeOffThread:async(out,depth,opts)=>{calls.encodes.push({depth,opts});return {size:100};},encodeOnThread:()=>{throw new Error('Fallback inesperado')}};
+  const context={Core,el,state,cfg:k=>values[k],scope:{},performance:{now:()=>0},motionSweep:()=>false,syncStatusPriority(){},status(){},dot(){},repaintScope(){},announceExport(){},celebrateExport(){},setTimeout(){},window:{OfflineAudioContext,Motion:{cancel(){}}},URL:{createObjectURL:()=>'blob:fixture',revokeObjectURL(){}},document:{createElement:()=>({click(){calls.downloads.push(this.download)}})},encodeOffThread:async(out,depth,opts)=>{calls.encodes.push({depth,opts});return {size:100};},encodeOnThread:()=>{throw new Error('Fallback inesperado')}};
   vm.runInNewContext(app.slice(start,end)+'\nglobalThis.renderSummary=renderExportSummary;', context);
   return {values,el,state,calls,render:context.renderSummary,click:()=>click(),finish:()=>finishRender({})};
 }
