@@ -62,6 +62,19 @@ Todos os campos, selects, dropdowns e botões usam cantos retos (`--radius: 0`),
 
 O contraste principal segue monocromático nos dois temas. Seleção deve combinar apresentação e atributo acessível (`aria-pressed`); trabalho em andamento deve expor `aria-busy` mesmo com animações desligadas. Rótulos visíveis e nomes acessíveis devem corresponder.
 
+## Quando o botão tem borda
+
+Cada botão cai em um destes quatro tipos. O tipo sai do papel do botão, não do lugar em que ele está.
+
+| Tipo | Classe | Aparência | Quando usar | Exemplos |
+| --- | --- | --- | --- | --- |
+| Principal | `.btn--primary` | Preenchido com a cor de destaque | A conclusão do que está aberto, no máximo um por região | Exportar WAV, Importar áudio do editor vazio, Importar áudio da barra de link, Abrir na Biblioteca, Próximo do guia, Play |
+| Secundário | `.btn--outline` | Borda, sem fundo | Ação própria que não é a conclusão: abre algo, executa algo ou muda dados | Importar e Configurações do cabeçalho, Analisar, Entrar no YouTube, Copiar endereço, Verificar atualização, Desligar, Medir grafo, Carregar e Salvar preset |
+| Discreto | `.btn--ghost` | Sem borda e sem fundo | Navegar, fechar, cancelar, desfazer e ajustes de contexto | Biblioteca, Salvar na Biblioteca, fechar (×), zoom, Cancelar, Desfazer, Restaurar, Voltar, Pular, Testar, Favoritar |
+| Transporte | `.btn` sem variante | Fundo cinza, sem borda | Só os controles de mídia ao lado do Play | Parar, Repetir |
+
+Ícone sozinho segue o mesmo papel: o × de fechar é discreto e Configurações é secundário. Grupos de opções (presets, unidades) e os passos − e + seguem as regras próprias de grupo.
+
 ## Estados dos controles
 
 As variantes definem intenção por tokens `--btn-*`; a base `.btn` aplica os estados. Evitar regras locais de `background`, `border-color` e `color` que sobrescrevam essa base. Exceções de geometria, como a divisão entre botões do grafo, permanecem locais.

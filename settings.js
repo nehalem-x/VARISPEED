@@ -861,7 +861,7 @@ window.Settings = (() => {
     systemCopyBtn.type = 'button';
     systemCopyBtn.disabled = true;
     systemCopyBtn.addEventListener('click', copySystemUrl);
-    systemShutdownBtn = h('button', 'btn cfg__system-action cfg__shutdown', 'Desligar VARISPEED');
+    systemShutdownBtn = h('button', 'btn btn--outline cfg__system-action cfg__shutdown', 'Desligar VARISPEED');
     systemShutdownBtn.type = 'button';
     systemShutdownBtn.disabled = true;
     systemShutdownBtn.addEventListener('click', shutdownVarispeed);
@@ -1417,7 +1417,7 @@ window.Settings = (() => {
       sec.appendChild(list);
       const hint = h('p', 'cfg__diag-hint', 'Ao iniciar, use a roda do mouse, arraste o grafo e mova uma categoria durante 8 segundos. Nenhum dado da Biblioteca é alterado.');
       const actions = h('div', 'cfg__diag-actions');
-      graphCaptureButton = h('button', 'btn btn--primary cfg__diag-action', 'Medir grafo · 8 s');
+      graphCaptureButton = h('button', 'btn btn--outline cfg__diag-action', 'Medir grafo · 8 s');
       graphCaptureButton.type = 'button';
       graphCaptureButton.addEventListener('click', runGraphCapture);
       graphCaptureCopyButton = h('button', 'btn btn--outline cfg__diag-action', 'Copiar relatório');
