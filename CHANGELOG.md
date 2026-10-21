@@ -1,5 +1,14 @@
 # Registro de mudanças
 
+## Outubro de 2026: Configurações e botões
+
+- Configurações: o menu de seções virou quatro abas no topo (Áudio, Biblioteca, Visual e Sistema). Cada aba mostra as suas seções em sequência; antes eram 13 telas separadas.
+- Os títulos das seções ficaram menores, como subtítulos, e o título repetido saiu.
+- Diagnóstico ficou recolhido no fim de Sistema, marcado como avançado.
+- O rodapé virou uma linha só: Restaurar, a mensagem do momento e um menu Preset com Carregar e Salvar. A frase fixa "Alterações salvas automaticamente" saiu; "Salvo" aparece por um instante depois de cada mudança.
+- Todo slider mostra o mínimo e o máximo embaixo, e o switch desligado ficou mais legível.
+- Botões seguem uma regra única. Principal é preenchido e conclui a tarefa. Secundário tem borda. Discreto não tem borda nem fundo e serve para navegar, fechar e cancelar. O fundo cinza ficou só para Parar e Repetir. O botão de Configurações do cabeçalho ganhou borda, igual ao Importar.
+
 ## Outubro de 2026: identidade da interface
 
 - Fontes próprias, embutidas no app: Space Grotesk para a interface e os números grandes, JetBrains Mono para os valores técnicos. Antes, o app usava as fontes do sistema, que mudavam de um computador para outro.

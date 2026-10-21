@@ -20,8 +20,8 @@ const remove=preset.closest('.cfg__preset-editor').querySelector('[aria-label="R
 check('Help and tokens use shared buttons',Array.from(document.querySelectorAll('.cfg__help-toggle,.cfg__token,.cfg__preset-chip,#cfgUndo')).every(n=>n.classList.contains('btn')));
 const disabledField=document.querySelector('.cfg__row.is-off input:disabled');
 check('Disabled field keeps readable guidance',disabledField && getComputedStyle(disabledField).opacity==='0.58' && getComputedStyle(disabledField.closest('.cfg__row')).opacity==='1');
-const sectionNav=$('cfgSectionNav');sectionNav.value='ui';sectionNav.dispatchEvent(new Event('change'));
-check('Settings navigation shows one section',document.querySelectorAll('.cfg__group:not([hidden])').length===1 && !$('settings-section-ui').hidden && $('settings-section-rate').hidden);
+$('cfgTab-visual').click();
+check('Settings tabs show one pane',document.querySelectorAll('.cfg__pane:not([hidden])').length===1 && !$('cfgPane-visual').hidden && $('cfgPane-audio').hidden && $('cfgTab-visual').getAttribute('aria-selected')==='true');
 const toggle=$('cfg-ui-hints'), prior=Settings.get('ui.hints'), track=getComputedStyle(toggle,'::before');
 check('Switch visual stays compact',track.width==='36px' && track.height==='20px');
 toggle.click();check('Compact switch still changes preference',Settings.get('ui.hints')!==prior && toggle.getAttribute('aria-checked')===String(!prior));
@@ -31,8 +31,8 @@ check('Only one item help stays open',document.querySelectorAll('.cfg__help-pane
 helps[1].focus();helps[1].click();
 check('Same help button closes tip and preserves keyboard focus',document.activeElement===helps[1] && helps[1].getAttribute('aria-expanded')==='false' && document.querySelectorAll('.cfg__help-panel:not([hidden])').length===0);
 check('Help has no redundant close button',document.querySelectorAll('.cfg__help-close').length===0);
-helps[0].click();sectionNav.value='rate';sectionNav.dispatchEvent(new Event('change'));
-check('Changing section closes previous help',document.querySelectorAll('.cfg__help-panel:not([hidden])').length===0 && !$('settings-section-rate').hidden);
+helps[0].click();$('cfgTab-audio').click();
+check('Changing tab closes previous help',document.querySelectorAll('.cfg__help-panel:not([hidden])').length===0 && !$('cfgPane-audio').hidden);
 Settings.close();
 $('btnImport').click();$('importLink').click();$('url').value='ftp://example.com/a';$('btnUrlGo').click();
 check('Invalid URL has immediate inline message',$('url').getAttribute('aria-invalid')==='true' && !$('urlMsg').hidden && $('urlMsg').textContent.length>0);

@@ -673,16 +673,20 @@ SOFTWARE.
     </header>
     <div class="cfg__body" id="cfgBody"></div>
     <footer class="cfg__foot">
+      <button class="btn btn--ghost cfg__reset" id="cfgReset" type="button" title="Restaurar todos os ajustes">Restaurar</button>
       <div class="cfg__foot-status">
-        <span id="cfgStatus" role="status" aria-live="polite" aria-atomic="true">Alterações salvas automaticamente</span>
+        <span id="cfgStatus" role="status" aria-live="polite" aria-atomic="true"></span>
         <button class="btn btn--ghost cfg__undo" id="cfgUndo" type="button" hidden>Desfazer</button>
       </div>
-      <div class="cfg__foot-actions">
-        <button class="btn btn--ghost cfg__reset" id="cfgReset" type="button" title="Restaurar todos os ajustes">Restaurar</button>
-        <span class="cfg__foot-spacer"></span>
-        <span class="cfg__preset-label mono">Preset</span>
-        <button class="btn btn--outline" id="cfgLoad" type="button" title="Carregar preset JSON">Carregar</button>
-        <button class="btn btn--outline" id="cfgSave" type="button" title="Salvar preset JSON">Salvar</button>
+      <div class="cfg__preset">
+        <button class="btn btn--outline cfg__preset-toggle" id="cfgPresetToggle" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="cfgPresetMenu" title="Guardar ou aplicar todos os ajustes de uma vez">
+          <span>Preset</span>
+          <svg class="ui-icon ui-icon--small" width="12" height="12" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#ui-icon-chevron-down"/></svg>
+        </button>
+        <div class="cfg__preset-menu" id="cfgPresetMenu" role="menu" aria-label="Preset de configurações" hidden>
+          <button class="cfg__preset-item" id="cfgLoad" type="button" role="menuitem">Carregar arquivo…</button>
+          <button class="cfg__preset-item" id="cfgSave" type="button" role="menuitem">Salvar arquivo</button>
+        </div>
       </div>
     </footer>
   </aside>

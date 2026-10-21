@@ -384,8 +384,10 @@ window.Settings = (() => {
   let graphCaptureProvider = null, graphCaptureButton = null, graphCaptureCopyButton = null;
   let graphCaptureOutput = null, graphCaptureReport = null;
   const sectionElements = new Map();
-  let sectionNav = null;
-  let activeSection = 'rate';
+  const sectionTab = new Map();
+  const tabElements = new Map();
+  let tabList = null, diagDetails = null;
+  let activeTab = 'audio';
   let activeHelp = null;
   /* Conta do YouTube: um estado só para o usuário (conectado ou não). Quando e
      como usar a conta, o backend decide. */
@@ -473,7 +475,8 @@ window.Settings = (() => {
     return n;
   }
 
-  const PANEL_STATUS_DEFAULT = 'Alterações salvas automaticamente';
+  // Sem mensagem fixa: o rodapé só fala quando algo acabou de acontecer.
+  const PANEL_STATUS_DEFAULT = '';
 
   function panelFeedback(text, opts = {}) {
     if (!panelStatus) {
@@ -597,7 +600,8 @@ window.Settings = (() => {
       });
       input.addEventListener('change', () => set(f.k, input.value, { force: true }));
       row.appendChild(input);
-      if (f.bounds) {
+      {
+        // Todo slider mostra o mínimo e o máximo embaixo.
         const bounds = h('div', 'cfg__bounds mono');
         const first = f.reverse ? f.max : f.min;
         const last = f.reverse ? f.min : f.max;
@@ -1375,7 +1379,7 @@ window.Settings = (() => {
     sec.id = `settings-section-${g.id}`;
     sec.setAttribute('aria-labelledby', `settings-heading-${g.id}`);
     const head = h('div', 'cfg__head');
-    const heading = h('h3', 'panel__title', g.title);
+    const heading = h('h3', 'cfg__subtitle', g.title);
     heading.id = `settings-heading-${g.id}`;
     heading.tabIndex = -1;
     head.appendChild(heading);
@@ -1587,13 +1591,28 @@ window.Settings = (() => {
   /* ── ciclo de vida do painel ─────────────────────────── */
   let restoreFocusAfterClose = true;
 
-  function showSection(id, { focus = false } = {}) {
-    if (!sectionElements.has(id)) return;
+  function showTab(id, { focus = false } = {}) {
+    if (!tabElements.has(id)) return;
     closeHelp();
-    activeSection = id;
-    sectionElements.forEach((section, key) => { section.hidden = key !== id; });
-    if (sectionNav) sectionNav.value = id;
+    activeTab = id;
+    tabElements.forEach(({ tab, pane }, key) => {
+      const on = key === id;
+      tab.setAttribute('aria-selected', String(on));
+      tab.tabIndex = on ? 0 : -1;
+      pane.hidden = !on;
+    });
     if (body) body.scrollTop = 0;
+    if (focus) tabElements.get(id).tab.focus({ preventScroll: true });
+  }
+
+  /* Abre a aba da seção e rola até ela. */
+  function showSection(id, { focus = false } = {}) {
+    const tabId = sectionTab.get(id);
+    if (!tabId) return;
+    showTab(tabId);
+    if (id === 'diag' && diagDetails) diagDetails.open = true;
+    const section = sectionElements.get(id);
+    if (section && body) body.scrollTop = Math.max(0, section.offsetTop - body.offsetTop);
     if (focus) document.getElementById(`settings-heading-${id}`)?.focus({ preventScroll: true });
   }
 
@@ -1612,8 +1631,7 @@ window.Settings = (() => {
     refreshSystemInfo();
     clearInterval(diagTimer);
     diagTimer = setInterval(pumpDiag, 600);
-    const first = panel.querySelector('select:not([disabled]), button.sw:not([disabled]), input:not([disabled]), button:not([disabled])');
-    if (first) first.focus({ preventScroll: true });
+    tabElements.get(activeTab)?.tab.focus({ preventScroll: true });
     refreshDedicatedAuth();
   }
   function close({ restoreFocus = restoreFocusAfterClose } = {}) {
@@ -1650,60 +1668,81 @@ window.Settings = (() => {
     graphCaptureProvider = opts.captureGraphPerformance || null;
     if (!panel || !body) return;
 
-    const navigation = [
-      { label: 'Áudio', ids: ['rate', 'load', 'export'] },
-      { label: 'Biblioteca', ids: ['library', 'remote'] },
-      { label: 'Visual e interação', ids: ['ui', 'timeline', 'scope', 'motion'] },
-      { label: 'Sistema', ids: ['keys', 'system', 'diag'] },
+    const tabs = [
+      { id: 'audio', label: 'Áudio', ids: ['rate', 'load', 'export'] },
+      { id: 'library', label: 'Biblioteca', ids: ['library', 'remote'] },
+      { id: 'visual', label: 'Visual', ids: ['ui', 'timeline', 'scope', 'motion'] },
+      { id: 'system', label: 'Sistema', ids: ['keys', 'system', 'diag', 'about'] },
     ];
     const descriptions = {
       rate: 'Unidades, limites e ajustes rápidos da velocidade.',
-      load: 'Defina como o editor recebe uma nova música.',
+      load: 'Como o editor recebe uma nova música.',
       export: 'Formato, qualidade e nome do arquivo de saída.',
-      library: 'Organize as músicas que entram na sua Biblioteca.',
-      remote: 'Preferências para importar músicas de plataformas externas.',
+      library: 'Como as músicas entram na Biblioteca.',
+      remote: 'Conta e preferências para importar por link.',
       ui: 'Aparência, densidade e informações da interface.',
       timeline: 'Leitura do tempo, navegação e zoom do áudio.',
-      scope: 'Ajuste a representação visual do sinal.',
-      motion: 'Controle o ritmo e a presença das animações.',
+      scope: 'Representação visual do sinal no cabeçalho.',
+      motion: 'Ritmo e presença das animações.',
       keys: 'Comandos para usar o editor pelo teclado.',
       system: 'Endereço local, servidor e atualização do yt-dlp.',
-      diag: 'Informações de desempenho e ferramentas de medição.',
+      diag: 'Medições de desempenho, para investigar lentidão.',
+      about: 'Créditos e projetos que fazem parte do VARISPEED.',
     };
-    const navigator = h('nav', 'cfg__navigator');
-    navigator.setAttribute('aria-label', 'Seções de configurações');
-    const navLabel = h('label', null, 'Seção');
-    navLabel.htmlFor = 'cfgSectionNav';
-    sectionNav = h('select', 'sel');
-    sectionNav.id = 'cfgSectionNav';
-    navigation.forEach(({ label, ids }) => {
-      const group = h('optgroup');
-      group.label = label;
-      ids.forEach((id) => {
-        const schema = GROUPS.find((entry) => entry.id === id);
-        group.appendChild(new Option(schema.title, id));
-        const section = buildGroup(schema);
-        const description = h('p', 'cfg__description', descriptions[id]);
-        section.querySelector('.cfg__head').after(description);
-        sectionElements.set(id, section);
-      });
-      sectionNav.appendChild(group);
+    GROUPS.forEach((schema) => {
+      const section = buildGroup(schema);
+      section.querySelector('.cfg__head').after(h('p', 'cfg__description', descriptions[schema.id]));
+      sectionElements.set(schema.id, section);
     });
-    sectionNav.appendChild(new Option('Sobre o VARISPEED', 'about'));
-    sectionNav.addEventListener('change', () => showSection(sectionNav.value, { focus: true }));
-    navigator.append(navLabel, sectionNav);
-    body.appendChild(navigator);
-    sectionElements.forEach((section) => body.appendChild(section));
     const about = h('section', 'cfg__group cfg__about');
     about.id = 'settings-section-about';
     about.setAttribute('aria-labelledby', 'settings-heading-about');
-    const aboutHeading = h('h3', 'panel__title', 'Sobre o VARISPEED');
+    const aboutHeading = h('h3', 'cfg__subtitle', 'Sobre o VARISPEED');
     aboutHeading.id = 'settings-heading-about'; aboutHeading.tabIndex = -1;
     const aboutHead = h('div', 'cfg__head'); aboutHead.appendChild(aboutHeading);
-    about.append(aboutHead, h('p', 'cfg__description', 'Créditos e projetos que fazem parte do VARISPEED.'), buildCredits());
+    about.append(aboutHead, h('p', 'cfg__description', descriptions.about), buildCredits());
     sectionElements.set('about', about);
-    body.appendChild(about);
-    showSection(activeSection);
+
+    /* Quatro abas fixas no topo; cada uma mostra suas seções em sequência.
+       O diagnóstico fica recolhido no fim de Sistema. */
+    tabList = h('div', 'cfg__tabs');
+    tabList.setAttribute('role', 'tablist');
+    tabList.setAttribute('aria-label', 'Seções de configurações');
+    tabs.forEach(({ id, label, ids }) => {
+      const tab = h('button', 'cfg__tab', label);
+      tab.type = 'button';
+      tab.id = `cfgTab-${id}`;
+      tab.setAttribute('role', 'tab');
+      tab.setAttribute('aria-controls', `cfgPane-${id}`);
+      tab.addEventListener('click', () => showTab(id));
+      tabList.appendChild(tab);
+      const pane = h('div', 'cfg__pane');
+      pane.id = `cfgPane-${id}`;
+      pane.setAttribute('role', 'tabpanel');
+      pane.setAttribute('aria-labelledby', tab.id);
+      ids.forEach((sectionId) => {
+        const section = sectionElements.get(sectionId);
+        sectionTab.set(sectionId, id);
+        if (sectionId !== 'diag') { pane.appendChild(section); return; }
+        diagDetails = h('details', 'cfg__advanced');
+        const summary = h('summary', 'cfg__advanced-summary');
+        summary.append(h('span', null, 'Diagnóstico'), h('span', 'cfg__advanced-tag mono', 'avançado'));
+        diagDetails.append(summary, section);
+        pane.appendChild(diagDetails);
+      });
+      tabElements.set(id, { tab, pane });
+      body.appendChild(pane);
+    });
+    tabList.addEventListener('keydown', (e) => {
+      const order = [...tabElements.keys()];
+      const index = order.indexOf(activeTab);
+      const next = { ArrowRight: index + 1, ArrowLeft: index - 1, Home: 0, End: order.length - 1 }[e.key];
+      if (next === undefined) return;
+      e.preventDefault();
+      showTab(order[(next + order.length) % order.length], { focus: true });
+    });
+    panel.insertBefore(tabList, body);
+    showTab(activeTab);
     syncControls();
 
     document.getElementById('cfgClose').addEventListener('click', (event) => {
@@ -1713,9 +1752,8 @@ window.Settings = (() => {
     panel.addEventListener('focusin', (e) => keepFocusedVisible(e.target));
     document.getElementById('cfgReset').addEventListener('click', reset);
     if (cfgUndo) cfgUndo.addEventListener('click', undoReset);
-    document.getElementById('cfgSave').addEventListener('click', downloadPreset);
     const fileIn = document.getElementById('cfgFile');
-    document.getElementById('cfgLoad').addEventListener('click', () => fileIn.click());
+    bindPresetMenu({ load: () => fileIn.click(), save: downloadPreset });
     fileIn.addEventListener('change', async (e) => {
       const f = e.target.files[0];
       if (!f) return;
@@ -1737,7 +1775,49 @@ window.Settings = (() => {
       if (panel.contains(e.target) || (trigger && trigger.contains(e.target))) return;
       close({ restoreFocus: false });
     });
-    on(() => { if (isOpen()) syncControls(); });
+    on(() => {
+      if (!isOpen()) return;
+      syncControls();
+      // Confirma só mudanças feitas no próprio painel.
+      if (panel.contains(document.activeElement)) panelFeedback('Salvo', { hold: 1400 });
+    });
+  }
+
+  /* Menu Preset do rodapé: abre para cima, fecha com Esc ou clique fora. */
+  function bindPresetMenu(actions) {
+    const toggleBtn = document.getElementById('cfgPresetToggle');
+    const menu = document.getElementById('cfgPresetMenu');
+    if (!toggleBtn || !menu) return;
+    const items = [...menu.querySelectorAll('[role="menuitem"]')];
+    const setOpen = (on, { focusToggle = false, focusFirst = false } = {}) => {
+      menu.hidden = !on;
+      toggleBtn.setAttribute('aria-expanded', String(on));
+      if (on && focusFirst) items[0].focus();
+      else if (!on && focusToggle) toggleBtn.focus();
+    };
+    // Pelo teclado (detail 0) o foco entra no menu; pelo mouse, não.
+    toggleBtn.addEventListener('click', (e) => setOpen(menu.hidden, { focusFirst: e.detail === 0 }));
+    items.forEach((item) => item.addEventListener('click', () => {
+      setOpen(false, { focusToggle: true });
+      actions[item.id === 'cfgLoad' ? 'load' : 'save']();
+    }));
+    menu.addEventListener('keydown', (e) => {
+      const index = items.indexOf(document.activeElement);
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        items[(index + (e.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length].focus();
+      } else if (e.key === 'Tab') setOpen(false);
+    });
+    document.addEventListener('pointerdown', (e) => {
+      if (!menu.hidden && !menu.contains(e.target) && !toggleBtn.contains(e.target)) setOpen(false);
+    });
+    // Esc fecha o menu antes do painel, esteja o foco onde estiver.
+    window.addEventListener('keydown', (e) => {
+      if (e.key !== 'Escape' || menu.hidden) return;
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      setOpen(false, { focusToggle: menu.contains(document.activeElement) });
+    }, true);
   }
 
   return {

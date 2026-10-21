@@ -137,11 +137,13 @@ Origem, revisão e mapeamento: [manifesto Lucide](../assets/icons/lucide-manifes
 
 ## Configurações e ajudas por item
 
-O seletor Seção agrupa os ajustes por Áudio, Biblioteca, Visual e interação e Sistema. Apenas a seção escolhida é exibida; a escolha é mantida ao fechar/reabrir o painel durante a sessão. Campos continuam montados e sincronizados, preservando dependências, persistência, validação e exportação de presets. Créditos ficam em Sobre o VARISPEED.
+Quatro abas fixas no topo: Áudio, Biblioteca, Visual e Sistema. Cada aba mostra suas seções em sequência, separadas por uma divisória, com rolagem. A aba escolhida é mantida ao fechar e reabrir o painel durante a sessão. As setas, Home e End trocam de aba pelo teclado. Diagnóstico fica recolhido no fim de Sistema, como "Diagnóstico · avançado"; Sobre o VARISPEED vem depois dele. Campos continuam montados e sincronizados, preservando dependências, persistência, validação e exportação de presets.
 
-Usar cabeçalho, descrição curta e campos alinhados, sem divisórias entre cada ajuste. O painel tem largura suficiente para os controles e ocupa a tela no modo compacto. Switches conservam o desenho de 36 × 20 px em todas as densidades; o toque ganha área de interação sem ampliar trilho e knob.
+O título de cada seção é um subtítulo (`.cfg__subtitle`), não um título de página: o nome do painel já está no topo. Usar subtítulo, descrição curta e campos alinhados, sem divisórias entre cada ajuste. Todo slider mostra o valor à direita e o mínimo e o máximo embaixo.
 
-A ajuda Sobre cada item é um painel contextual, com título e explicação. O próprio botão de ajuda abre e fecha o painel. Apenas uma ajuda fica aberta; trocar a seção a fecha. O botão expõe `aria-expanded`/`aria-controls` e o campo referencia a explicação por `aria-describedby`. Ao fechar pelo teclado, o foco permanece no botão de ajuda. Não desabilitar a ajuda de um campo indisponível, pois ela pode explicar a dependência.
+O rodapé tem uma linha: Restaurar à esquerda, a mensagem do momento no meio e o menu Preset à direita, que abre para cima com Carregar arquivo e Salvar arquivo. Não há mensagem fixa: "Salvo" aparece por um instante depois de uma mudança feita no painel. O painel tem largura suficiente para os controles e ocupa a tela no modo compacto. Switches conservam o desenho de 36 × 20 px em todas as densidades; o toque ganha área de interação sem ampliar trilho e knob.
+
+A ajuda Sobre cada item é um painel contextual, com título e explicação. O próprio botão de ajuda abre e fecha o painel. Apenas uma ajuda fica aberta; trocar de aba a fecha. O botão expõe `aria-expanded`/`aria-controls` e o campo referencia a explicação por `aria-describedby`. Ao fechar pelo teclado, o foco permanece no botão de ajuda. Não desabilitar a ajuda de um campo indisponível, pois ela pode explicar a dependência.
 
 
 ## Painel do editor
