@@ -40,7 +40,7 @@ class BrowserDiscoveryTests(unittest.TestCase):
         ):
             path, label = dedicated_auth.find_login_browser()
         self.assertEqual(label, "Chrome")
-        self.assertEqual(str(path), "/usr/bin/google-chrome")
+        self.assertEqual(path, Path("/usr/bin/google-chrome"))
 
     def test_without_any_browser_login_is_unavailable(self):
         with tempfile.TemporaryDirectory() as tmp:
