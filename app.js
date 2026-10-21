@@ -76,7 +76,7 @@
     sourceArtworkWashImage: $('sourceArtworkWashImage'), waveWashImage: $('waveWashImage'), waveHost: $('waveHost'), sourceArtworkWashBloom: $('sourceArtworkWashBloom'),
     btnExport: $('btnExport'), exportLabel: $('exportLabel'),
     exportName: $('exportName'), exportFormat: $('exportFormat'), exportProcessing: $('exportProcessing'),
-    statusMsg: $('statusMsg'), drop: $('drop'),
+    statusMsg: $('statusMsg'), statusDots: $('statusDots'), drop: $('drop'),
     rateUnit: document.querySelector('.rate__unit'),
     rateEffect: $('rateEffect'), rateFill: $('rateFill'), rateOrigin: $('rateOrigin'),
     presetHost: document.querySelector('.presets'),
@@ -90,13 +90,18 @@
     /* importação por link */
     linkbar: $('linkbar'), url: $('url'),
     urlGo: $('btnUrlGo'), urlClose: $('btnUrlClose'), urlCancel: $('btnUrlCancel'),
-    urlProg: $('urlProg'), urlStage: $('urlStage'), urlPct: $('urlPct'),
+    urlProg: $('urlProg'), urlDots: $('urlDots'), urlStage: $('urlStage'), urlPct: $('urlPct'),
     urlTrack: $('urlTrack'), urlFill: $('urlFill'), urlMsg: $('urlMsg'),
     urlAuthWrap: $('urlAuthWrap'), urlAuth: $('btnUrlAuth'), urlAuthHint: $('urlAuthHint'),
     urlPreview: $('urlPreview'), urlThumbWrap: $('urlThumbWrap'), urlThumb: $('urlThumb'),
     urlSource: $('urlSource'), urlTitle: $('urlTitle'), urlByline: $('urlByline'),
     urlDuration: $('urlDuration'), urlImport: $('btnUrlImport'),
   };
+
+  /* Indicador de pontos ao lado do status: grade para processar (exportar),
+     três pontos girando para ler e trazer (decodificar, baixar, importar). */
+  const statusDots = window.Dots.mount(el.statusDots);
+  const urlDots = window.Dots.mount(el.urlDots);
 
   const BUCKETS = 16384;
   const cfg = (k) => window.Settings.get(k);
@@ -1955,6 +1960,8 @@
     const on = state.exporting || activeDecodeIntent !== 0 || linkUI.busy;
     if (on) el.root.dataset.statusPriority = '1';
     else delete el.root.dataset.statusPriority;
+    // Durante a importação por link o progresso fica na própria barra de link.
+    statusDots.set(state.exporting ? 'grid' : (activeDecodeIntent !== 0 && !linkUI.busy ? 'tumble' : null));
   }
 
   function linkSyncImportButton() {
@@ -1978,6 +1985,7 @@
     if (on) el.linkbar.dataset.phase = phase;
     else el.linkbar.removeAttribute('data-phase');
     el.linkbar.setAttribute('aria-busy', String(linkUI.busy));
+    if (!linkUI.busy) urlDots.set(null);
     el.url.disabled = linkUI.busy;
     el.urlGo.disabled = linkUI.busy;
     el.urlGo.setAttribute('aria-busy', String(linkUI.busy && phase === 'analyze'));
@@ -2074,6 +2082,7 @@
     el.urlProg.hidden = false;
     el.urlProg.removeAttribute('data-out');
     el.urlTrack.dataset.mode = mode || 'indet';
+    urlDots.set(mode === 'det' ? null : 'tumble');
     el.urlTrack.setAttribute('aria-valuetext', label);
     if (mode === 'det') el.urlTrack.setAttribute('aria-valuenow', '0');
     else el.urlTrack.removeAttribute('aria-valuenow');
@@ -2093,6 +2102,7 @@
   function linkPct(p) {
     const v = clamp(Math.round(p), 0, 100);
     el.urlTrack.dataset.mode = 'det';
+    urlDots.set(null);
     el.urlFill.style.width = `${v}%`;
     el.urlTrack.setAttribute('aria-valuenow', String(v));
     el.urlTrack.setAttribute('aria-valuetext', `${el.urlStage.textContent || 'Importando'} · ${v}%`);
@@ -2113,6 +2123,7 @@
 
   function linkClear() {
     el.urlProg.hidden = true;
+    urlDots.set(null);
     el.urlProg.removeAttribute('data-out');
     window.Motion.cancel(el.urlStage);
     el.urlStage.textContent = '';
@@ -2169,6 +2180,7 @@
   function linkSettle(op) {
     /* Timers/animations de um resultado antigo não podem limpar o progresso de
        uma nova análise iniciada logo em seguida. Todos os callbacks conferem op. */
+    urlDots.set(null);
     if (window.Motion.reduced() || !cfg('motion.status')) {
       el.urlStage.textContent = 'Pronto';
       setTimeout(() => { if (linkIsCurrent(op)) linkClear(); }, 700);
@@ -2620,6 +2632,7 @@
       intensity: cfg('motion.intensity') / 100,
     });
     el.root.dataset.motion = window.Motion.reduced() ? 'reduced' : 'full';
+    window.Dots.wake();
     el.scopeWrap.hidden = !cfg('scope.on');
     const scopeName = cfg('scope.visualizer') === 'vectorscope' ? 'vectorscope de partículas' : 'osciloscópio';
     el.scopeWrap.title = `Ampliar ${scopeName}`;

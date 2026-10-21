@@ -114,6 +114,16 @@ Erros de velocidade, link e presets aparecem junto ao campo e permanecem até ed
 
 O guia da Biblioteca e os textos longos de feedback podem receber uma revisão específica de conteúdo. A interface foi conferida com o backend real em Chromium; leitores de tela ainda não foram avaliados.
 
+## Indicador de espera
+
+Tarefas sem porcentagem mostram um indicador pequeno de pontos (`dots.js`) antes do texto de status, na mesma cor do texto secundário. Ele existe em duas formas:
+
+| Forma | Movimento | Quando usar |
+| --- | --- | --- |
+| Três pontos | Um anel horizontal gira e a câmera sobe e desce (ciclo de 3,67 s) | Ler e trazer: decodificar, baixar, importar, abrir |
+| Grade | Uma grade 2×2 em que pares de cantos opostos trocam de lugar (ciclo de 1,27 s) | Processar: renderizar e codificar a exportação, inicializar |
+
+O indicador aparece em um lugar só por vez. Na importação por link ele fica na barra de link, ao lado da etapa, e some quando surge a porcentagem; o rodapé não repete. Botões com varredura de progresso não ganham indicador. Com "reduzir movimento" os pontos aparecem parados.
 
 ## Barras de rolagem
 

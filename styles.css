@@ -2002,6 +2002,11 @@ button, input { font: inherit; color: inherit; }
 }
 [data-view='library'] .sbar { border-top-color: transparent; }
 .sbar__msg { color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* indicador de pontos (dots.js): canvas quadrado, cor herdada do texto */
+.dots { display: inline-block; flex: none; width: 14px; height: 14px; color: var(--text-2); }
+.dots[hidden] { display: none; }
+.dots canvas { display: block; }
+.sbar__dots { margin-right: calc(var(--space-2) - var(--space-4)); }
 .sbar__lead { color: var(--text-3); }
 .sbar__msg .ch { color: var(--text); }
 .sbar__spacer { flex: 1 1 auto; }
@@ -2954,7 +2959,14 @@ kbd {
 .linkbar { grid-row: 2; }
 .linkbar__help { margin: 0 0 var(--space-3); color: var(--text-2); font-size: var(--text-xs); line-height: var(--lh-base); }
 .linkbar__cancel { white-space: nowrap; }
+.linkbar__label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
 .linkbar__stage {
+  flex: 1 1 auto;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;

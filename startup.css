@@ -88,6 +88,7 @@ h1 span {
   min-height: 30px;
   display: flex;
   align-items: center;
+  gap: 12px;
   overflow: hidden;
 }
 .boot__status strong {
@@ -99,6 +100,9 @@ h1 span {
   letter-spacing: .11em;
   white-space: nowrap;
 }
+.boot__dots { flex: none; width: 16px; height: 16px; color: var(--muted); }
+.boot__dots[hidden] { display: none; }
+.boot__dots canvas { display: block; }
 .boot__track {
   position: relative;
   height: 2px;

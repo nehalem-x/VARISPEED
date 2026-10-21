@@ -1,5 +1,12 @@
 # Registro de mudanças
 
+## Outubro de 2026: indicador de espera
+
+- Enquanto o app trabalha, um indicador pequeno de pontos aparece antes do texto de status no rodapé. Três pontos girando aparecem ao abrir ou decodificar um áudio. Uma grade de quatro pontos, em que os cantos trocam de lugar, aparece ao exportar.
+- Na importação por link, os três pontos aparecem ao lado da etapa enquanto ainda não há porcentagem.
+- A tela de inicialização mostra a grade ao lado de "INICIALIZANDO...".
+- Com "reduzir movimento" os pontos ficam parados.
+
 ## Outubro de 2026: Configurações e botões
 
 - Configurações: o menu de seções virou quatro abas no topo (Áudio, Biblioteca, Visual e Sistema). Cada aba mostra as suas seções em sequência; antes eram 13 telas separadas.

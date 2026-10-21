@@ -78,7 +78,7 @@ jobs:
       - name: Check JavaScript syntax
         shell: bash
         run: |
-          for file in app.js core.js graph-engine.js library.js motion.js remote-import.js scope-view.js scope-win.js settings.js startup.js theme-boot.js; do
+          for file in app.js core.js dots.js graph-engine.js library.js motion.js remote-import.js scope-view.js scope-win.js settings.js startup.js theme-boot.js; do
             node --check "$file"
           done
 

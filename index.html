@@ -264,7 +264,7 @@ SOFTWARE.
     </div>
 
     <div class="linkbar__prog" id="urlProg" hidden>
-      <span class="linkbar__stage" id="urlStage"></span>
+      <span class="linkbar__label"><span class="dots" id="urlDots" hidden></span><span class="linkbar__stage" id="urlStage"></span></span>
       <span class="linkbar__pct mono" id="urlPct" aria-hidden="true"></span>
       <span class="linkbar__track" id="urlTrack" data-mode="indet" role="progressbar" aria-label="Progresso da importação" aria-valuemin="0" aria-valuemax="100"><span class="linkbar__fill" id="urlFill"></span></span>
       <button class="btn btn--ghost linkbar__cancel" id="btnUrlCancel" type="button" hidden>Cancelar</button>
@@ -655,6 +655,7 @@ SOFTWARE.
 
   <!-- ─── STATUS BAR ─────────────────────────────────────── -->
   <footer class="sbar">
+    <span class="dots sbar__dots" id="statusDots" hidden></span>
     <span class="sbar__msg" id="statusMsg" role="status" aria-live="polite" aria-atomic="true">Pronto</span>
     <span class="sbar__spacer"></span>
     <span class="sbar__item mono"><kbd>Espaço</kbd> reproduzir</span>
@@ -721,6 +722,7 @@ SOFTWARE.
      nome de arquivo). Precisa vir antes de app.js, que aborta sem ele. -->
 <script src="core.js"></script>
 <script src="motion.js"></script>
+<script src="dots.js"></script>
 <script src="scope-view.js"></script>
 <script src="remote-import.js"></script>
 <script src="settings.js"></script>

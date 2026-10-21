@@ -6,6 +6,8 @@
   const retry = $('retry');
   const detailsToggle = $('detailsToggle');
   const details = $('details');
+  const dots = window.Dots ? window.Dots.mount($('bootDots')) : null;
+  if (dots) dots.set('grid');
 
   let redirected = false;
   let readyTimer = 0;
@@ -38,6 +40,7 @@
     setStage(statusLabel(data));
     details.textContent = (data.logs || []).join('\n');
     document.body.dataset.state = data.error ? 'error' : (data.ready ? 'ready' : 'loading');
+    if (dots) dots.set(data.error || data.ready ? null : 'grid');
     actions.hidden = !data.error;
     errorMessage.hidden = !data.error;
     errorMessage.textContent = data.error ? (data.message || 'Não foi possível iniciar o VARISPEED.') : '';

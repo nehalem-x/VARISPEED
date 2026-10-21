@@ -510,6 +510,9 @@ class StartupHandler(BaseHTTPRequestHandler):
         if path == "/motion.js":
             self._send_file(ROOT / "motion.js", "application/javascript; charset=utf-8")
             return
+        if path == "/dots.js":
+            self._send_file(ROOT / "dots.js", "application/javascript; charset=utf-8")
+            return
         if path == "/assets/favicon.png":
             self._send_file(ROOT / "assets" / "favicon.png", "image/png")
             return

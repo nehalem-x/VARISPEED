@@ -141,6 +141,7 @@ PUBLIC_FILES = {
     "theme-boot.js",
     "core.js",
     "motion.js",
+    "dots.js",
     "scope-view.js",
     "scope-win.js",
     "scope.html",
