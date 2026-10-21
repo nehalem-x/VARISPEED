@@ -158,7 +158,7 @@ A ajuda Sobre cada item é um painel contextual, com título e explicação. O p
 
 ## Painel do editor
 
-Velocidade é a leitura principal; Resultado destaca a duração de saída e a compara à original. Usar tipografia e superfície para definir os grupos, sem numeração ou bordas completas em cada informação.
+A ordem do painel é Velocidade, Arquivo original, Resultado e o rodapé de exportação. Velocidade é a leitura principal; Resultado destaca a duração de saída e a compara à original. Usar tipografia e superfície para definir os grupos, sem numeração ou bordas completas em cada informação.
 
 Arquivo original é um bloco sempre visível ao carregar áudio, com nome completo e metadados em duas colunas. A thumbnail conserva a proporção e ocupa a largura disponível, sem moldura ou recuo interno. O blur fica atrás de todo o bloco, com máscara vertical que o dissolve antes dos dados inferiores, seguindo a linguagem do detalhe da Biblioteca. A exportação permanece agrupada com o resumo do arquivo e acompanha o estado confirmado da operação. Os blocos do painel têm o mesmo fundo e são separados por uma divisória; acima de 900 px, o rodapé de exportação fica preso à base do painel para que Exportar esteja sempre visível.
 

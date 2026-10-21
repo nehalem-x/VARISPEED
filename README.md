@@ -504,7 +504,7 @@ O desktop largo é a referência visual. Abaixo dele, os componentes primeiro re
 <= 420 px      phone estreito
 ```
 
-- Painel do editor: em `<=900px` sai da lateral e vira uma faixa com Velocidade, Resultado e Fonte; em `<=640px` empilha. A timeline continua primeiro.
+- Painel do editor: em `<=900px` sai da lateral e vira uma faixa com Velocidade e Arquivo original lado a lado e Resultado embaixo; em `<=640px` empilha. A timeline continua primeiro.
 - Barra de link: mantém as colunas no desktop; no tablet o botão de importar ganha linha própria; no celular URL e `Analisar` se reorganizam sem apertar thumbnail e metadados.
 - Cabeçalho: em `<=720px` arquivo e osciloscópio vão para uma segunda linha, mantendo o botão da janela separada à esquerda do visualizador.
 - Waveform: metadados secundários somem antes de a waveform encolher; o volume some no breakpoint existente.

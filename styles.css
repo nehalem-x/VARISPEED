@@ -1812,7 +1812,7 @@ button, input { font: inherit; color: inherit; }
 .result__duration--output dd { color: var(--text); font-size: var(--text-title); font-weight: 500; }
 .panel--result .rows { gap: var(--space-3); }
 .panel--result .row { align-items: center; }
-.panel--source { position: relative; display: grid; overflow: hidden; }
+.panel--source { position: relative; display: grid; align-content: start; overflow: hidden; }
 .panel--source > :not(.panel-source__wash) { position: relative; z-index: 1; }
 .export-summary { display: grid; gap: var(--space-2); width: 100%; min-width: 0; font-size: var(--text-xs); }
 .export-summary__title { color: var(--text); font-size: var(--text-lg); font-weight: 600; }
@@ -4179,7 +4179,7 @@ a:focus-visible { text-decoration: underline; text-underline-offset: 3px; }
 @media (min-width: 641px) and (max-width: 900px) {
   .insp { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: auto; }
   .insp > .hr { display: none; }
-  .panel--source { grid-column: 1 / -1; }
+  .panel--result { grid-column: 1 / -1; }
   [data-media='empty'] .panel--rate { grid-column: 1 / -1; }
 }
 @media (max-width: 720px) {
