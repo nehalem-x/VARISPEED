@@ -31,7 +31,9 @@ class BrowserDiscoveryTests(unittest.TestCase):
             return {"google-chrome": "/usr/bin/google-chrome", "brave": "/usr/bin/brave"}.get(command)
 
         with (
-            mock.patch.dict(os.environ, {"VARISPEED_LOGIN_BROWSER": ""}),
+            # No Windows a busca também olha as pastas de programas; vazias, só o PATH conta.
+            mock.patch.dict(os.environ, {"VARISPEED_LOGIN_BROWSER": "", "PROGRAMFILES": "", "PROGRAMFILES(X86)": "", "LOCALAPPDATA": ""}),
+            mock.patch.object(dedicated_auth.platform, "system", return_value="Linux"),
             mock.patch.object(dedicated_auth.shutil, "which", side_effect=which),
             mock.patch.object(dedicated_auth.Path, "is_file", return_value=True),
             mock.patch.object(dedicated_auth.Path, "resolve", lambda self: self),
