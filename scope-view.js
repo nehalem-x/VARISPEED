@@ -110,9 +110,10 @@
       const color = colors().text;
 
       const position = viewOptions.compactHorizontal
+        /* quadro inteiro: ±1 encosta nas bordas; acima disso sai do quadro */
         ? (p) => ({
-          x: cx + p.y * w * 0.47,
-          y: cy + p.x * h * 0.43,
+          x: cx + p.y * cx,
+          y: cy + p.x * cy,
         })
         : (p) => {
           const amp = Math.max(2, Math.min(w, h) * 0.455);

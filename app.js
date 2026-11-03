@@ -226,6 +226,12 @@
     if (locked) return;
     const progress = duration > 0 ? clamp(current / duration, 0, 1) : 0;
     input.value = String(Math.round(progress * 1000));
+    setScrubFill(input);
+  }
+
+  /* --p pinta a parte já tocada da linha (usado no modo foco). */
+  function setScrubFill(input) {
+    input.style.setProperty('--p', `${(Number(input.value) / Number(input.max || 1000)) * 100}%`);
   }
 
   function updateLibraryTransportPosition(current = state.audio.currentTime || 0) {
@@ -271,6 +277,7 @@
     el.tape?.classList.toggle('is-loaded', state.loaded);
     window.MediaLibrary?.setPlaybackState(state.playing);
     syncLibraryTransport();
+    if (state.focus) focusWake();
   };
 
   function libraryEntryNow() {
@@ -520,7 +527,7 @@
     inline: window.ScopeView.create(el.scope, { compactHorizontal: true }),
     focus: window.ScopeView.create(el.scopeFocus, { compactHorizontal: true }),
   };
-  const pop = { win: null, want: false };
+  const pop = { win: null, last: 0 };
 
   const scopeWin = () => clamp(cfg('scope.window'), 64, (scope.buf ? scope.buf.length : 2048) - 2);
   const scopeState = () => el.scopeWrap.dataset.state || 'idle';
@@ -606,28 +613,41 @@
     const o = scopeOpts();
     if (on && !el.scopeWrap.hidden) views.inline.render(frame, o);
     if (state.focus) views.focus.render(frame, o);
-    if (pop.want && pop.win && !pop.win.closed) {
-      pop.want = false;
-      try {
-        pop.win.postMessage({
-          type: 'tempo:frame',
-          state: st,
-          samples: samples ? new Float32Array(samples) : null,
-          stereo: stereo ? {
-            left: new Float32Array(stereo.left),
-            right: new Float32Array(stereo.right),
-          } : null,
-          mediaKey: state.url || '',
-          ts, t0: scope.t0,
-          gain: o.gain, mode: o.mode, smooth: o.smooth,
-          visualizer: o.visualizer,
-          vectorTrail: o.vectorTrail, vectorSize: o.vectorSize,
-          vectorDensity: o.vectorDensity,
-          theme: el.root.dataset.theme,
-          title: state.meta.name || '',
-        }, '*');
-      } catch (e) { pop.want = false; }
-    }
+  }
+
+  /* Quadro da janela separada. Sai direto da resposta ao pedido dela, não do
+     requestAnimationFrame desta janela: com o visualizador em tela cheia por
+     cima, o navegador pausa a animação da janela principal (coberta), mas
+     continua entregando mensagens e o áudio continua sendo analisado. */
+  function sendPopFrame(ts) {
+    if (!pop.win || pop.win.closed || !cfg('scope.on')) return;
+    if (cfg('scope.fps') === '30' && ts - pop.last < 32) return;
+    pop.last = ts;
+    const st = scopeState();
+    const analysed = st === 'live' ? analyse() : null;
+    const samples = analysed ? analysed.samples : null;
+    const stereo = analysed ? analysed.stereo
+      : (cfg('scope.visualizer') === 'vectorscope' ? scope.lastStereo : null);
+    const o = scopeOpts();
+    try {
+      pop.win.postMessage({
+        type: 'tempo:frame',
+        state: st,
+        samples: samples ? new Float32Array(samples) : null,
+        stereo: stereo ? {
+          left: new Float32Array(stereo.left),
+          right: new Float32Array(stereo.right),
+        } : null,
+        mediaKey: state.url || '',
+        ts, t0: scope.t0,
+        gain: o.gain, mode: o.mode, smooth: o.smooth,
+        visualizer: o.visualizer,
+        vectorTrail: o.vectorTrail, vectorSize: o.vectorSize,
+        vectorDensity: o.vectorDensity,
+        theme: el.root.dataset.theme,
+        title: state.meta.name || '',
+      }, '*');
+    } catch (e) { /* janela fechando */ }
   }
   const repaintScope = () => pumpScope(performance.now());
   const invalidateScopeColors = () => {
@@ -822,7 +842,7 @@
     }
     const sSt = el.scopeWrap.dataset.state;
     const minGap = cfg('scope.fps') === '30' ? 32 : 0;
-    const pumping = sSt === 'live' || sSt === 'busy' || pop.want;
+    const pumping = sSt === 'live' || sSt === 'busy';
     if (pumping && cfg('scope.on') && ts - scope.last >= minGap) {
       scope.last = ts;
       pumpScope(ts);
@@ -1181,6 +1201,7 @@
       seek(progress * state.meta.duration);
     },
   });
+  el.fScrub.addEventListener('input', () => setScrubFill(el.fScrub));
   bindScrub(el.fScrub, {
     onStart: () => { state.fScrubbing = true; },
     onEnd: () => { state.fScrubbing = false; },
@@ -1783,7 +1804,24 @@
      A interface normal se recolhe; no rodapé permanecem só a
      reprodução, posição e velocidade, discretas mas operáveis. */
   let focusTimer = 0;
+  let focusIdleTimer = 0;
+  const FOCUS_IDLE_MS = 2500;
   const focusBackground = new Map();
+
+  /* Tocando, a barra some depois de alguns segundos sem mexer o mouse.
+     Pausado, ou com o foco do teclado na barra, ela fica visível. */
+  function focusWake() {
+    clearTimeout(focusIdleTimer);
+    delete el.focus.dataset.idle;
+    if (!state.focus || !state.playing) return;
+    focusIdleTimer = setTimeout(() => {
+      const keyboardInBar = el.focus.querySelector(':focus-visible') !== null;
+      if (state.focus && state.playing && !keyboardInBar && !state.fScrubbing) el.focus.dataset.idle = '1';
+    }, FOCUS_IDLE_MS);
+  }
+  ['pointermove', 'pointerdown', 'keydown', 'wheel'].forEach((type) => {
+    el.focus.addEventListener(type, focusWake, { passive: true });
+  });
 
   function syncFocus(cur, r) {
     el.fCur.textContent = fmtTime(cur / r);
@@ -1817,6 +1855,7 @@
     renderReadouts();
     syncFocus(state.audio.currentTime || 0, state.rate / 100);
     (state.loaded ? el.fPlay : el.fExit).focus({ preventScroll: true });
+    focusWake();
     flash('Modo foco');
   }
 
@@ -1830,6 +1869,8 @@
     for (const [sibling, inert] of focusBackground) sibling.inert = inert;
     focusBackground.clear();
     clearTimeout(focusTimer);
+    clearTimeout(focusIdleTimer);
+    delete el.focus.dataset.idle;
     const close = () => { el.focus.hidden = true; };
     if (window.Motion.reduced()) close(); else focusTimer = setTimeout(close, 240);
     el.scopeWrap.focus({ preventScroll: true });
@@ -1872,7 +1913,7 @@
   function popToggle() {
     if (pop.win && !pop.win.closed) {
       try { pop.win.close(); } catch (e) { /* já fechada */ }
-      pop.win = null; pop.want = false; popState(false);
+      pop.win = null; popState(false);
       flash('Janela fechada');
       return;
     }
@@ -1892,11 +1933,11 @@
     const d = e.data;
     if (!d || typeof d !== 'object') return;
     if (d.type === 'tempo:hello') { pop.win = e.source || pop.win; popState(true); }
-    else if (d.type === 'tempo:need') { if (e.source) pop.win = e.source; pop.want = true; }
-    else if (d.type === 'tempo:closed') { pop.win = null; pop.want = false; popState(false); }
+    else if (d.type === 'tempo:need') { if (e.source) pop.win = e.source; sendPopFrame(performance.now()); }
+    else if (d.type === 'tempo:closed') { pop.win = null; popState(false); }
   });
   setInterval(() => {
-    if (pop.win && pop.win.closed) { pop.win = null; pop.want = false; popState(false); }
+    if (pop.win && pop.win.closed) { pop.win = null; popState(false); }
   }, 1500);
   window.addEventListener('beforeunload', () => {
     window.MediaLibrary?.updateActive({
@@ -2636,6 +2677,8 @@
     el.root.dataset.motion = window.Motion.reduced() ? 'reduced' : 'full';
     window.Dots.wake();
     el.scopeWrap.hidden = !cfg('scope.on');
+    // No modo foco, o vectorscope ocupa a tela inteira (styles.css).
+    el.focus.dataset.visualizer = cfg('scope.visualizer');
     const scopeName = cfg('scope.visualizer') === 'vectorscope' ? 'vectorscope de partículas' : 'osciloscópio';
     el.scopeWrap.title = `Ampliar ${scopeName}`;
     el.scopeWrap.setAttribute('aria-label', `Ampliar ${scopeName}`);

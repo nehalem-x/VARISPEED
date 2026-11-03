@@ -34,6 +34,17 @@ test('vectorscope mantém mono no eixo vertical e fase oposta no horizontal', ()
   assert.deepEqual(Core.stereoVectorPoint(NaN, Infinity), { x: 0, y: 0 });
 });
 
+test('vectorscope não corta seco: sinais altos não se empilham numa borda', () => {
+  // Valores diferentes acima do limite antigo continuam caindo em lugares diferentes.
+  const ys = [0.8, 1, 1.5, 2, 4, 8].map((v) => Core.stereoVectorPoint(v, v).y);
+  for (let i = 1; i < ys.length; i++) assert.ok(ys[i] > ys[i - 1], `y cresce em ${i}`);
+  // Passa um pouco de 1 (sai pela borda) e nunca dispara.
+  assert.ok(ys[ys.length - 1] > 1 && ys[ys.length - 1] < 1.35);
+  // Ganho alto com um só canal não forma mais o octógono: x e y continuam sem teto fixo em 1.
+  const p = Core.stereoVectorPoint(3, 0, 2);
+  assert.ok(Math.abs(p.x) > 1 && Math.abs(p.y) > 1);
+});
+
 test('orçamento do vectorscope cresce com a área e permanece limitado', () => {
   const inline = Core.stereoVectorStride(2048, 72, 16, 1);
   const focus = Core.stereoVectorStride(2048, 1920, 1080, 1);

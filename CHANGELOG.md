@@ -1,5 +1,21 @@
 # Registro de mudanças
 
+## Novembro de 2026: vectorscope sem borda
+
+- As partículas do vectorscope vão até o fim da tela. Antes elas paravam numa linha nas laterais e se acumulavam ali, como uma parede.
+- Com música alta ou ganho alto não aparece mais o contorno de um octógono. Acima de um certo nível, as partículas passam a se espalhar mais devagar, e os picos mais altos saem pela borda em vez de se empilhar nela.
+- No modo foco, o vectorscope ocupa a tela inteira, sem margem, e a barra fica por cima com um degradê. A forma de onda continua com a margem de antes.
+
+## Novembro de 2026: barra do modo foco
+
+- A barra do modo foco ficou mais limpa: sem a linha em cima, com mais espaço entre os controles, a parte já tocada clara na linha de posição e a velocidade um pouco maior.
+- Os botões de reproduzir e de velocidade do modo foco voltaram a ser quadrados. Antes eles encolhiam na largura e ficavam retangulares.
+- Enquanto a música toca, a barra, o X e o cursor somem depois de 2,5 s parados e voltam ao mexer o mouse ou apertar uma tecla.
+
+## Novembro de 2026: visualizador em tela cheia
+
+- A janela separada do visualizador de áudio não congela mais em tela cheia. Antes, quando ela cobria a janela principal, o navegador pausava a janela coberta e os quadros paravam de chegar. Agora cada quadro é enviado assim que o visualizador pede.
+
 ## Novembro de 2026: modais do app
 
 - Remover uma música, excluir uma categoria e desligar o VARISPEED não abrem mais a janela de confirmação do navegador. A pergunta aparece num modal do próprio app, no mesmo desenho do modal de categoria, e o foco começa em Cancelar.

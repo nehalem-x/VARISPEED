@@ -3188,29 +3188,40 @@ kbd {
 .focus__bar {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-2) clamp(var(--space-4), 5vw, 72px) var(--space-4);
+  gap: var(--space-4);
+  padding: var(--space-3) clamp(var(--space-4), 5vw, 72px) var(--space-5);
   color: var(--text-2);
 }
 .focus__t {
   font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
   color: var(--text-3);
   flex: none;
   min-width: 58px;
 }
+/* posição atual mais clara que a duração total */
+#fCur { color: var(--text-2); }
 .focus__t:last-of-type { text-align: right; }
 .scrub--focus { flex: 1 1 auto; min-width: 0; }
+/* Os botões clonados do editor mantêm o tamanho quadrado: em telas estreitas
+   quem encolhe é a linha de posição, nunca o botão. */
+.focus__bar .btn { flex: none; }
+/* a parte já tocada fica clara, como na forma de onda; --p vem do app.js */
+.scrub--focus::-webkit-slider-runnable-track {
+  background: linear-gradient(to right, var(--text-2) var(--p, 0%), var(--border-c) var(--p, 0%));
+}
+.scrub--focus::-moz-range-progress { height: 2px; background: var(--text-2); }
 .focus__sep {
   width: var(--border);
-  height: 14px;
-  background: var(--border-c);
+  height: 16px;
+  background: var(--divider);
   flex: none;
-  margin-inline: var(--space-2);
 }
 .focus__rate {
-  font-size: var(--text-xs);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
   color: var(--text);
-  min-width: 56px;
+  min-width: 64px;
   text-align: center;
 }
 .focus__exit {
@@ -3219,6 +3230,13 @@ kbd {
   right: var(--space-3);
   --btn-text: var(--text-2);
 }
+/* Tocando e sem mexer o mouse, a barra, o X e o cursor somem e fica só a
+   visualização. Qualquer movimento, toque ou tecla traz tudo de volta. */
+.focus__bar,
+.focus__exit { transition: opacity 360ms var(--ease-out); }
+.focus[data-idle='1'] .focus__bar,
+.focus[data-idle='1'] .focus__exit { opacity: 0; }
+.focus[data-idle='1'] { cursor: none; }
 [data-focus='1'] .app > .hdr,
 [data-focus='1'] .app > .main,
 [data-focus='1'] .app > .sbar,
@@ -3229,7 +3247,7 @@ kbd {
   .scrub--focus { flex: 1 1 100%; order: 3; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .focus { transition: none; }
+  .focus, .focus__bar, .focus__exit { transition: none; }
   .linkbar__track[data-mode='indet'] .linkbar__fill { animation-duration: 2.4s; }
 }
 
@@ -4011,10 +4029,23 @@ a:focus-visible { text-decoration: underline; text-underline-offset: 3px; }
   transition-property: opacity !important;
 }
 
-/* Focus mode é um contexto modal: preservar a leitura dos controles no rodapé. */
-.focus__bar {
-  border-top: var(--border) solid var(--divider);
-  background: var(--bg);
+/* Focus mode é um contexto modal: o rodapé usa o mesmo fundo, sem linha
+   separando a barra da visualização. */
+.focus__bar { background: var(--bg); }
+/* Vectorscope: as partículas vão até as bordas da tela. A visualização ocupa
+   o modo foco inteiro, sem margem, e a barra fica por cima com um degradê
+   que escurece só o pé da tela. */
+.focus[data-visualizer='vectorscope'] .focus__stage {
+  grid-row: 1 / -1;
+  grid-column: 1;
+  padding: 0;
+}
+.focus[data-visualizer='vectorscope'] .focus__bar {
+  grid-row: 2;
+  grid-column: 1;
+  position: relative;
+  z-index: 1;
+  background: linear-gradient(to bottom, transparent, color-mix(in srgb, var(--bg) 88%, transparent) 55%);
 }
 
 /* Contraste solicitado pelo sistema operacional: reforça bordas sem mudar

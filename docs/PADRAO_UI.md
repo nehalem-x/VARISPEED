@@ -131,6 +131,13 @@ Tarefas sem porcentagem mostram um indicador de pontos (`dots.js`) antes do text
 
 O indicador aparece em um lugar só por vez. Na importação por link ele fica na barra de link, ao lado da etapa, e some quando surge a porcentagem; o rodapé não repete. Botões com varredura de progresso não ganham indicador. Com "reduzir movimento" os pontos aparecem parados.
 
+## Modo foco
+
+- No vectorscope, a visualização ocupa a tela inteira e a barra fica por cima, com um degradê. As partículas nunca mostram o formato do limite: nada de corte seco, nem linha nas bordas, nem octógono; o que passa do quadro sai pela borda. A forma de onda mantém a margem em volta.
+
+- A barra de baixo não tem linha separando-a da visualização. Na linha de posição, a parte já tocada fica clara e o resto apagado, como na forma de onda. A posição atual é mais clara que a duração total.
+- Tocando, a barra, o X e o cursor somem depois de 2,5 s sem mexer o mouse. Qualquer movimento, toque, rolagem ou tecla traz tudo de volta. Pausado, ou com o foco do teclado na barra, ela não some. Com "reduzir movimento" ela some sem transição.
+
 ## Modais
 
 - Nunca usar as janelas do navegador (`confirm`, `alert`, `prompt`). Toda confirmação usa `Modal.confirm()` (`modal.js`), com o mesmo desenho do modal de categoria: rótulo pequeno da área, título, uma frase que diz o que acontece, Cancelar (discreto) e a ação (principal) com o verbo da ação ("Remover", "Excluir", "Desligar").

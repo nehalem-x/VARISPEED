@@ -290,14 +290,31 @@
   /* ── vectorscope estéreo ───────────────────────────────
      Rotação ortonormal de L/R para Side/Mid. Mono permanece
      vertical; diferenças de fase abrem a figura no eixo X. */
+  /* Sem corte seco: um corte em ±1 empilhava as partículas numa linha (a
+     "parede") e, somado ao corte de cada canal, desenhava um octógono. Até
+     VECTOR_KNEE o mapeamento é linear; acima disso o valor se aproxima de
+     VECTOR_CEIL cada vez mais devagar. Como o teto passa um pouco de 1, os
+     picos mais altos saem pela borda do quadro em vez de se acumular nela. */
+  const VECTOR_KNEE = 0.75;
+  const VECTOR_CEIL = 1.35;
+  function softVector(v) {
+    const a = Math.abs(v);
+    if (a <= VECTOR_KNEE) return v;
+    const room = VECTOR_CEIL - VECTOR_KNEE;
+    // u / (1 + u): mesma inclinação da parte linear no joelho e, ao contrário
+    // de tanh, nunca satura em ponto flutuante (sempre cresce um pouco).
+    const u = (a - VECTOR_KNEE) / room;
+    return Math.sign(v) * (VECTOR_KNEE + room * (u / (1 + u)));
+  }
+
   function stereoVectorPoint(left, right, gain = 1) {
-    const l = Number.isFinite(left) ? clamp(left, -1, 1) : 0;
-    const r = Number.isFinite(right) ? clamp(right, -1, 1) : 0;
+    const l = Number.isFinite(left) ? left : 0;
+    const r = Number.isFinite(right) ? right : 0;
     const g = Number.isFinite(gain) ? Math.max(0, gain) : 1;
     const k = Math.SQRT1_2 * g;
     return {
-      x: clamp((l - r) * k, -1, 1),
-      y: clamp((l + r) * k, -1, 1),
+      x: softVector((l - r) * k),
+      y: softVector((l + r) * k),
     };
   }
 
