@@ -33,10 +33,10 @@ function harness() {
 test('Resumo acompanha o nome, amostragem, canais, profundidade e normalização',()=>{
   const h=harness();h.render();
   assert.equal(h.el.exportName.textContent,'ensaio_125-0pct.wav');
-  assert.equal(h.el.exportFormat.textContent,'WAV · 24 bits PCM · 48 kHz · 1 canal');
+  assert.equal(h.el.exportFormat.textContent,'WAV, 24 bits PCM, 48 kHz, 1 canal');
   assert.equal(h.el.exportProcessing.textContent,'Pico normalizado a -1.0 dBFS');
   h.values['export.bits']='32f';h.values['export.normalize']=false;h.state.meta.channels=2;h.render();
-  assert.equal(h.el.exportFormat.textContent,'WAV · 32 bits float · 48 kHz · 2 canais');
+  assert.equal(h.el.exportFormat.textContent,'WAV, 32 bits float, 48 kHz, 2 canais');
   assert.equal(h.el.exportProcessing.textContent,'');
   assert.equal(h.el.exportProcessing.hidden,true);
 });
@@ -57,5 +57,5 @@ test('Alterações durante renderização não mudam a saída confirmada nem per
   assert.equal(h.el.btnExport.disabled,false);
   assert.equal(h.el.btnExport.attributes.has('aria-busy'),false);
   assert.equal(h.el.exportName.textContent,'outra_200-0pct.wav');
-  assert.ok(h.el.exportFormat.textContent.includes('32 bits float · 96 kHz'));
+  assert.ok(h.el.exportFormat.textContent.includes('32 bits float, 96 kHz'));
 });

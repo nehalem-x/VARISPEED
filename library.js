@@ -24,7 +24,7 @@
       kicker: 'Onde ficam',
       title: 'Suas músicas ficam neste computador.',
       body: 'O mapa mostra as categorias. Cada categoria abre uma lista com as músicas e os ajustes de velocidade salvos.',
-      signal: 'Mapa · categorias · músicas',
+      signal: 'Mapa, categorias e músicas',
     },
     {
       kicker: 'O mapa',
@@ -370,7 +370,7 @@
     const category = categoryForId(browseCategoryId);
     el.browser.hidden = !category;
     el.view.classList.toggle('is-browsing', Boolean(category));
-    el.total.textContent = `${musicCountLabel(items.length).toLocaleLowerCase('pt-BR')} · ${categories.length + 2} categorias`;
+    el.total.textContent = `${musicCountLabel(items.length).toLocaleLowerCase('pt-BR')} em ${categories.length + 2} categorias`;
     // Native select keeps every category reachable by keyboard and on narrow screens.
     const groups = [categoryForId(ROOT_ID), categoryForId(FAVORITES_ID), ...categories];
     const navKey = JSON.stringify(groups.map((entry) => [entry.id, entry.name]));
@@ -451,9 +451,9 @@
         const meta = part('library__track-meta mono', '');
         meta.append(part('library__track-rate', rateLabel),
           part('library__track-duration', item.rate > 0 ? formatTime(item.duration / (item.rate / 100)) : '—'));
-        meta.title = `Velocidade salva ${rateLabel} · duração nessa velocidade (original ${formatTime(item.duration)})`;
+        meta.title = `Velocidade salva: ${rateLabel}. Duração nessa velocidade (original ${formatTime(item.duration)})`;
         row.append(wash, art, info, status, meta);
-        row.title = `${item.title} · clique para ver os detalhes; Enter ou clique duplo abre no editor`;
+        row.title = `${item.title}. Clique para ver os detalhes; Enter ou clique duplo abre no editor`;
         row.addEventListener('click', () => selectTrack(item.id));
         row.addEventListener('dblclick', () => { selectTrack(item.id); openSelected(); });
         fragment.append(row);
@@ -587,8 +587,8 @@
       getNodeLabel: (node) => node.label,
       getNodeCountLabel: (node) => node.countLabel,
       getNodeTitle: (node) => node.isCategory
-        ? `${node.title} · ${node.countLabel.toLocaleLowerCase('pt-BR')}`
-        : `${node.title} · ${node.sourceLabel}`,
+        ? `${node.title} (${node.countLabel.toLocaleLowerCase('pt-BR')})`
+        : `${node.title} (${node.sourceLabel})`,
       isNodePlaying: (node) => playbackPlaying && items.some((item) => item.id === activeId && model.belongs(item, node.id)),
       isNodeLoaded: (node) => Boolean(activeId) && items.some((item) => item.id === activeId && model.belongs(item, node.id)),
       getViewportInsets: graphViewportInsets,
@@ -771,7 +771,7 @@
     focusNodeInVisibleViewport(browseCategoryId);
     (assignIndex >= 0 ? el.categorySelect : el.browserTitle).focus({ preventScroll: true });
     document.dispatchEvent(new CustomEvent('varispeed:status', {
-      detail: { text: renamed ? `Categoria renomeada · ${category.name}` : `Categoria criada · ${category.name}` },
+      detail: { text: renamed ? `Categoria renomeada: ${category.name}` : `Categoria criada: ${category.name}` },
     }));
   }
 
@@ -791,7 +791,7 @@
     focusNodeInVisibleViewport(browseCategoryId);
     const category = categories.find((entry) => entry.id === categoryId);
     document.dispatchEvent(new CustomEvent('varispeed:status', {
-      detail: { text: category ? `Movida para ${category.name} · ${item.title}` : `Movida para Biblioteca · ${item.title}` },
+      detail: { text: category ? `Movida para ${category.name}: ${item.title}` : `Movida para Biblioteca: ${item.title}` },
     }));
   }
 
@@ -1160,7 +1160,7 @@
     refresh({ fit: true });
     notifyChange();
     document.dispatchEvent(new CustomEvent('varispeed:status', {
-      detail: { text: `Removida da Biblioteca · ${item.title}` },
+      detail: { text: `Removida da Biblioteca: ${item.title}` },
     }));
   }
 
@@ -1183,7 +1183,7 @@
     refresh({ fit: true });
     notifyChange();
     document.dispatchEvent(new CustomEvent('varispeed:status', {
-      detail: { text: `Categoria excluída · ${category.name}` },
+      detail: { text: `Categoria excluída: ${category.name}` },
     }));
   }
 
@@ -1197,7 +1197,7 @@
     refresh();
     notifyChange();
     document.dispatchEvent(new CustomEvent('varispeed:status', {
-      detail: { text: favorite ? `Adicionada às Favoritas · ${item.title}` : `Removida das Favoritas · ${item.title}` },
+      detail: { text: favorite ? `Adicionada às Favoritas: ${item.title}` : `Removida das Favoritas: ${item.title}` },
     }));
   }
 

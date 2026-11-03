@@ -436,7 +436,7 @@ Na primeira entrada, `#libraryTutorial` apresenta a Biblioteca em quatro partes:
 - A captura do ponteiro pertence ao SVG estável e mudanças de dados durante um gesto esperam o `pointerup`. Perda de captura, troca de aba, perda de foco da janela ou saída da Biblioteca encerram o gesto. Câmera e foco rejeitam coordenadas não finitas para evitar `translate(NaN NaN)`.
 - Soltar uma categoria arrastada reduz o pico de energia sem velocidade mínima, limite rígido nem frenagem radial.
 
-Configurações → Diagnóstico mostra FPS, física, renderização, latência de entrada, intervalo entre quadros, custo da câmera, resposta do zoom, quadros perdidos e long tasks. Medir grafo · 8 s fecha as Configurações para você usar zoom, pan e arraste de verdade e depois reabre o Diagnóstico com FPS, cadência, orçamento por quadro e média/p95/máximo de cada etapa. Copiar relatório gera um bloco para comparar máquinas.
+Configurações → Diagnóstico mostra FPS, física, renderização, latência de entrada, intervalo entre quadros, custo da câmera, resposta do zoom, quadros perdidos e long tasks. Medir grafo (8 s) fecha as Configurações para você usar zoom, pan e arraste de verdade e depois reabre o Diagnóstico com FPS, cadência, orçamento por quadro e média/p95/máximo de cada etapa. Copiar relatório gera um bloco para comparar máquinas.
 
 Numa medição sintética, a física por quadro caiu de cerca de `0,61 ms` para `0,45 ms` com 17 músicas e de `4,07 ms` para `2,56 ms` com 50. No teste de limite (200 músicas, 64 categorias, `266` nós e `315` ligações), a grade mandou `1.819` de `35.245` pares para a colisão; `463` passaram pela rejeição por eixo e `385` estavam sobrepostos. Os números variam com a máquina.
 
@@ -484,7 +484,7 @@ A seção Sobre o VARISPEED mostra:
 CRIADOR DO VARISPEED
 Gaspar
 Design e desenvolvimento
-[GITHUB · nehalem-x/VARISPEED] · [LOGO YT_DLP]
+[GITHUB nehalem-x/VARISPEED]  [LOGO YT_DLP]
 ```
 
 `nehalem-x/VARISPEED` abre o repositório e o logo abre o projeto yt-dlp, os dois numa nova aba sem acesso à página de origem. Os assets são `assets/creator-light.png`, `assets/creator-dark.png` e `assets/yt-dlp-logo.png`.

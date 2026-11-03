@@ -2003,7 +2003,7 @@ button, input { font: inherit; color: inherit; }
 [data-view='library'] .sbar { border-top-color: transparent; }
 .sbar__msg { color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* indicador de pontos (dots.js): canvas quadrado, cor herdada do texto */
-.dots { display: inline-block; flex: none; width: 14px; height: 14px; color: var(--text-2); }
+.dots { display: inline-block; flex: none; width: 20px; height: 20px; color: var(--text-2); }
 .dots[hidden] { display: none; }
 .dots canvas { display: block; }
 .sbar__dots { margin-right: calc(var(--space-2) - var(--space-4)); }
@@ -2573,7 +2573,7 @@ kbd {
   min-width: 0;
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: var(--space-3);
   color: var(--text-3);
   font-size: var(--text-xs);
   line-height: 1.4;
@@ -2599,7 +2599,6 @@ kbd {
   color: var(--text);
   opacity: 0.78;
 }
-.cfg__credits-separator { color: var(--text-3); }
 .cfg__credits-ytdlp {
   flex: none;
   display: inline-flex;
@@ -2839,6 +2838,9 @@ kbd {
   align-items: center;
   column-gap: var(--space-3);
   min-height: 46px;
+  /* respiro fixo acima e abaixo do campo: com controles altos (40 px) o
+     min-height sozinho deixava o campo a 3 px da linha do cabeçalho */
+  padding-block: var(--space-2);
 }
 .linkbar__lbl {
   font-size: var(--text-xs);

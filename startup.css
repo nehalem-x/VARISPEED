@@ -100,7 +100,7 @@ h1 span {
   letter-spacing: .11em;
   white-space: nowrap;
 }
-.boot__dots { flex: none; width: 16px; height: 16px; color: var(--muted); }
+.boot__dots { flex: none; width: 24px; height: 24px; color: var(--muted); }
 .boot__dots[hidden] { display: none; }
 .boot__dots canvas { display: block; }
 .boot__track {

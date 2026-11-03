@@ -4,10 +4,13 @@
      tumble → três pontos num anel horizontal que gira; a câmera sobe e
               desce. Para tarefas de ler e trazer (decodificar, baixar,
               importar, abrir).
+     double → os mesmos três pontos, com o anel girando ao mesmo tempo no
+              eixo horizontal e no vertical. Para esperas por resposta de
+              fora (analisar um link, aguardar o login).
      grid   → grade 2×2 em que pares de cantos opostos trocam de lugar.
               Para tarefas de processar (renderizar, codificar).
 
-   Uso: const d = Dots.mount(span); d.set('tumble' | 'grid' | null).
+   Uso: const d = Dots.mount(span); d.set('tumble' | 'double' | 'grid' | null).
    A cor vem de `color` do host; o tamanho, da altura do host.
    Com movimento reduzido o indicador aparece parado.
    ═════════════════════════════════════════════════════════ */
@@ -33,6 +36,23 @@ window.Dots = (() => {
       const a = spin + (i * TAU) / 3;
       const z = Math.sin(a);
       out.push({ x: Math.cos(a), y: z * Math.sin(elev), z: z * Math.cos(elev) });
+    }
+    return out;
+  }
+
+  /* Rotação dupla: o mesmo giro horizontal do tumble, somado a um giro
+     contínuo do anel em torno do eixo horizontal (uma volta por ciclo de
+     3,67 s). Profundidade vira altura e o anel nunca para de tombar. */
+  function double(t) {
+    const phase = t / TUMBLE_HALF;
+    const u = phase - Math.floor(phase);
+    const spin = 1.5 * Math.PI - TAU * (phase - (0.19 / TAU) * Math.sin(TAU * u));
+    const vertical = TAU * t / (2 * TUMBLE_HALF);
+    const out = [];
+    for (let i = 0; i < 3; i++) {
+      const a = spin + (i * TAU) / 3;
+      const depth = Math.sin(a);
+      out.push({ x: Math.cos(a), y: depth * Math.sin(vertical), z: depth * Math.cos(vertical) });
     }
     return out;
   }
@@ -69,8 +89,9 @@ window.Dots = (() => {
   }
 
   const SHAPES = {
-    tumble: { at: tumble, spread: 0.78, radius: 0.19 },
-    grid: { at: grid, spread: 0.6, radius: 0.2 },
+    tumble: { at: tumble, spread: 0.78, radius: 0.19, depth: true },
+    double: { at: double, spread: 0.78, radius: 0.19, depth: true },
+    grid: { at: grid, spread: 0.6, radius: 0.2, depth: false },
   };
 
   const active = new Set();
@@ -86,7 +107,7 @@ window.Dots = (() => {
     const dots = shape.at(d.time).sort((a, b) => a.z - b.z);
     for (const p of dots) {
       const depth = (p.z + 1) / 2;                  // 0 fundo … 1 frente
-      const tumbling = d.kind === 'tumble';
+      const tumbling = shape.depth;
       ctx.globalAlpha = tumbling ? 0.55 + 0.45 * depth : 1;
       const r = half * shape.radius * (tumbling ? 0.75 + 0.25 * depth : 1);
       ctx.beginPath();

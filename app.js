@@ -214,7 +214,7 @@
     if (s === 'live') el.scopeWrap.dataset.heard = 'true';
   };
 
-  /* REV 2 · uma faixa carregada no editor não é necessariamente uma faixa da
+  /* REV 2: uma faixa carregada no editor não é necessariamente uma faixa da
      Biblioteca. Este rascunho conserva sua origem e seu Blob até que o usuário
      decida salvá-la (ou a preferência de inclusão automática faça isso). */
   let libraryDraft = null;
@@ -337,7 +337,7 @@
       if (item) {
         libraryDraft.entry = { ...item };
         window.MediaLibrary?.setActive(item.id);
-        if (!automatic) flash(`Adicionada à Biblioteca · ${item.title}`);
+        if (!automatic) flash(`Adicionada à Biblioteca: ${item.title}`);
       }
       return item || null;
     } finally {
@@ -778,7 +778,7 @@
     const st = 12 * Math.log2(r);
     el.rateTag.textContent = `${rateText(state.rate)}${cfg('rate.unit') === 'pct' ? '%' : ` ${rateSuffix()}`}`;
     const pitch = `${st >= 0 ? '+' : '−'}${Math.abs(st).toFixed(2)} st`;
-    el.rPitch.textContent = Math.abs(st) < 0.005 ? '0.00 st' : `${pitch} · ${st < 0 ? 'mais grave' : 'mais agudo'}`;
+    el.rPitch.textContent = Math.abs(st) < 0.005 ? '0.00 st' : `${pitch}, ${st < 0 ? 'mais grave' : 'mais agudo'}`;
     el.rOriginal.textContent = fmtTime(src);
     el.rDur.textContent = fmtTime(out);
     const delta = out - src;
@@ -964,7 +964,7 @@
     el.rateOrigin.style.left = `${origin}%`;
     el.rateFill.style.left = `${Math.min(origin, current)}%`;
     el.rateFill.style.width = `${Math.abs(current - origin)}%`;
-    el.rateEffect.textContent = val === 100 ? 'Original' : (val < 100 ? 'Mais lento · mais grave' : 'Mais rápido · mais agudo');
+    el.rateEffect.textContent = val === 100 ? 'Original' : (val < 100 ? 'Mais lento e mais grave' : 'Mais rápido e mais agudo');
     el.rateInput.style.setProperty('--rate-chars', String(Math.max(3, el.rateInput.value.length)));
   }
 
@@ -1480,7 +1480,7 @@
       el.waveHost.classList.remove('is-empty');
       el.empty.hidden = true;
 
-      // L2 · troca de estado: digitação rápida, sem cursor nem desfoque
+      // L2: troca de estado: digitação rápida, sem cursor nem desfoque
       el.fileName.title = file.name;
       window.Motion.typeOut(el.fileName, file.name, {
         speed: window.Motion.T.charState,
@@ -1488,10 +1488,10 @@
         charDur: 130, dy: 1, blur: 0,
         onDone: () => window.Motion.marquee(el.fileName),
       });
-      el.fileMeta.textContent = `${(buf.sampleRate / 1000).toFixed(1)} kHz · ${buf.numberOfChannels === 1 ? 'mono' : 'estéreo'} · ${fmtTime(buf.duration)}`;
+      el.fileMeta.textContent = `${(buf.sampleRate / 1000).toFixed(1)} kHz, ${buf.numberOfChannels === 1 ? 'mono' : 'estéreo'}, ${fmtTime(buf.duration)}`;
       el.sName.textContent = Core.sourceTitle(file.name);
       el.sName.title = file.name;
-      el.sFormat.textContent = [Core.sourceFormat(file.name), fmtBytes(file.size)].filter(Boolean).join(' · ');
+      el.sFormat.textContent = [Core.sourceFormat(file.name), fmtBytes(file.size)].filter(Boolean).join(', ');
       el.sRate.textContent = Core.fmtSampleRate(buf.sampleRate);
       el.sCh.textContent = Core.channelLabel(buf.numberOfChannels);
       syncSourceArtwork(state.meta.thumbnail, file.name);
@@ -1500,7 +1500,7 @@
       renderReadouts();
       el.scopeWrap.dataset.heard = 'false';
       dot('ready');
-      status(`Carregado · ${file.name}`);
+      status(`Carregado: ${file.name}`);
       pulse(el.mascot, 'is-cheer');
       if (cfg('load.autoplay')) play();
       return true;
@@ -1666,7 +1666,7 @@
     const name = outName(sr);
     el.exportName.textContent = name;
     el.exportName.title = name;
-    el.exportFormat.textContent = `WAV · ${depth === '32f' ? '32 bits float' : `${depth} bits PCM`} · ${sr / 1000} kHz · ${state.meta.channels} ${state.meta.channels === 1 ? 'canal' : 'canais'}`;
+    el.exportFormat.textContent = `WAV, ${depth === '32f' ? '32 bits float' : `${depth} bits PCM`}, ${sr / 1000} kHz, ${state.meta.channels} ${state.meta.channels === 1 ? 'canal' : 'canais'}`;
     el.exportProcessing.textContent = cfg('export.normalize')
       ? `Pico normalizado a ${Number(cfg('export.ceiling')).toFixed(1)} dBFS`
       : '';
@@ -1765,12 +1765,12 @@
   /* Exportação é a referência visual do status padrão. A única diferença
      é a sustentação maior para dar tempo de ler nome e tamanho do arquivo. */
   function announceExport(name, size) {
-    const text = `${name} · ${fmtBytes(size)}`;
+    const text = `${name} (${fmtBytes(size)})`;
     const hold = Math.round(cfg('motion.exportHold') * 1000);
-    if (!cfg('motion.status')) { plainTemp(text, 'Exportado · ', hold); return; }
+    if (!cfg('motion.status')) { plainTemp(text, 'Exportado: ', hold); return; }
     clearTimeout(tempTimer);
     window.Motion.status(el.statusMsg, text, {
-      lead: 'Exportado · ',
+      lead: 'Exportado: ',
       hold,
       caret: cfg('motion.caret'),
     });
@@ -1879,7 +1879,7 @@
     let w = null;
     try { w = window.open('scope.html', 'tempo-scope', 'width=760,height=280'); } catch (e) { w = null; }
     if (!w) {
-      status('O navegador bloqueou a janela do visualizador · permita janelas para este endereço');
+      status('O navegador bloqueou a janela do visualizador. Permita janelas para este endereço');
       return;
     }
     pop.win = w;
@@ -1940,11 +1940,11 @@
         const message = result.mode === 'auto'
           ? (result.auto?.active
             ? `Sessão validada do ${result.auto.active.browser_label}`
-            : 'Detecção automática ativada · a sessão será validada no próximo link restrito')
+            : 'Detecção automática ativada. A sessão será validada no próximo link restrito')
           : (result.mode === 'browser'
             ? `Cookies do ${names[browser] || browser} em uso só para conteúdo restrito`
             : (result.dedicated?.connected
-              ? 'Cookies de navegador desligados · a Conta do YouTube continua valendo'
+              ? 'Cookies de navegador desligados. A Conta do YouTube continua valendo'
               : 'Cookies de navegador desligados'));
         window.Settings.feedback?.(message, { hold: 4200 });
       }
@@ -2078,11 +2078,13 @@
     }
   }
 
-  function linkStage(label, mode) {
+  /* shape: 'tumble' para trazer dados (baixar, decodificar); 'double' para
+     esperar uma resposta de fora (analisar o link, aguardar o login). */
+  function linkStage(label, mode, shape = 'tumble') {
     el.urlProg.hidden = false;
     el.urlProg.removeAttribute('data-out');
     el.urlTrack.dataset.mode = mode || 'indet';
-    urlDots.set(mode === 'det' ? null : 'tumble');
+    urlDots.set(mode === 'det' ? null : shape);
     el.urlTrack.setAttribute('aria-valuetext', label);
     if (mode === 'det') el.urlTrack.setAttribute('aria-valuenow', '0');
     else el.urlTrack.removeAttribute('aria-valuenow');
@@ -2105,7 +2107,7 @@
     urlDots.set(null);
     el.urlFill.style.width = `${v}%`;
     el.urlTrack.setAttribute('aria-valuenow', String(v));
-    el.urlTrack.setAttribute('aria-valuetext', `${el.urlStage.textContent || 'Importando'} · ${v}%`);
+    el.urlTrack.setAttribute('aria-valuetext', `${el.urlStage.textContent || 'Importando'}, ${v}%`);
     if (v === linkUI.pctShown) return;
     const prev = linkUI.pctShown < 0 ? '' : `${linkUI.pctShown}%`;
     const next = `${v}%`;
@@ -2237,7 +2239,7 @@
     linkResetPreview();
     const { op, ctrl } = linkBegin('analyze');
     if (!state.loaded) dot('busy');
-    linkStage('Obtendo informações', 'indet');
+    linkStage('Obtendo informações', 'indet', 'double');
 
     try {
       const meta = await window.RemoteImport.info(parsed.url, ctrl.signal);
@@ -2245,7 +2247,7 @@
       linkShowPreview({ ...meta, requestUrl: parsed.url });
       linkMsg('');
       linkClear();
-      status('Link analisado · confirme a importação');
+      status('Link analisado. Confirme a importação');
       if (!state.loaded) dot('idle');
       linkIdle(op);
       return true;
@@ -2280,12 +2282,12 @@
     linkMsg('');
     const { op, ctrl } = linkBegin('auth');
     if (!state.loaded) dot('busy');
-    linkStage('Abrindo a janela de login', 'indet');
+    linkStage('Abrindo a janela de login', 'indet', 'double');
     try {
       const result = await window.RemoteImport.youtubeLogin({
         signal: ctrl.signal,
         onUpdate: (next) => {
-          if (linkIsCurrent(op) && next.login_open) linkStage(`Aguardando login no ${next.browser || 'navegador'}`, 'indet');
+          if (linkIsCurrent(op) && next.login_open) linkStage(`Aguardando login no ${next.browser || 'navegador'}`, 'indet', 'double');
         },
       });
       if (!linkIsCurrent(op)) return;
@@ -2297,7 +2299,7 @@
       if (cfg('remote.authBrowser') !== 'off') window.Settings.set('remote.authBrowser', 'off');
       linkClear();
       linkIdle(op);
-      status('Conta do YouTube conectada · tentando o link de novo');
+      status('Conta do YouTube conectada. Tentando o link de novo');
       await analyzeUrl(parsed.url);
     } catch (error) {
       if (!linkIsCurrent(op)) return;
@@ -2404,7 +2406,7 @@
 
     try {
       if (!mediaBlob && item.sourceType === 'remote' && item.sourceUrl) {
-        status(`Baixando · ${item.title}`);
+        status(`Baixando: ${item.title}`);
         const result = await window.RemoteImport.audio(item.sourceUrl, {
           authenticated: Boolean(item.sourceAuthRequired),
         });
@@ -2442,7 +2444,7 @@
 
       linkUI.importedUrl = item.sourceType === 'remote' ? item.sourceUrl : null;
       linkSyncImportButton();
-      status(`Aberto da Biblioteca · ${item.title}`);
+      status(`Aberto da Biblioteca: ${item.title}`);
       return true;
     } catch (err) {
       status(err && err.message ? err.message : 'Não foi possível abrir esta música');
@@ -2661,7 +2663,7 @@
   /* “Testar” de cada grupo: demonstra o efeito no próprio contexto */
   document.addEventListener('cfg:test', (e) => {
     if (e.detail === 'motion') {
-      flash('Amostra de movimento', { lead: 'Teste · ', hold: 1600 });
+      flash('Amostra de movimento', { lead: 'Teste: ', hold: 1600 });
       if (cfg('motion.rateTick')) {
         const nx = clamp(state.rate + rateStep(false), rateMin(), rateMax());
         if (nx !== state.rate) tickRateValue(rateText(state.rate), rateText(nx), nx - state.rate);
@@ -2677,9 +2679,9 @@
 
   document.addEventListener('cfg:imported', (e) => {
     const n = Number(e.detail);
-    if (n < 0) status('Preset inválido · não foi possível ler o JSON');
-    else if (n === 0) status('Preset carregado · nenhum ajuste compatível mudou');
-    else status(`Preset aplicado · ${n} ajuste${n === 1 ? '' : 's'}`);
+    if (n < 0) status('Preset inválido. Não foi possível ler o JSON');
+    else if (n === 0) status('Preset carregado, mas nenhum ajuste compatível mudou');
+    else status(`Preset aplicado com ${n} ajuste${n === 1 ? '' : 's'}`);
   });
 
   /* ── init ───────────────────────────────────────────── */
@@ -2706,12 +2708,12 @@
         graphZoomDropped: graphPerf ? String(graphPerf.zoomDroppedFrames) : '—',
         graphInputDelay: graphPerf ? `${graphPerf.inputDelayMs.toFixed(2)} ms` : '—',
         graphMissedFrames: graphPerf ? String(graphPerf.missedFrameSlots) : '—',
-        graphLongTasks: graphPerf ? `${graphPerf.longTaskCount} · ${graphPerf.longTaskMs.toFixed(1)} ms` : '—',
+        graphLongTasks: graphPerf ? `${graphPerf.longTaskCount} (${graphPerf.longTaskMs.toFixed(1)} ms)` : '—',
         motion: window.Motion.reduced() ? 'reduzido' : cfg('motion.level') === 'discreet' ? 'discreto' : 'completo',
       };
     },
     captureGraphPerformance: async ({ durationMs = 8000 } = {}) => {
-      flash('Diagnóstico do grafo · use o zoom, arraste o mapa e mova uma categoria', {
+      flash('Diagnóstico do grafo: use o zoom, arraste o mapa e mova uma categoria', {
         hold: durationMs + 500,
       });
       return window.MediaLibrary.measurePerformance({ durationMs });
@@ -2748,5 +2750,5 @@
     applyAll();
     syncLibraryAdd();
   });
-  status('Pronto · importe um áudio');
+  status('Pronto para importar um áudio');
 })();

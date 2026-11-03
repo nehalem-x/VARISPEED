@@ -44,7 +44,7 @@ window.Motion = (() => {
   };
 
   /* pausa proporcionalmente maior em separadores → ritmo natural */
-  const PAUSE = { ' ': 1.5, '·': 1.9, '.': 1.7, '_': 1.4, '-': 1.4, '/': 1.4 };
+  const PAUSE = { ' ': 1.5, ':': 1.9, ',': 1.6, '.': 1.7, '_': 1.4, '-': 1.4, '/': 1.4 };
   /* multiplicadores da engine de referência, reduzidos para UI densa */
   const SPACE_MULT = 1.55;
   const PUNCT_MULT = 1.85;
@@ -218,7 +218,7 @@ window.Motion = (() => {
   function letterDelay(c, base) {
     const j = rand(JITTER_LO, JITTER_HI);
     if (c === ' ' || c === '\u00a0') return base * SPACE_MULT * j;
-    if (/[.,;:!?·]/.test(c)) return base * PUNCT_MULT * j;
+    if (/[.,;:!?]/.test(c)) return base * PUNCT_MULT * j;
     return base * j;
   }
 

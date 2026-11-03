@@ -124,7 +124,7 @@ test('fmtClock é equivalente ao legado em toda entrada finita', () => {
   }
 });
 
-test('DIVERGÊNCIA · fmtClock filtra Infinity, o legado não', () => {
+test('DIVERGÊNCIA: fmtClock filtra Infinity, o legado não', () => {
   /* Endurecimento deliberado. Se este teste falhar, ou o core
      regrediu ou o app.js foi corrigido e o snapshot legado
      precisa ser atualizado. */
@@ -317,7 +317,7 @@ test('outName é equivalente ao legado em nomes, templates e velocidades extremo
    2. CONTRATO DE PRODUTO
    ═══════════════════════════════════════════════════════ */
 
-test('CONTRATO · velocidade sobrevive ao round-trip texto → número', () => {
+test('CONTRATO: velocidade sobrevive ao round-trip texto → número', () => {
   /* O usuário digita na unidade exibida e o app converte de
      volta para porcentagem. A ida e volta não pode derivar. */
   for (const unit of UNITS) {
@@ -335,7 +335,7 @@ test('CONTRATO · velocidade sobrevive ao round-trip texto → número', () => {
   }
 });
 
-test('CONTRATO · 100% é exatamente neutro em todas as unidades', () => {
+test('CONTRATO: 100% é exatamente neutro em todas as unidades', () => {
   assert.equal(Core.rateText(100, 'pct'), '100.0');
   assert.equal(Core.rateText(100, 'mult'), '1.000');
   assert.equal(Core.rateText(100, 'st'), '+0.00');
@@ -345,7 +345,7 @@ test('CONTRATO · 100% é exatamente neutro em todas as unidades', () => {
   }
 });
 
-test('CONTRATO · semitons usam o sinal tipográfico, não hífen', () => {
+test('CONTRATO: semitons usam o sinal tipográfico, não hífen', () => {
   /* A UI usa U+2212; o parser precisa aceitar de volta. */
   const txt = Core.rateText(50, 'st');
   assert.ok(txt.startsWith(Core.MINUS), `esperado U+2212 em "${txt}"`);
@@ -353,7 +353,7 @@ test('CONTRATO · semitons usam o sinal tipográfico, não hífen', () => {
   assert.ok(Math.abs(Core.parseRate(txt, 'st') - 50) < 0.02);
 });
 
-test('CONTRATO · xToSrc e srcToX são inversos', () => {
+test('CONTRATO: xToSrc e srcToX são inversos', () => {
   for (const duration of [12.5, 180, 3600]) {
     for (const zoom of [1, 4, 64]) {
       const viewDur = Core.viewDuration(duration, zoom);
@@ -368,7 +368,7 @@ test('CONTRATO · xToSrc e srcToX são inversos', () => {
   }
 });
 
-test('CONTRATO · clampView nunca deixa a janela passar do fim da mídia', () => {
+test('CONTRATO: clampView nunca deixa a janela passar do fim da mídia', () => {
   for (const duration of [0, 1, 12.5, 180, 3600]) {
     for (const zoom of [1, 1.5, 4, 64]) {
       const viewDur = Core.viewDuration(duration, zoom);
@@ -381,7 +381,7 @@ test('CONTRATO · clampView nunca deixa a janela passar do fim da mídia', () =>
   }
 });
 
-test('CONTRATO · backing store erra no máximo meio device pixel', () => {
+test('CONTRATO: backing store erra no máximo meio device pixel', () => {
   /* Invariante declarado no HANDOFF (seção 11.2). */
   for (const rawDpr of DPRS) {
     const dpr = Core.dprClamp(rawDpr);
@@ -400,7 +400,7 @@ test('CONTRATO · backing store erra no máximo meio device pixel', () => {
   }
 });
 
-test('CONTRATO · DPR fica dentro de 0.5–3 mesmo com entrada absurda', () => {
+test('CONTRATO: DPR fica dentro de 0.5–3 mesmo com entrada absurda', () => {
   for (const raw of [...DPRS, -1, 1e9, 'abc', null, undefined, Infinity]) {
     const d = Core.dprClamp(raw);
     assert.ok(d >= Core.DPR_MIN && d <= Core.DPR_MAX, `dprClamp(${raw}) = ${d}`);
@@ -408,7 +408,7 @@ test('CONTRATO · DPR fica dentro de 0.5–3 mesmo com entrada absurda', () => {
   }
 });
 
-test('CONTRATO · nome exportado é sempre um arquivo .wav válido no Windows', () => {
+test('CONTRATO: nome exportado é sempre um arquivo .wav válido no Windows', () => {
   const date = new Date('2026-08-22T14:27:00.000Z');
   for (const name of NAMES) {
     for (const template of TEMPLATES) {
@@ -432,7 +432,7 @@ test('CONTRATO · nome exportado é sempre um arquivo .wav válido no Windows', 
   }
 });
 
-test('CONTRATO · truncamento não parte caractere multibyte', () => {
+test('CONTRATO: truncamento não parte caractere multibyte', () => {
   const date = new Date('2026-08-22T14:27:00.000Z');
   for (const name of ['🎧'.repeat(300), 'ção'.repeat(200), '日本語'.repeat(200)]) {
     const file = Core.outName('{nome}', { name, rate: 100, sampleRate: 48000, date });
@@ -444,7 +444,7 @@ test('CONTRATO · truncamento não parte caractere multibyte', () => {
   }
 });
 
-test('CONTRATO · nomes reservados do Windows recebem prefixo', () => {
+test('CONTRATO: nomes reservados do Windows recebem prefixo', () => {
   const date = new Date('2026-08-22T14:27:00.000Z');
   const ctx = { rate: 100, sampleRate: 48000, date };
   for (const reserved of ['con', 'CON', 'Con', 'nul', 'prn', 'aux', 'com1', 'com9', 'lpt1', 'lpt9']) {
@@ -458,7 +458,7 @@ test('CONTRATO · nomes reservados do Windows recebem prefixo', () => {
   }
 });
 
-test('CONTRATO · presets respeitam faixa, unicidade e teto de 8', () => {
+test('CONTRATO: presets respeitam faixa, unicidade e teto de 8', () => {
   const out = Core.parsePresets('50,75,100,125,150,200,250,300,400,600,50', 25, 400);
   assert.equal(out.length, 8, `teto de 8 não aplicado: ${out.length}`);
   assert.equal(new Set(out).size, out.length, 'duplicatas passaram');
@@ -471,7 +471,7 @@ test('CONTRATO · presets respeitam faixa, unicidade e teto de 8', () => {
   assert.deepEqual(Core.parsePresets('', 25, 400), [], 'string vazia deveria resultar em lista vazia');
 });
 
-test('CONTRATO · presets tratam vírgula como separador, não decimal', () => {
+test('CONTRATO: presets tratam vírgula como separador, não decimal', () => {
   /* Comportamento conhecido e preservado: o campo é uma lista
      separada por vírgula, então "1,5" são dois valores. Se este
      teste falhar, a mudança foi deliberada e o HANDOFF precisa
@@ -480,7 +480,7 @@ test('CONTRATO · presets tratam vírgula como separador, não decimal', () => {
   assert.deepEqual(Core.parsePresets('99.5', 5, 400), [99.5], 'ponto decimal deve funcionar');
 });
 
-test('CONTRATO · marcas do trilho começam no mínimo e terminam no máximo', () => {
+test('CONTRATO: marcas do trilho começam no mínimo e terminam no máximo', () => {
   for (const [lo, hi] of [[25, 400], [5, 800], [50, 150], [95, 105]]) {
     const marks = Core.rateMarks(lo, hi);
     assert.equal(marks[0], lo, `primeira marca != mínimo em ${lo}..${hi}`);
@@ -495,7 +495,7 @@ test('CONTRATO · marcas do trilho começam no mínimo e terminam no máximo', (
   }
 });
 
-test('CONTRATO · tempo negativo, NaN e Infinity nunca vazam para a UI', () => {
+test('CONTRATO: tempo negativo, NaN e Infinity nunca vazam para a UI', () => {
   for (const format of FORMATS) {
     for (const bad of [-1, -1e9, NaN, Infinity, -Infinity]) {
       const out = Core.fmtTime(bad, { format, sampleRate: 48000 });
@@ -508,7 +508,7 @@ test('CONTRATO · tempo negativo, NaN e Infinity nunca vazam para a UI', () => {
   }
 });
 
-test('CONTRATO · fmtTime em mmss zera-preenche os segundos', () => {
+test('CONTRATO: fmtTime em mmss zera-preenche os segundos', () => {
   assert.equal(Core.fmtTime(0, {}), '0:00.00');
   assert.equal(Core.fmtTime(5.5, {}), '0:05.50');
   assert.equal(Core.fmtTime(65.25, {}), '1:05.25');
@@ -516,7 +516,7 @@ test('CONTRATO · fmtTime em mmss zera-preenche os segundos', () => {
   assert.equal(Core.fmtTime(7261.239, {}), '121:01.24');
 });
 
-test('CONTRATO · fmtBytes usa o marcador de ausência quando não há tamanho', () => {
+test('CONTRATO: fmtBytes usa o marcador de ausência quando não há tamanho', () => {
   assert.equal(Core.fmtBytes(0), Core.DASH);
   assert.equal(Core.fmtBytes(undefined), Core.DASH);
   assert.equal(Core.fmtBytes(1024), '1.0 KB');
@@ -525,7 +525,7 @@ test('CONTRATO · fmtBytes usa o marcador de ausência quando não há tamanho',
   assert.ok(Core.fmtBytes(1e18).endsWith('GB'), Core.fmtBytes(1e18));
 });
 
-test('CONTRATO · sanitizeStem é idempotente', () => {
+test('CONTRATO: sanitizeStem é idempotente', () => {
   for (const name of NAMES) {
     const once = Core.sanitizeStem(name, 'audio');
     const twice = Core.sanitizeStem(once, 'audio');
@@ -533,7 +533,7 @@ test('CONTRATO · sanitizeStem é idempotente', () => {
   }
 });
 
-test('CONTRATO · niceStep sempre cobre o alvo e é monotônico', () => {
+test('CONTRATO: niceStep sempre cobre o alvo e é monotônico', () => {
   let prev = 0;
   for (const t of [0.001, 0.01, 0.05, 0.2, 0.6, 3, 7, 45, 200, 1200, 4000]) {
     const s = Core.niceStep(t);

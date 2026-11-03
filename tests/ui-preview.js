@@ -23,7 +23,7 @@
   for (let i = 0; i < sampleRate * seconds; i++) view.setInt16(44 + i * 2, Math.sin(i / sampleRate * Math.PI * 2 * 220) * 800, true);
   const audio = new Blob([buffer], { type: 'audio/wav' });
   const tracks = Array.from({ length: params.has('empty') ? 0 : 32 }, (_, i) => ({
-    id: `preview-track-${i}`, title: `${titles[i % titles.length]}${i >= 8 ? ` · ${i + 1}` : ''}`,
+    id: `preview-track-${i}`, title: `${titles[i % titles.length]}${i >= 8 ? ` (${i + 1})` : ''}`,
     fileName: `preview-${i}.wav`, sourceType: 'local', sourceLabel: 'ARQUIVO LOCAL',
     byline: i % 3 ? 'Acervo de teste / áudio sintético' : '',
     categoryId: i % 4 === 3 ? '' : categories[i % 3].id,

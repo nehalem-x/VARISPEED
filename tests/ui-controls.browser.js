@@ -38,7 +38,8 @@ $('btnImport').click();$('importLink').click();$('url').value='ftp://example.com
 check('Invalid URL has immediate inline message',$('url').getAttribute('aria-invalid')==='true' && !$('urlMsg').hidden && $('urlMsg').textContent.length>0);
 $('url').value='https://example.com/audio';$('url').dispatchEvent(new Event('input'));check('Editing URL clears invalid state',!$('url').hasAttribute('aria-invalid'));
 RemoteImport.info=()=>new Promise(()=>{});$('btnUrlGo').click();check('Busy analysis remains legible',$('btnUrlGo').disabled && $('btnUrlGo').getAttribute('aria-busy')==='true' && getComputedStyle($('btnUrlGo')).opacity==='1');
-check('Busy analysis shows dot indicator once',!$('urlDots').hidden && $('urlDots').querySelector('canvas')!==null && $('urlDots').getBoundingClientRect().width===14 && $('statusDots').hidden);
+check('Busy analysis shows dot indicator once',!$('urlDots').hidden && $('urlDots').querySelector('canvas')!==null && $('urlDots').getBoundingClientRect().width===20 && $('statusDots').hidden);
+check('Double rotation dots are available',typeof Dots._shapes.double?.at==='function' && Dots._shapes.double.at(1).length===3);
 $('btnUrlCancel').click();check('Cancel restores editable field',document.activeElement===$('url') && !$('url').disabled && !$('btnUrlGo').disabled);$('btnUrlClose').click();
 $('btnLibrary').click();$('libraryTutorialSkip').click();
 check('Library search begins collapsed',$('librarySearchToggle').getAttribute('aria-expanded')==='false' && $('librarySearchField').inert);

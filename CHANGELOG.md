@@ -1,5 +1,17 @@
 # Registro de mudanças
 
+## Novembro de 2026: textos sem ponto médio
+
+- Os textos do app não usam mais "·" como separador. Viraram frases normais: "36 músicas em 4 categorias", "Carregado: musica.mp3", "Link analisado. Confirme a importação.", "WAV, MP3, FLAC, OGG e M4A".
+- Os títulos das janelas ficaram mais simples: "VARISPEED", "Inicializando o VARISPEED" e "Visualização de áudio do VARISPEED".
+- Nos créditos, o separador entre o GitHub e o logo do yt-dlp saiu; os dois ficaram só com espaço entre eles.
+
+## Novembro de 2026: pontos em rotação dupla
+
+- Nova variação do indicador de pontos: os três pontos giram na horizontal e na vertical ao mesmo tempo. Ela aparece quando o app espera uma resposta de fora: ao analisar um link e ao abrir e aguardar o login do YouTube. Baixar e decodificar continuam com os três pontos de antes.
+- Os indicadores de pontos ficaram maiores: 20 px no app (antes 14 px) e 24 px na tela de inicialização (antes 16 px).
+- O campo de link ganhou 8 px de respiro acima e abaixo. Antes ele quase encostava na linha do cabeçalho.
+
 ## Outubro de 2026: indicador de espera
 
 - No painel do editor, Arquivo original subiu para logo abaixo de Velocidade, e Resultado desceu para perto da exportação.
@@ -35,11 +47,11 @@
 
 ## Outubro de 2026: painéis de Velocidade, Resultado e Arquivo original
 
-- O `%` fica junto do número, e uma linha embaixo diz o efeito: "Mais lento · mais grave", "Original" ou "Mais rápido · mais agudo".
+- O `%` fica junto do número, e uma linha embaixo diz o efeito: "Mais lento e mais grave", "Original" ou "Mais rápido e mais agudo".
 - O − e o + viraram dois botões com borda, à direita do número. A linha fixa abaixo do número saiu; o sublinhado só aparece ao editar o valor.
 - O slider marca o 100% e pinta a distância entre o original e a velocidade atual.
 - Os presets viraram uma fileira de botões com borda, sempre em ordem crescente, como o slider. O ativo fica invertido.
-- Resultado: a diferença de duração aparece embaixo da duração de saída, no mesmo formato de tempo ("+0:44.19 mais longo"), e o tom diz o efeito ("−3.86 st · mais grave"). A linha Frequência saiu, porque repetia a velocidade.
+- Resultado: a diferença de duração aparece embaixo da duração de saída, no mesmo formato de tempo ("+0:44.19 mais longo"), e o tom diz o efeito ("−3.86 st, mais grave"). A linha Frequência saiu, porque repetia a velocidade.
 - Arquivo original: o nome aparece sem a extensão e com a `/` que o yt-dlp troca por `⧸`. Formato e tamanho ficam numa linha pequena embaixo do nome. A duração saiu, porque já está em Resultado; amostragem e canais aparecem como "48 kHz" e "Estéreo".
 
 ## Outubro de 2026: login de um botão

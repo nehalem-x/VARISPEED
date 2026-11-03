@@ -50,7 +50,12 @@ Sem áudio carregado, o visualizador mostra "Sem áudio"; com áudio que ainda n
 - "Biblioteca" sempre com maiúscula, por ser o nome de uma área do app.
 - Tom técnico e direto: frases curtas que dizem o que acontece ou o que fazer, sem metáfora nem slogan. A única frase de marca é "Dê outro tempo à sua música.", no editor vazio.
 - Termos de áudio ficam (preset, WAV, dBFS, pico, ganho, timeline). Termos de programação não aparecem na tela: usar "servidor local" em vez de "backend" e "alternativa" em vez de "fallback".
-- Mensagens de status seguem "Estado · detalhe", sem travessão. Títulos de janela usam "VARISPEED · Tela".
+- Nada de ponto médio (·) nem travessão como separador. Os textos se escrevem como frases normais:
+  - estado seguido de um nome ou valor usa dois-pontos: "Carregado: musica.mp3", "Categoria criada: Rock";
+  - duas ideias viram duas frases ou uma frase com vírgula: "Link analisado. Confirme a importação.", "Conectado, sessão válida";
+  - listas usam vírgula e "e": "WAV, MP3, FLAC, OGG e M4A", "36 músicas em 4 categorias";
+  - um detalhe complementar vai entre parênteses: "Medir grafo (8 s)".
+- Títulos de janela: "VARISPEED" na tela principal; nas outras, uma frase curta como "Inicializando o VARISPEED".
 
 ## Base compartilhada
 
@@ -116,11 +121,12 @@ O guia da Biblioteca e os textos longos de feedback podem receber uma revisão e
 
 ## Indicador de espera
 
-Tarefas sem porcentagem mostram um indicador pequeno de pontos (`dots.js`) antes do texto de status, na mesma cor do texto secundário. Ele existe em duas formas:
+Tarefas sem porcentagem mostram um indicador de pontos (`dots.js`) antes do texto de status, com 20 px no app e 24 px na tela de inicialização, na mesma cor do texto secundário. Ele existe em três formas:
 
 | Forma | Movimento | Quando usar |
 | --- | --- | --- |
 | Três pontos | Um anel horizontal gira e a câmera sobe e desce (ciclo de 3,67 s) | Ler e trazer: decodificar, baixar, importar, abrir |
+| Três pontos, rotação dupla | O mesmo anel gira na horizontal e, ao mesmo tempo, tomba sem parar no eixo vertical (ciclo de 3,67 s) | Esperar uma resposta de fora: analisar um link, abrir e aguardar o login |
 | Grade | Uma grade 2×2 em que pares de cantos opostos trocam de lugar (ciclo de 1,27 s) | Processar: renderizar e codificar a exportação, inicializar |
 
 O indicador aparece em um lugar só por vez. Na importação por link ele fica na barra de link, ao lado da etapa, e some quando surge a porcentagem; o rodapé não repete. Botões com varredura de progresso não ganham indicador. Com "reduzir movimento" os pontos aparecem parados.
@@ -147,7 +153,7 @@ Origem, revisão e mapeamento: [manifesto Lucide](../assets/icons/lucide-manifes
 
 ## Configurações e ajudas por item
 
-Quatro abas fixas no topo: Áudio, Biblioteca, Visual e Sistema. Cada aba mostra suas seções em sequência, separadas por uma divisória, com rolagem. A aba escolhida é mantida ao fechar e reabrir o painel durante a sessão. As setas, Home e End trocam de aba pelo teclado. Diagnóstico fica recolhido no fim de Sistema, como "Diagnóstico · avançado"; Sobre o VARISPEED vem depois dele. Campos continuam montados e sincronizados, preservando dependências, persistência, validação e exportação de presets.
+Quatro abas fixas no topo: Áudio, Biblioteca, Visual e Sistema. Cada aba mostra suas seções em sequência, separadas por uma divisória, com rolagem. A aba escolhida é mantida ao fechar e reabrir o painel durante a sessão. As setas, Home e End trocam de aba pelo teclado. Diagnóstico fica recolhido no fim de Sistema, como "Diagnóstico (avançado)"; Sobre o VARISPEED vem depois dele. Campos continuam montados e sincronizados, preservando dependências, persistência, validação e exportação de presets.
 
 O título de cada seção é um subtítulo (`.cfg__subtitle`), não um título de página: o nome do painel já está no topo. Usar subtítulo, descrição curta e campos alinhados, sem divisórias entre cada ajuste. Todo slider mostra o valor à direita e o mínimo e o máximo embaixo.
 

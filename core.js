@@ -31,7 +31,7 @@
   const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 
   /* ── tempo ──────────────────────────────────────────────
-     format: 'mmss' (padrão) · 'sec' · 'samples'
+     format: 'mmss' (padrão), 'sec' ou 'samples'
      sampleRate só é usado em 'samples'; 48000 é o fallback
      histórico para quando nenhuma mídia foi carregada.      */
   function fmtTime(s, opts) {
@@ -69,7 +69,7 @@
   /* ── velocidade ─────────────────────────────────────────
      O estado interno do app é sempre porcentagem. Estas
      funções só traduzem para/da unidade exibida.
-     unit: 'pct' · 'mult' · 'st'                            */
+     unit: 'pct', 'mult' ou 'st'                            */
   function rateText(v, unit) {
     const r = v / 100;
     if (unit === 'mult') return r.toFixed(3);

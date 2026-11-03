@@ -354,7 +354,7 @@ Publicar o backend deixa de ser uma mudança simples. Antes, seriam necessários
 - `_auth_mode_for_url()` impede usar a sessão fora de `youtube.com`/`youtu.be`;
 - `disconnect` apaga o arquivo e `cancel` fecha só a tentativa pendente;
 - `start`, `finish`, `cancel` e `disconnect` exigem loopback e origem local, e as respostas trazem só `available`, `browser` (nome público), `connected`, `login_open`, `validation`, `expired`, `error` e `manual_cookies`, nunca caminhos ou cookies;
-- `validation = invalid` aparece como `expired`: a interface mostra "Sessão expirada · entre de novo".
+- `validation = invalid` aparece como `expired`: a interface mostra "Sessão expirada, entre de novo".
 
 `ExtractionLogger` guarda só dois booleanos do log do `yt-dlp`: conta reconhecida e exigência de confirmação de idade. Não salvar nem devolver o log completo, que pode ter contexto sensível. Uma conta reconhecida sem idade confirmada não é "cookie inválido".
 
@@ -429,7 +429,7 @@ A seção Sobre o VARISPEED tem um bloco montado por `buildCredits()` em `settin
 CRIADOR DO VARISPEED
 Gaspar
 Design e desenvolvimento
-[GITHUB · nehalem-x/VARISPEED] · [LOGO YT_DLP]
+[GITHUB nehalem-x/VARISPEED]  [LOGO YT_DLP]
 ```
 
 O logo é um link externo na mesma linha (`target="_blank"` com `rel="noopener noreferrer"`), sem URL em texto abaixo. Os assets são `assets/creator-light.png`, `assets/creator-dark.png` e `assets/yt-dlp-logo.png`.
@@ -510,7 +510,7 @@ Limites: `export.name` até 180 caracteres e `rate.presets` até 120, aplicados 
 
 ## 9. Feedback textual
 
-A animação da confirmação `Exportado · arquivo · tamanho` é o padrão de todo feedback textual, exposto por `Motion.status(host, text, opts)` em `motion.js`.
+A animação da confirmação `Exportado: arquivo (tamanho)` é o padrão de todo feedback textual, exposto por `Motion.status(host, text, opts)` em `motion.js`.
 
 - Transporte, importação, análise de link, download e decodificação, presets, mensagens de sistema e a tela de inicialização usam `Motion.status()`.
 - A cadência é a da exportação: `charEvent` com o jitter correspondente, `dissolve=420 ms`, `outStep=11` e intensidade cheia por padrão.

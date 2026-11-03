@@ -77,7 +77,7 @@ window.Settings = (() => {
         { k: 'export.ceiling', t: 'range', label: 'Teto', d: -0.3, min: -6, max: 0, step: 0.1,
           fmt: (v) => `${(+v).toFixed(1)} dBFS`, bounds: true, off: (g) => !g('export.normalize') },
         { k: 'export.name', t: 'text', label: 'Nome do arquivo', d: '{nome}_{rate}pct', maxLength: 180,
-          hint: '{nome} · {rate} · {mult} · {st} · {sr} · {data}' },
+          hint: 'Variáveis: {nome}, {rate}, {mult}, {st}, {sr} e {data}' },
         { k: 'load.confirmExit', t: 'bool', label: 'Avisar ao sair durante exportação', d: true },
       ],
     },
@@ -791,7 +791,7 @@ window.Settings = (() => {
     if (!value) return;
     try {
       await navigator.clipboard.writeText(value);
-      panelFeedback(`Endereço copiado · ${value}`);
+      panelFeedback(`Endereço copiado: ${value}`);
     } catch (_) {
       // Fallback simples para navegadores sem Clipboard API em HTTP local.
       const ta = document.createElement('textarea');
@@ -800,7 +800,7 @@ window.Settings = (() => {
       let copied = false;
       try { copied = document.execCommand('copy'); } catch (_) {}
       ta.remove();
-      panelFeedback(copied ? `Endereço copiado · ${value}` : 'Não foi possível copiar o endereço', {
+      panelFeedback(copied ? `Endereço copiado: ${value}` : 'Não foi possível copiar o endereço', {
         kind: copied ? '' : 'err',
       });
     }
@@ -808,7 +808,7 @@ window.Settings = (() => {
 
   function showShutdownScreen() {
     document.documentElement.classList.remove('cfg-open');
-    document.title = 'VARISPEED · Desligado';
+    document.title = 'VARISPEED desligado';
     document.body.innerHTML = `
       <main class="shutdown-screen" role="status" aria-live="polite">
         <img src="assets/favicon.png" width="56" height="56" alt="" draggable="false">
@@ -942,7 +942,7 @@ window.Settings = (() => {
     if (!state) {
       version.textContent = '—';
       latest.textContent = '—';
-      ytdlp.hint.textContent = 'Sem conexão · o servidor local não respondeu';
+      ytdlp.hint.textContent = 'Sem conexão. O servidor local não respondeu';
       ytdlp.action.disabled = true;
       return;
     }
@@ -954,10 +954,10 @@ window.Settings = (() => {
 
     let hint;
     if (!state.can_update) hint = 'A atualização só pode ser feita no computador em que o VARISPEED está rodando.';
-    else if (state.restart_required) hint = `Atualizado · reinicie o VARISPEED para usar a versão ${versionText(state.installed)}`;
-    else if (state.update_available) hint = `Nova versão · ${versionText(state.latest)} está disponível`;
-    else if (state.error) hint = `Sem consulta · ${state.error.replace(/\.$/, '').toLocaleLowerCase('pt-BR')}`;
-    else if (state.latest) hint = 'Atualizado · você já tem a versão mais recente';
+    else if (state.restart_required) hint = `Atualizado. Reinicie o VARISPEED para usar a versão ${versionText(state.installed)}`;
+    else if (state.update_available) hint = `Nova versão disponível: ${versionText(state.latest)}`;
+    else if (state.error) hint = `Não foi possível consultar: ${state.error.replace(/\.$/, '').toLocaleLowerCase('pt-BR')}`;
+    else if (state.latest) hint = 'Atualizado. Você já tem a versão mais recente';
     else hint = 'Ainda não verificado';
     ytdlp.hint.textContent = hint;
 
@@ -1030,15 +1030,15 @@ window.Settings = (() => {
       panelFeedback('Atualizando yt-dlp...', { persist: true });
       const result = await ytdlpRequest('/api/system/ytdlp/update', { method: 'POST' });
       if (result.restarting) {
-        panelFeedback(`Reiniciando o servidor · yt-dlp ${versionText(result.version)}`, { persist: true });
+        panelFeedback(`Reiniciando o servidor com o yt-dlp ${versionText(result.version)}`, { persist: true });
         const back = await waitForYtDlp(result.version);
         panelFeedback(back
-          ? `yt-dlp atualizado · ${versionText(result.version)}`
-          : 'O servidor não voltou · abra o VARISPEED de novo', { kind: back ? '' : 'err', hold: 5200 });
+          ? `yt-dlp atualizado para ${versionText(result.version)}`
+          : 'O servidor não voltou. Abra o VARISPEED de novo', { kind: back ? '' : 'err', hold: 5200 });
       } else if (result.restart_required) {
-        panelFeedback(`yt-dlp ${versionText(result.version)} instalado · reinicie o VARISPEED para usar`, { hold: 6200 });
+        panelFeedback(`yt-dlp ${versionText(result.version)} instalado. Reinicie o VARISPEED para usar`, { hold: 6200 });
       } else {
-        panelFeedback(`Atualizado · yt-dlp ${versionText(result.version)} já era a versão mais recente`, { hold: 4200 });
+        panelFeedback(`O yt-dlp ${versionText(result.version)} já era a versão mais recente`, { hold: 4200 });
       }
     } catch (err) {
       panelFeedback(err.message || 'Não foi possível atualizar o yt-dlp.', { kind: 'err', hold: 6200 });
@@ -1058,13 +1058,13 @@ window.Settings = (() => {
 
   function accountView(state, poToken) {
     if (!state) {
-      return { st: 'error', label: 'Sem conexão · servidor local não respondeu', hint: 'Abra o VARISPEED pelo atalho e tente de novo.', buttons: [] };
+      return { st: 'error', label: 'Sem conexão com o servidor local', hint: 'Abra o VARISPEED pelo atalho e tente de novo.', buttons: [] };
     }
     const browser = state.browser || 'navegador';
     if (state.login_open) {
       return {
         st: 'pending',
-        label: `Aguardando login · janela do ${browser} aberta`,
+        label: `Aguardando login na janela do ${browser}`,
         hint: 'Entre na sua conta na janela que abriu. O VARISPEED percebe quando você terminar e fecha a janela sozinho.',
         buttons: [['btn--outline cfg__auth-primary', 'Cancelar', cancelYoutubeLogin]],
       };
@@ -1072,7 +1072,7 @@ window.Settings = (() => {
     if (state.expired) {
       return {
         st: 'warning',
-        label: 'Sessão expirada · entre de novo',
+        label: 'Sessão expirada, entre de novo',
         hint: 'O YouTube não aceita mais a sessão salva. Entre de novo para continuar abrindo vídeos com login.',
         buttons: [['btn--primary cfg__auth-primary', 'Entrar de novo', startYoutubeLogin], ['btn--ghost cfg__auth-secondary', 'Sair da conta', logoutYoutube]],
       };
@@ -1082,7 +1082,7 @@ window.Settings = (() => {
       if (state.validation === 'playback_verification_required') {
         return {
           st: poToken.ready ? 'connected' : 'warning',
-          label: poToken.ready ? 'Conectado · PO Token pronto' : 'Conectado · reprodução bloqueada',
+          label: poToken.ready ? 'Conectado, PO Token pronto' : 'Conectado, mas a reprodução está bloqueada',
           hint: poToken.ready
             ? 'A verificação de reprodução está pronta. Analise o link de novo; uma janela auxiliar minimizada pode aparecer por alguns segundos.'
             : (poToken.message || 'A conta foi reconhecida, mas a verificação de reprodução ainda não está disponível.'),
@@ -1091,7 +1091,7 @@ window.Settings = (() => {
       }
       return {
         st: 'connected',
-        label: state.validation === 'verified' ? 'Conectado · sessão válida' : 'Conectado · sessão salva',
+        label: state.validation === 'verified' ? 'Conectado, sessão válida' : 'Conectado, sessão salva',
         hint: 'O VARISPEED usa esta conta só quando um vídeo pede login. A sessão fica salva só neste computador.',
         buttons: logout,
       };
@@ -1099,7 +1099,7 @@ window.Settings = (() => {
     if (!state.available) {
       return {
         st: 'error',
-        label: 'Indisponível · nenhum navegador compatível',
+        label: 'Indisponível: nenhum navegador compatível',
         hint: 'Para entrar, o VARISPEED abre uma janela do Chrome, Edge, Chromium, Brave ou Vivaldi. Instale um deles e volte aqui.',
         buttons: [],
       };
@@ -1285,20 +1285,20 @@ window.Settings = (() => {
       : '—';
     const zoomUsed = Number(zoom.latency?.samples) > 0;
     return [
-      'VARISPEED · DIAGNÓSTICO DO GRAFO',
+      'DIAGNÓSTICO DO GRAFO DO VARISPEED',
       `Captura: ${capturedAt}`,
-      `Escala: ${report.nodes || 0} nós · ${report.links || 0} ligações`,
-      `Viewport: ${Math.round(viewport.width || 0)}×${Math.round(viewport.height || 0)} · DPR ${(Number(viewport.pixelRatio) || 1).toFixed(2)}`,
+      `Escala: ${report.nodes || 0} nós, ${report.links || 0} ligações`,
+      `Viewport: ${Math.round(viewport.width || 0)}×${Math.round(viewport.height || 0)}, DPR ${(Number(viewport.pixelRatio) || 1).toFixed(2)}`,
       `Duração: ${(Number(report.durationMs || 0) / 1000).toFixed(1)} s`,
-      `Cadência estimada: ${report.refreshHz || '—'} Hz · orçamento ${(Number(report.frameBudgetMs) || 0).toFixed(2)} ms`,
+      `Cadência estimada: ${report.refreshHz || '—'} Hz, orçamento ${(Number(report.frameBudgetMs) || 0).toFixed(2)} ms`,
       `FPS observado: ${(Number(report.fps) || 0).toFixed(1)}`,
       `Frames tardios: ${report.lateFrames || 0} (${(Number(report.lateFramePercent) || 0).toFixed(1)}%)`,
-      `Quadros estimados perdidos: ${missed.estimated || 0} · 2× ${missed.double || 0} · 3× ${missed.triple || 0} · 4×+ ${missed.fourPlus || 0}`,
+      `Quadros estimados perdidos: ${missed.estimated || 0} (2×: ${missed.double || 0}, 3×: ${missed.triple || 0}, 4× ou mais: ${missed.fourPlus || 0})`,
       `Frame médio / p95 / máx: ${graphMetric(report.frame)}`,
       `Física ${cadence.activeHz || 60}/${cadence.restingHz || 30} Hz média / p95 / máx: ${graphMetric(report.physics)}`,
       `Render médio / p95 / máx: ${graphMetric(report.render)}`,
       `Atraso de entrada médio / p95 / máx: ${graphMetric(report.inputDelay)}`,
-      `Long tasks: ${report.longTasks?.samples || 0} · ${(Number(report.longTasks?.total) || 0).toFixed(2)} ms no total · máx ${(Number(report.longTasks?.max) || 0).toFixed(2)} ms`,
+      `Long tasks: ${report.longTasks?.samples || 0}, ${(Number(report.longTasks?.total) || 0).toFixed(2)} ms no total, máximo de ${(Number(report.longTasks?.max) || 0).toFixed(2)} ms`,
       zoomUsed
         ? `Zoom entrada média / p95 / máx: ${graphMetric(zoom.latency)}`
         : 'Zoom: não exercitado durante a captura',
@@ -1359,7 +1359,7 @@ window.Settings = (() => {
 
     graphCaptureButton.disabled = false;
     graphCaptureButton.removeAttribute('aria-busy');
-    graphCaptureButton.textContent = 'Medir grafo · 8 s';
+    graphCaptureButton.textContent = 'Medir grafo (8 s)';
     showSection('diag');
     open({ restoreFocus: false });
     renderGraphCapture();
@@ -1369,7 +1369,7 @@ window.Settings = (() => {
       graphCaptureButton?.focus({ preventScroll: true });
     });
     panelFeedback(
-      error ? (error.message || 'Não foi possível medir o grafo.') : 'Medição concluída · relatório pronto',
+      error ? (error.message || 'Não foi possível medir o grafo.') : 'Medição concluída, relatório pronto',
       { kind: error ? 'err' : '', hold: error ? 4000 : 2600 }
     );
   }
@@ -1421,7 +1421,7 @@ window.Settings = (() => {
       sec.appendChild(list);
       const hint = h('p', 'cfg__diag-hint', 'Ao iniciar, use a roda do mouse, arraste o grafo e mova uma categoria durante 8 segundos. Nenhum dado da Biblioteca é alterado.');
       const actions = h('div', 'cfg__diag-actions');
-      graphCaptureButton = h('button', 'btn btn--outline cfg__diag-action', 'Medir grafo · 8 s');
+      graphCaptureButton = h('button', 'btn btn--outline cfg__diag-action', 'Medir grafo (8 s)');
       graphCaptureButton.type = 'button';
       graphCaptureButton.addEventListener('click', runGraphCapture);
       graphCaptureCopyButton = h('button', 'btn btn--outline cfg__diag-action', 'Copiar relatório');
@@ -1505,7 +1505,6 @@ window.Settings = (() => {
     githubIcon.appendChild(githubPath);
     githubLink.append(githubIcon, document.createTextNode('nehalem-x/VARISPEED'));
     tech.appendChild(githubLink);
-    tech.appendChild(h('span', 'cfg__credits-separator', '·'));
     const ytDlpLink = h('a', 'cfg__credits-ytdlp', '');
     ytDlpLink.href = 'https://github.com/yt-dlp/yt-dlp';
     ytDlpLink.target = '_blank';
@@ -1575,7 +1574,7 @@ window.Settings = (() => {
     a.download = 'varispeed-preset.json';
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 3000);
-    panelFeedback('Preset salvo · varispeed-preset.json');
+    panelFeedback('Preset salvo: varispeed-preset.json');
   }
 
   async function importPresetFile(file) {
@@ -1759,9 +1758,9 @@ window.Settings = (() => {
       if (!f) return;
       const n = await importPresetFile(f);
       fileIn.value = '';
-      if (n < 0) panelFeedback('Preset inválido · não foi possível ler o JSON', { kind: 'err', hold: 3500 });
-      else if (n === 0) panelFeedback('Preset carregado · nenhum ajuste compatível mudou');
-      else panelFeedback(`Preset aplicado · ${n} ajuste${n === 1 ? '' : 's'}`);
+      if (n < 0) panelFeedback('Preset inválido. Não foi possível ler o JSON', { kind: 'err', hold: 3500 });
+      else if (n === 0) panelFeedback('Preset carregado, mas nenhum ajuste compatível mudou');
+      else panelFeedback(`Preset aplicado com ${n} ajuste${n === 1 ? '' : 's'}`);
       document.dispatchEvent(new CustomEvent('cfg:imported', { detail: n }));
     });
 
