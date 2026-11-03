@@ -65,6 +65,7 @@
   let playbackPlaying = false;
   let selectedId = '';
   let browseCategoryId = '';
+  let listEnterKey = '';
   let listSignature = '';
   let opening = false;
   let engine = null;
@@ -347,6 +348,7 @@
 
   function openCategory(id, { focus = true } = {}) {
     if (!categoryForId(id)) return;
+    cancelBrowserLeave(); // reaberta no meio da saída: fica aberta
     if (browseCategoryId !== id) selectedId = '';
     browseCategoryId = id;
     refresh();
@@ -355,13 +357,32 @@
     if (focus) (el.tracks.querySelector('[tabindex="0"]') || el.browserTitle).focus({ preventScroll: true });
   }
 
+  /* Voltar ao mapa: a lista sai deslizando de leve para a direita e some
+     (styles.css, .is-leaving); só depois o mapa ocupa o espaço. */
+  let browserLeaveTimer = 0;
+  function cancelBrowserLeave() {
+    clearTimeout(browserLeaveTimer);
+    browserLeaveTimer = 0;
+    el.browser.classList.remove('is-leaving');
+  }
+
   function closeBrowser() {
-    browseCategoryId = '';
-    selectedId = '';
-    refresh();
-    engine?.resize();
-    scheduleGraphFit();
-    el.categoryNav.focus({ preventScroll: true });
+    if (browserLeaveTimer) return;
+    const finish = () => {
+      cancelBrowserLeave();
+      browseCategoryId = '';
+      selectedId = '';
+      // reabrir a mesma categoria refaz a lista e repete a onda
+      listEnterKey = '';
+      listSignature = '';
+      refresh();
+      engine?.resize();
+      scheduleGraphFit();
+      if (!el.view.hidden) el.categoryNav.focus({ preventScroll: true });
+    };
+    if (el.browser.hidden || window.Motion?.reduced?.()) { finish(); return; }
+    el.browser.classList.add('is-leaving');
+    browserLeaveTimer = setTimeout(finish, 260); // --dur-cine-exit
   }
 
   function selectTrack(id, { focus = false } = {}) {
@@ -414,10 +435,23 @@
       const focusedId = document.activeElement?.dataset.id;
       const scrollTop = el.tracks.scrollTop;
       const fragment = document.createDocumentFragment();
+      /* Abrir outra categoria ou mudar a busca faz as primeiras músicas
+         entrarem em onda. Outras mudanças (favoritar, renomear) não. */
+      const enterKey = `${category.id}|${text(el.search.value)}`;
+      const entering = enterKey !== listEnterKey;
+      listEnterKey = enterKey;
       rows.forEach((item, index) => {
         const row = document.createElement('button');
         row.type = 'button';
         row.className = 'library__track';
+        if (entering && index < 14) {
+          row.classList.add('is-entering');
+          row.style.setProperty('--i', String(index));
+          row.addEventListener('animationend', (event) => {
+            // a subida é a mais longa das duas: só termina a onda depois dela
+            if (event.target === row && event.animationName === 'cine-lift') row.classList.remove('is-entering');
+          });
+        }
         row.dataset.id = item.id;
         row.setAttribute('role', 'option');
         const part = (className, value) => {
@@ -703,7 +737,7 @@
     el.categoryError.textContent = '';
     el.categoryName.removeAttribute('aria-invalid');
     if (restoreFocus && categoryDialogReturnFocus?.isConnected) {
-      categoryDialogReturnFocus.focus({ preventScroll: true });
+      categoryDialogReturnFocus.focus({ preventScroll: true, focusVisible: false });
     }
     categoryDialogReturnFocus = null;
   }
@@ -1007,6 +1041,17 @@
     if (restoreFocus) (expanded ? el.search : el.searchToggle).focus({ preventScroll: true });
   }
 
+  /* Troca de câmera entre editor e Biblioteca: a área que chega ganha
+     .is-arriving (keyframes em styles.css) e perde a classe ao assentar. */
+  function arrive(node) {
+    if (!node) return;
+    clearTimeout(node.arriveTimer);
+    node.classList.remove('is-arriving');
+    void node.offsetWidth; // reinicia a animação
+    node.classList.add('is-arriving');
+    node.arriveTimer = setTimeout(() => node.classList.remove('is-arriving'), 1200);
+  }
+
   function show() {
     if (!mounted) return;
     const token = ++viewToken;
@@ -1014,8 +1059,10 @@
     cancelGraphCameraTasks();
     captureActive();
     options.onViewChange?.(true);
+    const wasOpen = !el.view.hidden;
     el.view.hidden = false;
     el.editor.hidden = true;
+    if (!wasOpen) arrive(el.view);
     el.trigger.hidden = true;
     el.trigger.setAttribute('aria-pressed', 'true');
     showFrame = requestAnimationFrame(() => {
@@ -1042,8 +1089,11 @@
     selectedId = '';
     if (engine) engine.clearSelection();
     refreshDetails();
+    const wasOpen = !el.view.hidden;
     el.view.hidden = true;
     el.editor.hidden = false;
+    // Só anima quando a Biblioteca estava aberta (hide() também é chamado à toa).
+    if (wasOpen) arrive(el.editor);
     el.trigger.hidden = false;
     el.trigger.setAttribute('aria-pressed', 'false');
     options.onViewChange?.(false);
@@ -1304,6 +1354,7 @@
       });
     });
     el.search.addEventListener('input', () => {
+      if (text(el.search.value)) cancelBrowserLeave(); // buscar no meio da saída mantém a lista
       if (text(el.search.value) && !browseCategoryId) browseCategoryId = ROOT_ID;
       refresh({ fit: true });
     });
@@ -1318,7 +1369,7 @@
     });
     el.listEmptyAction.addEventListener('click', () => {
       if (text(el.search.value)) { el.search.value = ''; refresh({ fit: true }); setSearchExpanded(true); }
-      else if (browseCategoryId === ROOT_ID) { hide(); el.trigger.focus(); }
+      else if (browseCategoryId === ROOT_ID) { hide(); el.trigger.focus({ preventScroll: true, focusVisible: false }); }
       else openCategory(ROOT_ID);
     });
     el.open.addEventListener('click', openSelected);
@@ -1401,7 +1452,7 @@
       if (selectedId) { closeDetails(); return; }
       if (browseCategoryId) { closeBrowser(); return; }
       hide();
-      el.trigger.focus({ preventScroll: true });
+      el.trigger.focus({ preventScroll: true, focusVisible: false });
     });
     mounted = true;
     refresh();

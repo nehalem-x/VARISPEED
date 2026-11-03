@@ -1,8 +1,10 @@
 /* ═════════════════════════════════════════════════════════
    VARISPEED — modais
    Modal.show(layer) / Modal.hide(layer): abre e fecha uma camada de modal
-   com animação (a camada escurece e o quadro sobe um pouco ao entrar; o
-   contrário ao sair). Com movimento reduzido a troca é imediata.
+   com a transição cinematográfica de styles.css (o quadro sobe e entra em
+   foco, o conteúdo vem em onda; ao sair, uma saída curta). Como são
+   transições CSS, abrir e fechar no meio do caminho parte de onde está.
+   Com movimento reduzido a troca é imediata.
    Modal.isOpen(layer): aberta e não saindo.
 
    Modal.confirm({ eyebrow, title, message, confirmLabel, cancelLabel })
@@ -12,8 +14,9 @@
 window.Modal = (() => {
   'use strict';
 
-  const ENTER_MS = 200;
-  const LEAVE_MS = 150;
+  // Iguais a --dur-cine-settle e --dur-cine-exit em styles.css.
+  const ENTER_MS = 960;
+  const LEAVE_MS = 260;
   const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
   const reduced = () => (window.Motion && window.Motion.reduced ? window.Motion.reduced() : mq.matches);
   const timers = new WeakMap();
@@ -25,11 +28,15 @@ window.Modal = (() => {
 
   function show(layer) {
     settle(layer);
+    // Reaberto no meio da saída: volta de onde está, sem recomeçar do zero.
+    const leaving = !layer.hidden && layer.dataset.state === 'leave';
     layer.hidden = false;
     layer.inert = false;
     if (reduced()) { layer.dataset.state = 'open'; return Promise.resolve(); }
-    layer.dataset.state = 'enter';
-    void layer.offsetWidth; // aplica o estado inicial antes da transição
+    if (!leaving) {
+      layer.dataset.state = 'enter';
+      void layer.offsetWidth; // aplica o estado inicial antes da transição
+    }
     layer.dataset.state = 'open';
     return new Promise((resolve) => timers.set(layer, setTimeout(resolve, ENTER_MS)));
   }
@@ -139,7 +146,7 @@ window.Modal = (() => {
     const { resolve, returnFocus } = pending;
     pending = null;
     hide(ui.layer);
-    if (returnFocus?.isConnected) returnFocus.focus({ preventScroll: true });
+    if (returnFocus?.isConnected) returnFocus.focus({ preventScroll: true, focusVisible: false });
     resolve(value);
   }
 

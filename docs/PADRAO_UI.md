@@ -74,11 +74,15 @@ Cada botão cai em um destes quatro tipos. O tipo sai do papel do botão, não d
 | Tipo | Classe | Aparência | Quando usar | Exemplos |
 | --- | --- | --- | --- | --- |
 | Principal | `.btn--primary` | Preenchido com a cor de destaque | A conclusão do que está aberto, no máximo um por região | Exportar WAV, Importar áudio do editor vazio, Importar áudio da barra de link, Abrir na Biblioteca, Próximo do guia, Play |
-| Secundário | `.btn--outline` | Borda, sem fundo | Ação própria que não é a conclusão: abre algo, executa algo ou muda dados | Importar e Configurações do cabeçalho, Analisar, Entrar no YouTube, Copiar endereço, Verificar atualização, Desligar, Medir grafo, Carregar e Salvar preset |
-| Discreto | `.btn--ghost` | Sem borda e sem fundo | Navegar, fechar, cancelar, desfazer e ajustes de contexto | Biblioteca, Salvar na Biblioteca, fechar (×), zoom, Cancelar, Desfazer, Restaurar, Voltar, Pular, Testar, Favoritar |
+| Secundário | `.btn--outline` | Borda, sem fundo | Ação própria que não é a conclusão: abre algo, executa algo ou muda dados. Também toda ação das barras do topo | Biblioteca, Salvar na Biblioteca, Importar e Configurações do cabeçalho; Editor e Nova categoria da Biblioteca; + de categoria no resumo; Analisar, Entrar no YouTube, Copiar endereço, Verificar atualização, Desligar, Medir grafo, Carregar e Salvar preset |
+| Discreto | `.btn--ghost` | Sem borda e sem fundo | Fechar, cancelar, desfazer e ajustes de contexto dentro de uma área | fechar (×), zoom, janela separada da visualização, Cancelar, Desfazer, Restaurar, Voltar e Pular do guia, Testar, Favoritar, Remover |
 | Transporte | `.btn` sem variante | Fundo cinza, sem borda | Só os controles de mídia ao lado do Play | Parar, Repetir |
 
-Ícone sozinho segue o mesmo papel: o × de fechar é discreto e Configurações é secundário. Grupos de opções (presets, unidades) e os passos − e + seguem as regras próprias de grupo.
+Ícone sozinho segue o mesmo papel: o × de fechar é discreto e Configurações é secundário.
+
+Nenhum botão tem aparência própria. Um botão usa só a classe do seu tipo; ajustes locais podem mudar largura e respiro, nunca a cor do texto, a borda ou o fundo. Botões vizinhos na mesma barra são do mesmo tipo (no cabeçalho, todos secundários), com o mesmo respiro.
+
+Ao fechar uma sobreposição (modo foco, modal, Configurações, barra de link, Biblioteca), o foco volta para o botão que a abriu sem o destaque de foco, mesmo saindo pelo Esc. O destaque volta no próximo Tab. Grupos de opções (presets, unidades) e os passos − e + seguem as regras próprias de grupo.
 
 ## Estados dos controles
 
@@ -147,7 +151,28 @@ Uma ação que leva mais que um instante (atualizar o yt-dlp, exportar) mostra n
 - Nunca usar as janelas do navegador (`confirm`, `alert`, `prompt`). Toda confirmação usa `Modal.confirm()` (`modal.js`), com o mesmo desenho do modal de categoria: rótulo pequeno da área, título, uma frase que diz o que acontece, Cancelar (discreto) e a ação (principal) com o verbo da ação ("Remover", "Excluir", "Desligar").
 - Escolhas entre poucas opções (como Importar: Arquivo local ou Link) também usam modal, não lista suspensa: cada opção é um bloco grande com ícone, nome e uma frase dizendo o que aceita.
 - O foco começa em Cancelar, para que Enter nunca confirme uma ação destrutiva sem querer. Escape, o X e clicar fora cancelam.
-- Ao abrir, a camada escurece e o quadro sobe 8 px enquanto aparece (200 ms). Ao fechar, o contrário, em 150 ms. Com "reduzir movimento" o modal aparece e some sem animação. Todo modal novo abre e fecha por `Modal.show()` e `Modal.hide()`.
+- Ao abrir, o fundo escurece e desfoca de leve, o quadro sobe 14 px e sai de um desfoque até o foco, e o conteúdo entra em onda (veja "Movimento cinematográfico"). Ao fechar, uma saída curta de 260 ms, sem onda. Reabrir no meio da saída volta de onde está. Com "reduzir movimento" o modal aparece e some sem animação. Todo modal novo abre e fecha por `Modal.show()` e `Modal.hide()`.
+
+## Movimento cinematográfico
+
+Transições importantes começam rápido e terminam numa cauda longa, de um jeito que não dá para dizer quando pararam.
+
+- **Curva:** `--ease-cine` (`cubic-bezier(0.16, 1, 0.3, 1)`) para entradas; `--ease-cine-exit` para saídas, que são curtas (`--dur-cine-exit`, 260 ms).
+- **Camadas com durações diferentes:** opacidade `--dur-cine-fade` (340 ms), posição e escala `--dur-cine-move` (720 ms), desfoque e assentamento `--dur-cine-settle` (960 ms). Nada para no mesmo instante.
+- **Onda:** blocos de um mesmo quadro entram com `--cine-stagger` (45 ms) de diferença entre si.
+- **Foco de câmera:** o que entra sai de um desfoque leve (2 a 4 px) até o foco. Desfoque só em elementos pequenos; nunca na tela inteira.
+- **Movimento com física:** voos e trocas de lugar usam `Motion.spring()` (`motion.js`), uma mola criticamente amortecida: 90% do caminho em 0,35 s, o resto assentando até perto de 1 s, sem passar do ponto. É interrompível: um clique no meio inverte a partir de onde está.
+- **Modo foco:** a visualização do cabeçalho voa até a tela cheia (e volta ao sair) nessa mola, com o fundo escurecendo junto e as duas visualizações se cruzando no começo e no fim do voo. A interface por trás só some quando a visualização chega. A barra e o X chegam depois, em onda.
+- **Editor ↔ Biblioteca:** a área que chega sobe de leve e aparece, com o cabeçalho dela antes do conteúdo (`.is-arriving`). Só anima quando a troca acontece de fato.
+- **Mapa ↔ lista:** abrir uma categoria pelo mapa faz o painel da lista deslizar de leve da direita; voltar ao mapa faz ele sair pelo mesmo caminho (`.is-leaving`, 260 ms) antes de o mapa ocupar o espaço.
+- **Lista da Biblioteca:** ao abrir uma categoria ou buscar, as primeiras 14 músicas entram em onda, 28 ms uma depois da outra. Favoritar ou renomear não repete a onda.
+- **Resumo da música:** desliza de leve; capa, títulos e dados vêm em onda, e a capa sai de um desfoque até o foco. No celular, sobe em vez de deslizar.
+- **Forma de onda ao carregar:** as barras são reveladas da esquerda para a direita numa frente suave, crescendo e acendendo (mola mais lenta, cerca de 1,4 s até assentar).
+- **Configurações:** o painel abre na curva de cauda longa e fecha rápido; ao abrir ou trocar de aba, as seções entram em onda.
+- **Barra de link:** o campo aparece de cima; a prévia do link entra em onda, com a capa saindo de um desfoque.
+- **Peças:** `cine-fade-in`, `cine-lift`, `cine-slide` e `cine-focus-in` mexem cada uma numa propriedade só, para cada propriedade ter a sua duração. Ajuste a distância por `--cine-lift`, `--cine-slide` e `--cine-blur`. Nunca usar escala em áreas que medem o próprio tamanho ao abrir (mapa, forma de onda).
+- **Resposta imediata:** o clique sempre move algo no mesmo quadro (a mola recebe um empurrão inicial). A cauda é só acabamento; nada espera a animação terminar para responder.
+- **Reduzir movimento:** tudo vira troca imediata.
 
 ## Barras de rolagem
 

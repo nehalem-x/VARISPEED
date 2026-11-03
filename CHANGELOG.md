@@ -1,5 +1,29 @@
 # Registro de mudanças
 
+## Novembro de 2026: transições na Biblioteca e no carregamento
+
+- Editor ↔ Biblioteca: a área que chega sobe de leve e aparece, com o cabeçalho primeiro e o conteúdo logo depois.
+- Na lista da Biblioteca, ao abrir uma categoria ou buscar, as músicas entram em onda.
+- Ao clicar numa bolinha do mapa, o painel da lista desliza de leve da direita e aparece. Na seta de voltar ao mapa, ele sai pelo mesmo caminho antes de o mapa ocupar o espaço. Reabrir a mesma categoria repete a onda, e reabrir ou buscar no meio da saída mantém a lista aberta.
+- O resumo da música desliza de leve, o conteúdo vem em onda e a capa sai de um desfoque até o foco.
+- Ao carregar uma música, a forma de onda é revelada da esquerda para a direita, com as barras crescendo e acendendo.
+- Configurações abrem na curva nova e as seções entram em onda ao abrir ou trocar de aba. Na barra de link, o campo aparece de cima e a prévia entra em onda.
+- Com "reduzir movimento", tudo aparece direto.
+
+## Novembro de 2026: botões no mesmo padrão
+
+- O X do modo foco voltou a funcionar. A visualização tinha ficado por cima dele e recebia o clique.
+- Ao sair do modo foco com Esc, a visualização do cabeçalho não fica mais com o destaque de selecionada. O mesmo vale ao fechar modais, Configurações, a barra de link e a Biblioteca: o foco volta para o botão que os abriu, sem o destaque.
+- Os botões do cabeçalho (Biblioteca, Salvar na Biblioteca, Importar e Configurações) agora têm a mesma aparência: borda, texto e respiro iguais. Antes, Biblioteca não tinha borda e Importar tinha um estilo só dele.
+- "Editor" na barra da Biblioteca e o + de nova categoria no resumo seguem o mesmo padrão, sem borda e cor feitas sob medida.
+
+## Novembro de 2026: transições cinematográficas
+
+- Base nova de movimento: uma curva de cauda longa e durações diferentes para opacidade, posição e foco, para o fim das transições não se perceber, e uma mola em `motion.js` para os voos, que pode ser interrompida no meio.
+- Modo foco: a visualização do cabeçalho cresce até a tela cheia enquanto o fundo escurece; ao sair, encolhe de volta para o lugar dela. A interface por trás só some quando a visualização chega, e a barra e o X aparecem depois, em onda. Clicar de novo no meio do caminho inverte a partir de onde está.
+- Modais: o fundo escurece e desfoca de leve, o quadro sobe e entra em foco e o conteúdo vem em onda. A saída ficou curta, e reabrir no meio da saída volta de onde está.
+- Com "reduzir movimento", tudo continua sendo troca imediata.
+
 ## Novembro de 2026: importar em modal
 
 - O botão Importar abre um modal ("De onde vem o áudio?") em vez da listinha embaixo do botão. São duas opções grandes, Arquivo local e Link, cada uma com uma frase dizendo o que aceita. O modal tem a mesma animação dos outros, começa com o foco em Arquivo local, troca de opção com as setas e fecha com o X, clique fora ou Escape.

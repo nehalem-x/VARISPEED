@@ -74,6 +74,16 @@
   --ease-out: cubic-bezier(0.16, 0.84, 0.28, 1);
   --ease-emph: cubic-bezier(0.2, 0.9, 0.24, 1);
   --dur-theme: 240ms;
+  /* Movimento cinematográfico: começa rápido e termina numa cauda longa.
+     Cada propriedade tem a sua duração (opacidade < posição < desfoque),
+     então nada para no mesmo instante e o fim não se percebe. */
+  --ease-cine: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-cine-exit: cubic-bezier(0.4, 0, 0.9, 0.6);
+  --dur-cine-fade: 340ms;
+  --dur-cine-move: 720ms;
+  --dur-cine-settle: 960ms;
+  --dur-cine-exit: 260ms;
+  --cine-stagger: 45ms;
 
 }
 
@@ -368,21 +378,14 @@ button, input { font: inherit; color: inherit; }
   align-items: center;
   gap: var(--space-2);
 }
-.btn.hdr__library {
+/* Ações do cabeçalho: todas são Secundário (.btn--outline), com o mesmo
+   texto, borda e respiro. Ícone + rótulo, sem estilo próprio. */
+.btn:is(.hdr__library, .hdr__library-add, .hdr__import) {
   flex: 0 0 auto;
   width: auto;
   min-width: 0;
-  padding-inline: var(--space-2);
+  padding-inline: var(--space-3);
   white-space: nowrap;
-  --btn-text: var(--text-2);
-}
-.btn.hdr__library-add {
-  flex: 0 0 auto;
-  width: auto;
-  min-width: 0;
-  padding-inline: var(--space-2);
-  white-space: nowrap;
-  --btn-text: var(--text-2);
 }
 
 /* importação unificada: o header expõe uma única ação; o modal
@@ -487,7 +490,7 @@ button, input { font: inherit; color: inherit; }
   height: var(--ctl-h);
   width: 100%;
 }
-.btn--primary, .btn--import-primary, .btn--play-primary {
+.btn--primary, .btn--play-primary {
   --btn-bg: var(--accent);
   --btn-border: var(--accent);
   --btn-text: var(--accent-text);
@@ -498,20 +501,6 @@ button, input { font: inherit; color: inherit; }
   --btn-active-border: var(--accent-active);
   --btn-active-text: var(--accent-text);
   --btn-focus-border: var(--accent-text);
-}
-/* O Importar do cabeçalho é sempre secundário; no editor vazio a ação
-   principal é o botão do centro. */
-.btn--import-primary {
-  --btn-bg: transparent;
-  --btn-border: var(--border-c);
-  --btn-text: var(--text);
-  --btn-hover-bg: var(--surface-2);
-  --btn-hover-border: var(--control-border);
-  --btn-hover-text: var(--text);
-  --btn-active-bg: var(--surface-3);
-  --btn-active-border: var(--text);
-  --btn-active-text: var(--text);
-  --btn-focus-border: var(--text);
 }
 /* Hover só existe onde há ponteiro com essa capacidade. Seleção mantém seus
    próprios tokens; pressionar não altera a geometria do componente. */
@@ -543,7 +532,7 @@ button, input { font: inherit; color: inherit; }
   opacity: var(--control-disabled-opacity);
   cursor: not-allowed;
 }
-.btn:is(.btn--primary, .btn--import-primary, .btn--play-primary):disabled:not([aria-busy='true']) { background: var(--surface-2); }
+.btn:is(.btn--primary, .btn--play-primary):disabled:not([aria-busy='true']) { background: var(--surface-2); }
 .btn--outline:disabled:not([aria-busy='true']) { background: transparent; border-color: var(--divider); }
 .btn[aria-busy='true'] {
   background: var(--btn-bg);
@@ -658,13 +647,11 @@ button, input { font: inherit; color: inherit; }
 .library__search-clear { flex: none; width: 28px; height: calc(var(--ctl-h) - 2px); padding: 0; }
 .library__search::-webkit-search-cancel-button { appearance: none; }
 .library__search::placeholder { color: var(--text-3); }
+/* Voltar ao editor: Secundário como as ações do cabeçalho, sem estilo próprio. */
 .library__close {
   width: auto;
   padding-inline: var(--space-2) var(--space-3);
   white-space: nowrap;
-  --btn-border: var(--control-border);
-  --btn-hover-border: var(--text);
-  --btn-text: var(--text);
 }
 .library__search:focus-visible { outline: 0; }
 .library__workspace {
@@ -817,7 +804,7 @@ button, input { font: inherit; color: inherit; }
   border-right: var(--border) solid var(--border-c);
   background: var(--bg);
   overflow: hidden;
-  animation: library-detail-in var(--dur-quick) var(--ease-emph) both;
+  /* entrada: ver "transições cinematográficas: Biblioteca e editor" */
 }
 .library__details > :not(.library__detail-wash) { position: relative; z-index: 1; }
 /* Resumo aberto ao lado da lista: nenhuma linha entre os dois. As bordas
@@ -939,7 +926,6 @@ button, input { font: inherit; color: inherit; }
 /* Select da categoria com o botão quadrado de nova categoria, como na barra da Biblioteca. */
 .library__category-line { display: grid; grid-template-columns: minmax(0, 1fr) var(--ctl-h); gap: var(--space-2); }
 .library__category-line .sel { width: 100%; max-width: none; }
-.library__category-new { --btn-border: var(--control-border); --btn-hover-border: var(--text); }
 .library__organization-hint,
 .library__category-dialog-body p {
   margin: 0;
@@ -1069,15 +1055,41 @@ button, input { font: inherit; color: inherit; }
 .modal .modal__cancel { width: auto; padding-inline: var(--space-3); }
 @media (max-width: 520px) { .modal-layer { padding: var(--space-3); } }
 
-/* Entrada e saída dos modais (Modal.show/hide): a camada escurece e o
-   quadro sobe 8 px enquanto aparece; ao sair, o contrário, mais rápido.
+/* Entrada e saída dos modais (Modal.show/hide), em linguagem de câmera.
+   Entrada: o fundo escurece e desfoca de leve; o quadro sobe 14 px,
+   cresce de 96,5% e sai de um desfoque de 4 px até o foco. Opacidade,
+   posição e foco têm durações diferentes (340, 720 e 960 ms) na mesma
+   curva de cauda longa, e o conteúdo (cabeçalho, corpo, rodapé) entra em
+   onda, 45 ms um depois do outro. Nada para junto, então o fim não se nota.
+   Saída: curta (260 ms) e sem onda, para não atrasar quem já decidiu.
    Sem data-state (movimento reduzido) a troca é imediata. */
 .modal-layer[data-state],
-.library__category-dialog-layer[data-state] { transition: opacity 200ms ease-out; }
+.library__category-dialog-layer[data-state] {
+  transition:
+    opacity var(--dur-cine-fade) var(--ease-cine),
+    backdrop-filter var(--dur-cine-move) var(--ease-cine);
+}
+.modal-layer[data-state='open'],
+.library__category-dialog-layer[data-state='open'] { backdrop-filter: blur(3px) saturate(0.85); }
 .modal-layer[data-state] > .modal,
 .library__category-dialog-layer[data-state] > .library__category-dialog {
-  transition: opacity 200ms ease-out, transform 200ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  transition:
+    opacity var(--dur-cine-fade) var(--ease-cine),
+    transform var(--dur-cine-move) var(--ease-cine),
+    filter var(--dur-cine-settle) var(--ease-cine);
 }
+.modal-layer[data-state] > .modal > *,
+.library__category-dialog-layer[data-state] > .library__category-dialog > * {
+  transition:
+    opacity var(--dur-cine-move) var(--ease-cine),
+    transform var(--dur-cine-settle) var(--ease-cine);
+}
+/* onda do conteúdo: cada bloco entra um pouco depois do anterior */
+.modal-layer[data-state='open'] > .modal > :nth-child(2),
+.library__category-dialog-layer[data-state='open'] > .library__category-dialog > :nth-child(2) { transition-delay: var(--cine-stagger); }
+.modal-layer[data-state='open'] > .modal > :nth-child(3),
+.library__category-dialog-layer[data-state='open'] > .library__category-dialog > :nth-child(3) { transition-delay: calc(var(--cine-stagger) * 2); }
+
 .modal-layer[data-state='enter'],
 .modal-layer[data-state='leave'],
 .library__category-dialog-layer[data-state='enter'],
@@ -1085,19 +1097,32 @@ button, input { font: inherit; color: inherit; }
 .modal-layer[data-state='enter'] > .modal,
 .library__category-dialog-layer[data-state='enter'] > .library__category-dialog {
   opacity: 0;
-  transform: translateY(8px) scale(0.98);
+  transform: translateY(14px) scale(0.965);
+  filter: blur(4px);
+}
+.modal-layer[data-state='enter'] > .modal > *,
+.library__category-dialog-layer[data-state='enter'] > .library__category-dialog > * {
+  opacity: 0;
+  transform: translateY(6px);
 }
 .modal-layer[data-state='leave'] > .modal,
 .library__category-dialog-layer[data-state='leave'] > .library__category-dialog {
   opacity: 0;
-  transform: translateY(4px) scale(0.99);
+  transform: translateY(6px) scale(0.985);
+  filter: blur(2px);
 }
 .modal-layer[data-state='leave'],
 .library__category-dialog-layer[data-state='leave'],
 .modal-layer[data-state='leave'] > .modal,
-.library__category-dialog-layer[data-state='leave'] > .library__category-dialog { transition-duration: 150ms; transition-timing-function: ease-in; }
+.library__category-dialog-layer[data-state='leave'] > .library__category-dialog,
+.modal-layer[data-state='leave'] > .modal > *,
+.library__category-dialog-layer[data-state='leave'] > .library__category-dialog > * {
+  transition-duration: var(--dur-cine-exit);
+  transition-timing-function: var(--ease-cine-exit);
+  transition-delay: 0ms;
+}
 @media (prefers-reduced-motion: reduce) {
-  .modal-layer, .modal, .library__category-dialog-layer, .library__category-dialog { transition: none !important; }
+  .modal-layer, .modal, .modal > *, .library__category-dialog-layer, .library__category-dialog, .library__category-dialog > * { transition: none !important; }
 }
 
 /* Tutorial inicial: uma visualização narrativa independente dos dados reais. */
@@ -1335,14 +1360,106 @@ button, input { font: inherit; color: inherit; }
   72%, 100% { opacity: 0; transform: scale(1.55); }
 }
 
-@keyframes library-detail-in {
-  from { opacity: 0; transform: translateX(18px); }
-  to { opacity: 1; transform: translateX(0); }
+/* ═══ transições cinematográficas: Biblioteca e editor ═══════
+   Peças reutilizáveis: cada keyframe mexe numa propriedade só, para cada
+   uma ter a sua duração (opacidade < posição < foco) na curva de cauda
+   longa. Só transform e opacidade, nunca escala em áreas que medem o
+   próprio tamanho (mapa e forma de onda medem o canvas ao abrir). */
+@keyframes cine-fade-in { from { opacity: 0; } }
+@keyframes cine-lift { from { transform: translateY(var(--cine-lift, 12px)); } }
+@keyframes cine-slide { from { transform: translateX(var(--cine-slide, 24px)); } }
+@keyframes cine-focus-in { from { filter: blur(var(--cine-blur, 6px)); } }
+
+/* Editor ↔ Biblioteca: a área que chega sobe de leve e aparece; o
+   cabeçalho dela vem primeiro e o conteúdo logo depois, em onda. */
+.library.is-arriving > * {
+  animation:
+    cine-fade-in var(--dur-cine-move) var(--ease-cine) both,
+    cine-lift var(--dur-cine-settle) var(--ease-cine) both;
+}
+.library.is-arriving > :nth-child(2) { animation-delay: calc(var(--cine-stagger) * 2); }
+.library.is-arriving > :nth-child(n + 3) { animation-delay: calc(var(--cine-stagger) * 3); }
+.main.is-arriving > * {
+  --cine-lift: 8px;
+  animation:
+    cine-fade-in var(--dur-cine-move) var(--ease-cine) both,
+    cine-lift var(--dur-cine-settle) var(--ease-cine) both;
+}
+.main.is-arriving > :nth-child(n + 2) { animation-delay: calc(var(--cine-stagger) * 2); }
+
+/* Painel da lista: ao abrir uma categoria pelo mapa, desliza de leve da
+   direita e aparece; as músicas vêm em onda logo depois. Ao voltar ao mapa,
+   sai pelo mesmo caminho, rápido (library.js espera a saída terminar). */
+@keyframes cine-fade-out { to { opacity: 0; } }
+@keyframes cine-slide-out { to { transform: translateX(var(--cine-slide, 24px)); } }
+.library__browser:not([hidden]) {
+  animation:
+    cine-fade-in var(--dur-cine-fade) var(--ease-cine) both,
+    cine-slide var(--dur-cine-move) var(--ease-cine) both;
+}
+.library__browser.is-leaving {
+  pointer-events: none;
+  animation:
+    cine-fade-out var(--dur-cine-exit) var(--ease-cine-exit) both,
+    cine-slide-out var(--dur-cine-exit) var(--ease-cine-exit) both;
 }
 
-@keyframes library-detail-up {
-  from { opacity: 0; transform: translateY(18px); }
-  to { opacity: 1; transform: translateY(0); }
+/* Lista: ao abrir uma categoria ou buscar, as primeiras músicas entram em
+   onda, 28 ms uma depois da outra (--i vem do library.js). */
+.library__track.is-entering {
+  --cine-lift: 10px;
+  animation:
+    cine-fade-in var(--dur-cine-move) var(--ease-cine) both,
+    cine-lift var(--dur-cine-settle) var(--ease-cine) both;
+  animation-delay: calc(var(--i, 0) * 28ms);
+}
+
+/* Resumo da música: entra deslizando de leve; capa, títulos e dados vêm
+   em onda, e a capa sai de um desfoque até o foco. */
+.library__details {
+  animation:
+    cine-fade-in var(--dur-cine-fade) var(--ease-cine) both,
+    cine-slide var(--dur-cine-move) var(--ease-cine) both;
+}
+.library__details .library__detail-body > * {
+  animation:
+    cine-fade-in var(--dur-cine-move) var(--ease-cine) both,
+    cine-lift var(--dur-cine-settle) var(--ease-cine) both;
+  --cine-lift: 8px;
+}
+.library__details .library__detail-body > :nth-child(2) { animation-delay: var(--cine-stagger); }
+.library__details .library__detail-body > :nth-child(3) { animation-delay: calc(var(--cine-stagger) * 2); }
+.library__details .library__detail-body > :nth-child(n + 4) { animation-delay: calc(var(--cine-stagger) * 3); }
+.library__detail-artwork img {
+  filter: blur(8px);
+  transform: scale(1.04);
+  transition:
+    opacity var(--dur-cine-move) var(--ease-cine),
+    filter var(--dur-cine-settle) var(--ease-cine),
+    transform var(--dur-cine-settle) var(--ease-cine);
+}
+.library__detail-artwork.has-image img { filter: none; transform: none; }
+.library__detail-wash:not([hidden]) { animation: cine-fade-in var(--dur-cine-settle) var(--ease-cine) both; }
+
+/* Barra de link: o campo aparece e, quando o link é analisado, a prévia
+   entra em onda (capa saindo de um desfoque, depois os dados). */
+.linkbar:not([hidden]) > .linkbar__query {
+  --cine-lift: -6px;
+  animation:
+    cine-fade-in var(--dur-cine-fade) var(--ease-cine) both,
+    cine-lift var(--dur-cine-move) var(--ease-cine) both;
+}
+.linkbar__preview:not([hidden]) > * {
+  --cine-lift: 8px;
+  animation:
+    cine-fade-in var(--dur-cine-move) var(--ease-cine) both,
+    cine-lift var(--dur-cine-settle) var(--ease-cine) both;
+}
+.linkbar__preview:not([hidden]) > :nth-child(2) { animation-delay: var(--cine-stagger); }
+.linkbar__preview:not([hidden]) > :nth-child(n + 3) { animation-delay: calc(var(--cine-stagger) * 2); }
+.linkbar__preview:not([hidden]) .linkbar__thumb img {
+  --cine-blur: 6px;
+  animation: cine-focus-in var(--dur-cine-settle) var(--ease-cine) both;
 }
 
 /* GraphEngine: somente apresentação. As forças e a cadência permanecem no JS. */
@@ -1562,7 +1679,9 @@ button, input { font: inherit; color: inherit; }
     width: auto;
     height: auto;
     border-left: 0;
-    animation-name: library-detail-up;
+    /* no celular o resumo cobre a lista e sobe, em vez de deslizar de lado */
+    --cine-lift: 18px;
+    animation-name: cine-fade-in, cine-lift;
   }
   .library__browser { inset: 0; border-left: 0; }
   .library.is-browsing .library__graph { visibility: hidden; }
@@ -1586,7 +1705,7 @@ button, input { font: inherit; color: inherit; }
 }
 
 @media (max-width: 520px) {
-  .btn.hdr__library { width: auto; padding-inline: var(--space-2); font-size: var(--text-sm); }
+  .btn.hdr__library { width: auto; font-size: var(--text-sm); }
   .library__detail-bar { min-height: 48px; padding: var(--space-2) var(--space-3); }
   .library__detail-body { gap: var(--space-4); padding: 0 var(--space-3) var(--space-4); }
   .library__detail-actions { padding: var(--space-3); }
@@ -2294,9 +2413,24 @@ kbd {
   background: var(--surface);
   border-left: var(--border) solid var(--border-c);
   transform: translateX(100%);
-  transition: transform var(--dur-quick) var(--ease-emph);
+  /* fecha rápido; abre na curva de cauda longa (abaixo) */
+  transition: transform var(--dur-cine-exit) var(--ease-cine-exit);
 }
-.cfg.is-open { transform: none; }
+.cfg.is-open {
+  transform: none;
+  transition: transform var(--dur-cine-move) var(--ease-cine);
+}
+/* Ao abrir o painel ou trocar de aba, as seções entram em onda. A animação
+   reinicia sozinha porque o painel e as abas saem de hidden. */
+.cfg__pane:not([hidden]) > * {
+  --cine-lift: 8px;
+  animation:
+    cine-fade-in var(--dur-cine-move) var(--ease-cine) both,
+    cine-lift var(--dur-cine-settle) var(--ease-cine) both;
+}
+.cfg__pane:not([hidden]) > :nth-child(2) { animation-delay: var(--cine-stagger); }
+.cfg__pane:not([hidden]) > :nth-child(3) { animation-delay: calc(var(--cine-stagger) * 2); }
+.cfg__pane:not([hidden]) > :nth-child(n + 4) { animation-delay: calc(var(--cine-stagger) * 3); }
 .cfg__bar {
   display: flex;
   align-items: center;
@@ -3151,24 +3285,48 @@ kbd {
 /* ═══ focus mode ══════════════════════════════════════════
    Mesma apresentação do osciloscópio, outra escala. Só
    timeline e velocidade permanecem, discretas no rodapé.   */
+/* Entrada e saída (app.js, focusFly): a visualização do cabeçalho voa até
+   a tela cheia numa mola de cauda longa, enquanto o fundo escurece por
+   baixo (--focus-bg, 0 a 1, ligado à mesma mola). A barra e o X chegam
+   depois, em onda. O fundo fica num ::before para o fundo poder começar
+   transparente sem apagar a visualização que está voando. */
 .focus {
   position: fixed;
   inset: 0;
   z-index: 60;
   display: grid;
   grid-template-rows: minmax(0, 1fr) auto;
-  background: var(--bg);
-  opacity: 0;
-  transition: opacity var(--dur-event) var(--ease-out);
+  background: transparent;
 }
-.focus.is-on { opacity: 1; }
+.focus::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--bg);
+  opacity: var(--focus-bg, 0);
+  pointer-events: none;
+}
+.focus.is-on { --focus-bg: 1; }
 .focus__stage {
+  position: relative;
+  z-index: 1;
   display: grid;
   place-items: stretch;
   padding: clamp(var(--space-6), 6vh, var(--space-10)) clamp(var(--space-4), 5vw, 72px);
   min-height: 0;
 }
-.focus__scope { display: block; width: 100%; height: 100%; }
+.focus__scope { display: block; width: 100%; height: 100%; transform-origin: 0 0; }
+/* barra e X: chegam depois da visualização e saem antes dela */
+.focus__bar { position: relative; z-index: 1; }
+.focus:not(.is-on) .focus__bar { opacity: 0; transform: translateY(12px); }
+.focus:not(.is-on) .focus__exit { opacity: 0; transform: translateY(-6px); }
+.focus.is-entering .focus__bar { transition-delay: 160ms; }
+.focus.is-entering .focus__exit { transition-delay: 240ms; }
+.focus:not(.is-on) .focus__bar,
+.focus:not(.is-on) .focus__exit {
+  transition-duration: var(--dur-cine-exit);
+  transition-timing-function: var(--ease-cine-exit);
+}
 .focus__bar {
   display: flex;
   align-items: center;
@@ -3210,6 +3368,8 @@ kbd {
 }
 .focus__exit {
   position: absolute;
+  /* acima da visualização (z-index 1), que ocupa a tela toda no vectorscope */
+  z-index: 2;
   top: var(--space-3);
   right: var(--space-3);
   --btn-text: var(--text-2);
@@ -3217,7 +3377,11 @@ kbd {
 /* Tocando e sem mexer o mouse, a barra, o X e o cursor somem e fica só a
    visualização. Qualquer movimento, toque ou tecla traz tudo de volta. */
 .focus__bar,
-.focus__exit { transition: opacity 360ms var(--ease-out); }
+.focus__exit {
+  transition:
+    opacity var(--dur-cine-move) var(--ease-cine),
+    transform var(--dur-cine-settle) var(--ease-cine);
+}
 .focus[data-idle='1'] .focus__bar,
 .focus[data-idle='1'] .focus__exit { opacity: 0; }
 .focus[data-idle='1'] { cursor: none; }
@@ -3411,7 +3575,7 @@ kbd {
     min-width: 112px;
   }
   .hdr__actions { gap: var(--space-1); }
-  #btnImport { padding-inline: var(--space-2); }
+  .btn:is(.hdr__library, .hdr__library-add, .hdr__import) { padding-inline: var(--space-2); }
   .hdr__filemeta { display: none; }
 
   .linkbar { padding-inline: var(--space-2); }
@@ -3899,8 +4063,7 @@ textarea { border-radius: 0; }
   background: var(--btn-hover-bg);
   border-bottom-color: var(--btn-focus-border);
 }
-.btn--outline:focus-visible:not(:disabled):not([aria-busy='true']),
-.btn--import-primary:focus-visible:not(:disabled):not([aria-busy='true']) { border-color: var(--focus); }
+.btn--outline:focus-visible:not(:disabled):not([aria-busy='true']) { border-color: var(--focus); }
 /* A busca já possui uma borda funcional: não enquadrar seus botões internos. */
 .library__search-wrap.is-expanded .btn:focus-visible { border-bottom-color: transparent; background: transparent; color: var(--text); }
 .btn--primary:focus-visible:not(:disabled),

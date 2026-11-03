@@ -1727,12 +1727,12 @@ window.Settings = (() => {
     const restore = restoreFocus
       ? (lastFocus && lastFocus.isConnected ? lastFocus : trigger)
       : null;
-    if (restore && typeof restore.focus === 'function') restore.focus({ preventScroll: true });
+    if (restore && typeof restore.focus === 'function') restore.focus({ preventScroll: true, focusVisible: false });
     lastFocus = null;
     restoreFocusAfterClose = true;
     const done = () => { panel.hidden = true; panelTimer = 0; };
     if (window.Motion && window.Motion.reduced()) done();
-    else panelTimer = setTimeout(done, 190);
+    else panelTimer = setTimeout(done, 280); // --dur-cine-exit + folga
   }
   const isOpen = () => panel && !panel.hidden;
   const toggle = (options = {}) => (isOpen() ? close(options) : open(options));

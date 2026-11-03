@@ -767,18 +767,48 @@
     const cWave = css('--wave'), cPlayed = css('--wave-played');
 
     /* Barras de 2 px com 1 px de respiro, simétricas ao eixo: a parte tocada
-       acende e o que falta fica apagado, como uma fita que já passou. */
+       acende e o que falta fica apagado, como uma fita que já passou.
+       Ao carregar, waveReveal (0 a 1) passa uma frente suave da esquerda para
+       a direita: perto dela as barras ainda estão crescendo e acendendo. */
     const BAR = 2, PITCH = 3;
-    for (let x = 0; x < W; x += PITCH) {
+    const revealing = waveReveal < 1;
+    const front = waveReveal * (W + WAVE_FEATHER);
+    const limit = revealing ? Math.min(W, front) : W;
+    for (let x = 0; x < limit; x += PITCH) {
       const t0 = xToSrc(x), t1 = xToSrc(x + PITCH);
       let i0 = Math.floor((t0 / d) * n), i1 = Math.ceil((t1 / d) * n);
       i0 = clamp(i0, 0, n - 1); i1 = clamp(i1, i0 + 1, n);
       let peak = 0;
       for (let i = i0; i < i1; i++) peak = Math.max(peak, -min[i], max[i]);
-      const half = Math.max(0.5, Math.min(1, peak) * amp);
+      let half = Math.max(0.5, Math.min(1, peak) * amp);
+      if (revealing) {
+        const k = clamp((front - x) / WAVE_FEATHER, 0, 1);
+        const grow = 1 - (1 - k) ** 3;
+        half = Math.max(0.5, half * grow);
+        ctxW.globalAlpha = k;
+      }
       ctxW.fillStyle = x + BAR / 2 < playedX ? cPlayed : cWave;
       ctxW.fillRect(x, mid - half, BAR, half * 2);
     }
+    ctxW.globalAlpha = 1;
+  }
+
+  /* Revelação da forma de onda ao carregar: mesma mola das transições, um
+     pouco mais lenta, para a música "chegar" na tela. Com movimento reduzido
+     a forma aparece inteira. */
+  const WAVE_FEATHER = 160;
+  let waveReveal = 1;
+  let waveRevealSpring = null;
+  function revealWave() {
+    waveRevealSpring?.stop();
+    waveRevealSpring = null;
+    if (window.Motion.reduced()) { waveReveal = 1; drawWave(); return; }
+    waveReveal = 0;
+    waveRevealSpring = window.Motion.spring({
+      from: 0, to: 1, stiffness: 46, velocity: 1.1,
+      onUpdate: (p) => { waveReveal = clamp(p, 0, 1); drawWave(); },
+      onDone: () => { waveReveal = 1; waveRevealSpring = null; drawWave(); },
+    });
   }
 
   /* ── playhead ───────────────────────────────────────── */
@@ -1518,6 +1548,7 @@
       syncSourceArtwork(state.meta.thumbnail, file.name);
 
       resize();
+      revealWave();
       renderReadouts();
       el.scopeWrap.dataset.heard = 'false';
       dot('ready');
@@ -1828,32 +1859,120 @@
     syncScrubPosition(el.fScrub, cur, state.meta.duration, state.fScrubbing);
   }
 
+  /* Voo do modo foco. A visualização do cabeçalho (el.scope) cresce até a
+     tela cheia numa mola de cauda longa (Motion.spring) e, ao sair, volta
+     para o lugar dela. O canvas do modo foco é medido já no lugar final e
+     desenhado por transform como se estivesse no cabeçalho (FLIP), então
+     voa sem mudar o layout. Na mesma mola o fundo escurece por baixo e,
+     no começo e no fim do voo, as duas visualizações se cruzam (uma some
+     enquanto a outra aparece), sem troca seca. Clicar de novo no meio do
+     voo inverte o caminho a partir de onde está. */
+  let focusSpring = null;
+  let focusFlying = false;
+  let focusGeom = null;
+  const FOCUS_CROSS = 0.22; // trecho do voo em que as duas visualizações se cruzam
+
+  function focusMeasure() {
+    const from = el.scope.getBoundingClientRect();
+    el.scopeFocus.style.transform = '';
+    const to = el.scopeFocus.getBoundingClientRect();
+    if (!from.width || !from.height || !to.width || !to.height) return null;
+    return {
+      dx: from.left - to.left,
+      dy: from.top - to.top,
+      sx: from.width / to.width,
+      sy: from.height / to.height,
+    };
+  }
+
+  function focusPaint(p) {
+    const q = clamp(p, 0, 1);
+    el.focus.style.setProperty('--focus-bg', q.toFixed(4));
+    const g = focusGeom;
+    if (g) {
+      const k = 1 - p;
+      el.scopeFocus.style.transform =
+        `translate(${(g.dx * k).toFixed(2)}px, ${(g.dy * k).toFixed(2)}px) ` +
+        `scale(${(g.sx + (1 - g.sx) * p).toFixed(5)}, ${(g.sy + (1 - g.sy) * p).toFixed(5)})`;
+    }
+    const cross = Math.min(1, q / FOCUS_CROSS);
+    el.scopeFocus.style.opacity = cross.toFixed(3);
+    el.scopeWrap.style.opacity = (1 - cross).toFixed(3);
+  }
+
+  function focusClearFlight() {
+    focusFlying = false;
+    focusGeom = null;
+    el.focus.classList.remove('is-entering');
+    el.scopeFocus.style.transform = '';
+    el.scopeFocus.style.opacity = '';
+    el.focus.style.removeProperty('--focus-bg');
+    el.scopeWrap.style.opacity = '';
+  }
+
+  // Chegou à tela cheia: só agora a interface por trás some.
+  function focusLanded() {
+    focusClearFlight();
+    if (!state.focus) return;
+    el.root.dataset.focus = '1';
+    if (views.focus.resize()) repaintScope();
+  }
+
+  function focusGone() {
+    focusClearFlight();
+    if (state.focus) return;
+    el.focus.hidden = true;
+  }
+
+  function focusFly(target, onDone) {
+    focusGeom = focusMeasure();
+    focusFlying = true;
+    const kick = target === 1 ? 2.4 : -2.8; // o clique responde na hora
+    if (focusSpring) {
+      focusPaint(focusSpring.value);
+      focusSpring.to(target, { velocity: kick, onDone });
+    } else {
+      focusSpring = window.Motion.spring({
+        from: 1 - target, to: target, stiffness: 110, velocity: kick,
+        onUpdate: focusPaint, onDone,
+      });
+    }
+  }
+
   function focusOn() {
     if (state.focus) return;
     if (window.Settings.isOpen()) window.Settings.close({ restoreFocus: false });
     importMenuOpen(false);
     state.focus = true;
     clearTimeout(focusTimer);
+    const wasHidden = el.focus.hidden;
     el.focus.hidden = false;
     el.focus.inert = false;
-    el.root.dataset.focus = '1';
     el.scopeWrap.setAttribute('aria-expanded', 'true');
     for (const sibling of el.focus.parentElement.children) {
       if (sibling === el.focus) continue;
       focusBackground.set(sibling, sibling.inert);
       sibling.inert = true;
     }
-    const settle = () => {
-      el.focus.classList.add('is-on');
-      views.focus.resize();
-      repaintScope();
-    };
-    if (window.Motion.reduced()) settle(); else requestAnimationFrame(settle);
     el.fScrub.disabled = !state.loaded;
     el.fPlay.disabled = !state.loaded;
     syncPlayback();
     renderReadouts();
     syncFocus(state.audio.currentTime || 0, state.rate / 100);
+
+    if (window.Motion.reduced()) {
+      focusSpring?.stop();
+      focusSpring = null;
+      el.focus.classList.add('is-on');
+      focusLanded();
+    } else {
+      if (wasHidden) void el.focus.offsetWidth; // estado inicial antes das transições
+      el.focus.classList.add('is-entering', 'is-on');
+      el.scopeFocus.style.transform = '';
+      views.focus.resize();
+      repaintScope();
+      focusFly(1, focusLanded);
+    }
     (state.loaded ? el.fPlay : el.fExit).focus({ preventScroll: true });
     focusWake();
     flash('Modo foco');
@@ -1863,18 +1982,25 @@
     if (!state.focus) return;
     state.focus = false;
     el.focus.inert = true;
-    el.focus.classList.remove('is-on');
+    el.focus.classList.remove('is-on', 'is-entering');
     el.scopeWrap.setAttribute('aria-expanded', 'false');
-    delete el.root.dataset.focus;
+    delete el.root.dataset.focus; // a interface volta por baixo do fundo que clareia
     for (const [sibling, inert] of focusBackground) sibling.inert = inert;
     focusBackground.clear();
     clearTimeout(focusTimer);
     clearTimeout(focusIdleTimer);
     delete el.focus.dataset.idle;
-    const close = () => { el.focus.hidden = true; };
-    if (window.Motion.reduced()) close(); else focusTimer = setTimeout(close, 240);
-    el.scopeWrap.focus({ preventScroll: true });
+    // O foco volta para a visualização do cabeçalho (o teclado continua de
+    // onde estava), mas sem o destaque de selecionada, mesmo saindo pelo Esc.
+    el.scopeWrap.focus({ preventScroll: true, focusVisible: false });
     resize();
+    if (window.Motion.reduced()) {
+      focusSpring?.stop();
+      focusSpring = null;
+      focusGone();
+      return;
+    }
+    focusFly(0, focusGone);
   }
 
   el.scopeWrap.addEventListener('click', () => (state.focus ? focusOff() : focusOn()));
@@ -1890,7 +2016,7 @@
   });
   let focusResizeRaf = 0;
   new ResizeObserver(() => {
-    if (!state.focus || focusResizeRaf) return;
+    if (!state.focus || focusResizeRaf || focusFlying) return;
     focusResizeRaf = requestAnimationFrame(() => {
       focusResizeRaf = 0;
       if (!state.focus) return;
@@ -2065,7 +2191,7 @@
     } else {
       linkMsg('');
       linkAbort();
-      if (restoreFocus) el.btnImport.focus({ preventScroll: true });
+      if (restoreFocus) el.btnImport.focus({ preventScroll: true, focusVisible: false });
     }
   }
 
@@ -2535,7 +2661,7 @@
     el.btnImport.setAttribute('aria-expanded', String(on));
     el.btnEmptyImport.setAttribute('aria-expanded', String(on));
     if (on) el.importFile.focus({ preventScroll: true });
-    else if (restoreFocus && importTrigger?.isConnected) importTrigger.focus({ preventScroll: true });
+    else if (restoreFocus && importTrigger?.isConnected) importTrigger.focus({ preventScroll: true, focusVisible: false });
   }
   el.btnEmptyImport.addEventListener('click', () => {
     importTrigger = el.btnEmptyImport;

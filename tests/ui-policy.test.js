@@ -36,6 +36,20 @@ test('confirmações usam o modal do app, nunca as janelas do navegador', () => 
   assert.match(css, /prefers-reduced-motion: reduce\)\s*\{\s*\.modal-layer/);
 });
 
+test('transições cinematográficas usam os mesmos tokens e respeitam reduzir movimento', () => {
+  const css = read('styles.css');
+  for (const token of ['--ease-cine:', '--dur-cine-fade:', '--dur-cine-move:', '--dur-cine-settle:', '--dur-cine-exit:', '--cine-stagger:']) {
+    assert.ok(css.includes(token), token);
+  }
+  assert.match(css, /\.modal-layer\[data-state\] > \.modal,[^{]*\{\s*transition:\s*opacity var\(--dur-cine-fade\) var\(--ease-cine\)/);
+  const motion = read('motion.js');
+  assert.match(motion, /function spring\(/);
+  assert.match(motion, /if \(reduced\(\)\) \{ cancelAnimationFrame\(raf\); finish\(\); return; \}/);
+  const app = read('app.js');
+  assert.match(app, /window\.Motion\.spring\(/);
+  assert.match(app, /if \(window\.Motion\.reduced\(\)\) \{\s*focusSpring\?\.stop\(\);/);
+});
+
 test('keyboard focus stays in controls without external outlines or changing geometry', () => {
   const css = read('styles.css');
   // Match CSS declarations rather than a selector such as .btn--outline:focus-visible.

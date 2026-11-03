@@ -467,5 +467,69 @@ window.Motion = (() => {
     }, 100);
   }
 
-  return { typeOut, ephemeral, status: statusFx, digitTick, swapLabel, marquee, cancel, reduced, configure, T };
+  /* ── mola ─────────────────────────────────────────────
+     Mola criticamente amortecida para as transições cinematográficas.
+     A posição se aproxima do alvo de forma exponencial: quase todo o
+     movimento acontece no começo e o resto assenta tão devagar que não dá
+     para dizer quando parou. É interrompível: .to(novoAlvo) parte da
+     posição e da velocidade atuais, sem salto. Com movimento reduzido, vai
+     direto ao alvo.
+
+       const s = Motion.spring({ from: 0, to: 1, onUpdate: (p) => ... });
+       s.to(0, { onDone: () => ... });
+
+     stiffness define o ritmo (120 ≈ 90% em 0,35 s, 99,9% em 0,85 s) e
+     velocity dá um empurrão inicial, para o clique responder na hora. */
+  function spring({ from = 0, to = 1, stiffness = 120, damping, velocity = 0, onUpdate, onDone } = {}) {
+    let x = from;
+    let v = velocity;
+    let target = to;
+    let done = onDone;
+    let raf = 0;
+    let last = 0;
+    const k = stiffness;
+    const c = damping ?? 2 * Math.sqrt(k); // massa 1, amortecimento crítico
+
+    const finish = () => {
+      x = target; v = 0; raf = 0;
+      if (onUpdate) onUpdate(x, 0);
+      const cb = done; done = null;
+      if (cb) cb();
+    };
+    const step = (now) => {
+      const dt = Math.min(0.034, Math.max(0, (now - last) / 1000));
+      last = now;
+      // subpassos curtos: estável mesmo com quadros longos
+      const n = Math.max(1, Math.ceil(dt / 0.004));
+      const h = dt / n;
+      for (let i = 0; i < n; i++) {
+        const a = -k * (x - target) - c * v;
+        v += a * h;
+        x += v * h;
+      }
+      if (Math.abs(target - x) < 0.0004 && Math.abs(v) < 0.004) { finish(); return; }
+      if (onUpdate) onUpdate(x, v);
+      raf = requestAnimationFrame(step);
+    };
+    const run = () => {
+      if (reduced()) { cancelAnimationFrame(raf); finish(); return; }
+      if (!raf) { last = performance.now(); raf = requestAnimationFrame(step); }
+    };
+    if (onUpdate) onUpdate(x, v);
+    run();
+    return {
+      to(next, opts = {}) {
+        target = next;
+        if (opts.velocity != null) v += opts.velocity;
+        if ('onDone' in opts) done = opts.onDone;
+        run();
+      },
+      stop() { cancelAnimationFrame(raf); raf = 0; done = null; },
+      get value() { return x; },
+      get target() { return target; },
+      get running() { return raf !== 0; },
+    };
+  }
+
+  return { typeOut, ephemeral, status: statusFx, digitTick, swapLabel, marquee, cancel, reduced, configure, spring, T };
 })();
