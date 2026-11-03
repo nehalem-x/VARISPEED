@@ -819,7 +819,19 @@ window.Settings = (() => {
 
   async function shutdownVarispeed() {
     if (!systemShutdownBtn || systemShutdownBtn.disabled) return;
-    if (!window.confirm('Desligar o VARISPEED neste computador?')) return;
+    const question = {
+      eyebrow: 'Sistema',
+      title: 'Desligar o VARISPEED',
+      message: 'O servidor local para neste computador. Para usar de novo, abra o VARISPEED pelo atalho.',
+      confirmLabel: 'Desligar',
+    };
+    // Sem modal.js (servidor aberto antes de o arquivo existir), usa a janela do navegador.
+    /* fallback-start */
+    const ok = window.Modal
+      ? await window.Modal.confirm(question)
+      : window.confirm(`${question.title}\n\n${question.message}`);
+    /* fallback-end */
+    if (!ok || systemShutdownBtn.disabled) return;
     systemShutdownBtn.disabled = true;
     systemShutdownBtn.setAttribute('aria-busy', 'true');
     systemShutdownBtn.textContent = 'Desligando...';

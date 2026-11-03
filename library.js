@@ -18,6 +18,18 @@
   const FAVORITES_ID = 'category:favorites';
   const model = window.LibraryModel;
   const SELECTED_NODE_ZOOM = 1.35;
+  /* modal.js pode não carregar (por exemplo, um servidor aberto antes de o
+     arquivo existir). Sem ele os botões continuam funcionando: o modal só
+     aparece e some, e a confirmação usa a janela do navegador. */
+  /* fallback-start */
+  const MODAL_FALLBACK = {
+    show: (layer) => { layer.hidden = false; return Promise.resolve(); },
+    hide: (layer) => { layer.hidden = true; return Promise.resolve(); },
+    isOpen: (layer) => Boolean(layer) && !layer.hidden,
+    confirm: ({ title = '', message = '' } = {}) => Promise.resolve(window.confirm([title, message].filter(Boolean).join('\n\n'))),
+  };
+  /* fallback-end */
+  const modal = () => window.Modal || MODAL_FALLBACK;
   const TUTORIAL_EXIT_MS = 420;
   const TUTORIAL_STEPS = Object.freeze([
     {
@@ -683,8 +695,8 @@
   }
 
   function closeCategoryDialog({ restoreFocus = true } = {}) {
-    if (el.categoryDialogLayer.hidden) return;
-    el.categoryDialogLayer.hidden = true;
+    if (!modal().isOpen(el.categoryDialogLayer)) return;
+    modal().hide(el.categoryDialogLayer);
     categoryDialogId = '';
     categoryDialogAssignId = '';
     el.categoryError.hidden = true;
@@ -712,7 +724,7 @@
     el.categoryError.hidden = true;
     el.categoryError.textContent = '';
     el.categoryName.removeAttribute('aria-invalid');
-    el.categoryDialogLayer.hidden = false;
+    modal().show(el.categoryDialogLayer);
     requestAnimationFrame(() => {
       el.categoryName.focus({ preventScroll: true });
       el.categoryName.select();
@@ -1147,9 +1159,18 @@
     } finally { setOpenBusy(false); }
   }
 
-  function removeSelected() {
-    const item = items.find((entry) => entry.id === selectedId);
-    if (!item || !confirm(`Remover “${item.title}” da Biblioteca?`)) return;
+  async function removeSelected() {
+    const found = items.find((entry) => entry.id === selectedId);
+    if (!found) return;
+    const ok = await modal().confirm({
+      eyebrow: 'Biblioteca',
+      title: 'Remover música',
+      message: `“${found.title}” sai da Biblioteca. O arquivo original no computador não é apagado.`,
+      confirmLabel: 'Remover',
+    });
+    // A lista pode ter mudado enquanto o modal estava aberto.
+    const item = ok && items.find((entry) => entry.id === found.id);
+    if (!item) return;
     items = items.filter((entry) => entry.id !== item.id);
     cache.delete(item.id);
     durable.delete(item.id);
@@ -1164,14 +1185,21 @@
     }));
   }
 
-  function removeSelectedCategory() {
-    const category = categories.find((entry) => entry.id === browseCategoryId);
-    if (!category) return;
-    const count = categoryItemCount(category.id);
+  async function removeSelectedCategory() {
+    const found = categories.find((entry) => entry.id === browseCategoryId);
+    if (!found) return;
+    const count = categoryItemCount(found.id);
     const impact = count
-      ? `${musicCountLabel(count).toLocaleLowerCase('pt-BR')} voltarão para Biblioteca.`
+      ? `${musicCountLabel(count)} ${count === 1 ? 'volta' : 'voltam'} para a Biblioteca. Nenhuma música é removida.`
       : 'A categoria está vazia.';
-    if (!confirm(`Excluir a categoria “${category.name}”?\n\n${impact}\nNenhuma música será removida.`)) return;
+    const ok = await modal().confirm({
+      eyebrow: 'Organização',
+      title: `Excluir a categoria “${found.name}”`,
+      message: impact,
+      confirmLabel: 'Excluir',
+    });
+    const category = ok && categories.find((entry) => entry.id === found.id);
+    if (!category) return;
 
     categories = categories.filter((entry) => entry.id !== category.id);
     items = items.map((item) => item.categoryId === category.id
@@ -1350,7 +1378,8 @@
         }
         return;
       }
-      if (!el.categoryDialogLayer.hidden && event.key === 'Tab') {
+      const categoryOpen = modal().isOpen(el.categoryDialogLayer);
+      if (categoryOpen && event.key === 'Tab') {
         const focusable = [...el.categoryDialog.querySelectorAll('button:not([disabled]), input:not([disabled])')];
         const first = focusable[0];
         const last = focusable[focusable.length - 1];
@@ -1360,12 +1389,12 @@
         }
         return;
       }
-      if (el.categoryDialogLayer.hidden && (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'f') {
+      if (!categoryOpen && (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'f') {
         event.preventDefault(); setSearchExpanded(true); el.search.select(); return;
       }
       if (event.key !== 'Escape') return;
       event.preventDefault();
-      if (!el.categoryDialogLayer.hidden) {
+      if (categoryOpen) {
         closeCategoryDialog();
         return;
       }

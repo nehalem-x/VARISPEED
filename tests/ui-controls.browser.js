@@ -50,7 +50,13 @@ check('Escape closes search before library',$('librarySearchToggle').getAttribut
 $('libraryCategoryCreate').click();$('libraryCategoryName').value='';$('libraryCategoryDialog').dispatchEvent(new Event('submit',{bubbles:true,cancelable:true}));
 check('Empty category has inline error',$('libraryCategoryName').getAttribute('aria-invalid')==='true' && !$('libraryCategoryError').hidden);
 $('libraryCategoryName').value='Estudos';$('libraryCategoryName').dispatchEvent(new Event('input'));check('Editing category clears invalid state',!$('libraryCategoryName').hasAttribute('aria-invalid') && $('libraryCategoryError').hidden);
-$('libraryCategoryDialogClose').click();$('btnLibrary').click();
+$('libraryCategoryDialogClose').click();
+check('Category dialog leaves as closed',!Modal.isOpen($('libraryCategoryDialogLayer')));
+Modal.confirm({title:'Teste',message:'Mensagem',confirmLabel:'Remover'});
+check('Confirm opens app modal',Modal.isOpen($('confirmLayer')) && $('confirmOk').textContent==='Remover');
+document.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true,cancelable:true}));
+check('Escape closes confirm and keeps Library open',!Modal.isOpen($('confirmLayer')) && !$('libraryView').hidden);
+$('btnLibrary').click();
 check('No horizontal overflow',document.documentElement.scrollWidth<=innerWidth);
 } catch(e) {check('Exception: '+e.stack,false);}
 const result={width:innerWidth,checks};dump('UI_REPORT='+JSON.stringify(result)+'\n');

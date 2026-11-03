@@ -131,6 +131,12 @@ Tarefas sem porcentagem mostram um indicador de pontos (`dots.js`) antes do text
 
 O indicador aparece em um lugar só por vez. Na importação por link ele fica na barra de link, ao lado da etapa, e some quando surge a porcentagem; o rodapé não repete. Botões com varredura de progresso não ganham indicador. Com "reduzir movimento" os pontos aparecem parados.
 
+## Modais
+
+- Nunca usar as janelas do navegador (`confirm`, `alert`, `prompt`). Toda confirmação usa `Modal.confirm()` (`modal.js`), com o mesmo desenho do modal de categoria: rótulo pequeno da área, título, uma frase que diz o que acontece, Cancelar (discreto) e a ação (principal) com o verbo da ação ("Remover", "Excluir", "Desligar").
+- O foco começa em Cancelar, para que Enter nunca confirme uma ação destrutiva sem querer. Escape, o X e clicar fora cancelam.
+- Ao abrir, a camada escurece e o quadro sobe 8 px enquanto aparece (200 ms). Ao fechar, o contrário, em 150 ms. Com "reduzir movimento" o modal aparece e some sem animação. Todo modal novo abre e fecha por `Modal.show()` e `Modal.hide()`.
+
 ## Barras de rolagem
 
 Toda região rolável usa `scrollbar-width: thin`, trilho transparente e indicador neutro definido pelo tema. A regra é global, incluindo Biblioteca, detalhes, configurações, inspector e relatórios. A inicialização usa o mesmo padrão com os tokens próprios de seu tema. Navegadores sem suporte às propriedades padrão usam o fallback WebKit de 6 px, sem borda, com cantos retos e reforço discreto no hover. Em cores forçadas, a cor retorna ao padrão do sistema operacional.

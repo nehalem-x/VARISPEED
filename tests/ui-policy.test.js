@@ -22,6 +22,20 @@ test('Space on a library option is contained and never opens the track', () => {
   assert.match(library, /event\.key === ' '\) \{\s*event\.preventDefault\(\);\s*event\.stopPropagation\(\);/);
 });
 
+test('confirmações usam o modal do app, nunca as janelas do navegador', () => {
+  // A janela do navegador só aparece no bloco de reserva, para quando modal.js não carrega.
+  const outsideFallback = (src) => src.replace(/\/\* fallback-start \*\/[\s\S]*?\/\* fallback-end \*\//g, '');
+  for (const name of ['app.js', 'library.js', 'settings.js', 'remote-import.js']) {
+    const src = outsideFallback(read(name));
+    assert.doesNotMatch(src, /(?:^|[^.\w])(?:window\.)?(?:confirm|alert|prompt)\(/m, name);
+    // Sem modal.js os botões não podem quebrar: nada chama window.Modal fora da reserva.
+    assert.doesNotMatch(src, /window\.Modal\./, name);
+  }
+  const css = read('styles.css');
+  assert.match(css, /\.modal-layer\[data-state='enter'\]/);
+  assert.match(css, /prefers-reduced-motion: reduce\)\s*\{\s*\.modal-layer/);
+});
+
 test('keyboard focus stays in controls without external outlines or changing geometry', () => {
   const css = read('styles.css');
   // Match CSS declarations rather than a selector such as .btn--outline:focus-visible.

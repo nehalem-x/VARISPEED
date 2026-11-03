@@ -1,5 +1,10 @@
 # Registro de mudanças
 
+## Novembro de 2026: modais do app
+
+- Remover uma música, excluir uma categoria e desligar o VARISPEED não abrem mais a janela de confirmação do navegador. A pergunta aparece num modal do próprio app, no mesmo desenho do modal de categoria, e o foco começa em Cancelar.
+- Os modais ganharam animação: ao abrir, o fundo escurece e o quadro sobe um pouco enquanto aparece; ao fechar, o contrário, mais rápido. Com "reduzir movimento" não há animação.
+
 ## Novembro de 2026: textos sem ponto médio
 
 - Os textos do app não usam mais "·" como separador. Viraram frases normais: "36 músicas em 4 categorias", "Carregado: musica.mp3", "Link analisado. Confirme a importação.", "WAV, MP3, FLAC, OGG e M4A".

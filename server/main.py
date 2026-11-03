@@ -142,6 +142,7 @@ PUBLIC_FILES = {
     "core.js",
     "motion.js",
     "dots.js",
+    "modal.js",
     "scope-view.js",
     "scope-win.js",
     "scope.html",
