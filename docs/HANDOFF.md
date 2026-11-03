@@ -95,7 +95,7 @@ A única mudança deliberada em relação ao código antigo: `fmtClock` filtra `
 
 ### 2.3 `app.js`
 
-Núcleo do frontend: estado de áudio, `load()`, `ingest()`, `decodeAudioData()`, reprodução, velocidade, waveform, zoom, transporte, exportação WAV, estados visuais, menu de importação (`importMenuOpen()`) e a orquestração da importação por link. A parte de link controla só a interface e o fluxo e chama `window.RemoteImport`. É o arquivo de maior risco (seção 17).
+Núcleo do frontend: estado de áudio, `load()`, `ingest()`, `decodeAudioData()`, reprodução, velocidade, waveform, zoom, transporte, exportação WAV, estados visuais, modal de importação (`importMenuOpen()`) e a orquestração da importação por link. A parte de link controla só a interface e o fluxo e chama `window.RemoteImport`. É o arquivo de maior risco (seção 17).
 
 ### 2.4 `remote-import.js`
 
@@ -379,14 +379,14 @@ Não trocar `yt-dlp[default]` por `yt-dlp`: é essa variante que traz os scripts
 
 ## 7. Interface
 
-### 7.1 Cabeçalho e menu Importar
+### 7.1 Cabeçalho e modal Importar
 
-1. Há um único botão `Importar`, que abre `#importMenu`: `#importFile` (Arquivo local) dispara `<input type="file" id="file">` e `#importLink` (Link) abre `#linkbar`.
+1. Há um único botão `Importar`, que abre o modal `#importMenu` ("De onde vem o áudio?"): `#importFile` (Arquivo local) dispara `<input type="file" id="file">` e `#importLink` (Link) abre `#linkbar`.
 2. Não existe `#btnLink` separado.
 3. `#btnPop` fica em `.hdr__scope-tools`, logo à esquerda de `#scopeWrap`, junto do osciloscópio que controla.
 4. Não existem `#themeLight` e `#themeDark`. O tema muda só em Configurações → Interface → Tema (`ui.theme`); `app.js` continua aplicando o tema, seguindo `prefers-color-scheme` no modo `system` e redesenhando os Canvas.
 
-O menu fica ancorado ao botão, fecha com clique fora ou Escape, mantém `aria-expanded`, `aria-haspopup="menu"`, `role="menu"` e `role="menuitem"`, e as duas opções convergem em `ingest()`.
+O modal abre e fecha por `Modal.show/hide` (com animação), começa com o foco em Arquivo local, troca de opção com as setas, prende o Tab, fecha com o X, clique fora ou Escape e devolve o foco ao botão que o abriu. Os botões mantêm `aria-expanded` e `aria-haspopup="dialog"`, e as duas opções convergem em `ingest()`.
 
 ### 7.2 Mascote
 
@@ -607,7 +607,7 @@ tamanho CSS real (pode ser fracionário) × devicePixelRatio
 
 - `#scrub` encerra `state.scrubbing` em `pointerup`, `pointercancel`, `lostpointercapture`, `change` e `blur`.
 - `.slider` e `.scrub` usam `touch-action: none`, porque o gesto sobre eles é horizontal. Com `pointer: coarse`, o input tem 32 px de altura e um thumb maior, mas o trilho continua com 2 px.
-- Com `pointer: coarse`, `--ctl-h`, `--ctl-step` e `--ctl-subtle` passam a 44 px (ver [PADRAO_UI.md](PADRAO_UI.md)), os itens do menu Importar têm 44 px e fechar a barra de link, as Configurações e o modo foco têm 44 × 44 px. Não reduzir sem testar num celular.
+- Com `pointer: coarse`, `--ctl-h`, `--ctl-step` e `--ctl-subtle` passam a 44 px (ver [PADRAO_UI.md](PADRAO_UI.md)), fechar a barra de link, as Configurações e o modo foco têm 44 × 44 px. Não reduzir sem testar num celular.
 - Controles usam `touch-action: manipulation` e `-webkit-tap-highlight-color: transparent`. `@media (hover: none)` desliga hovers que ficariam presos; o feedback vem de `:active`, `:focus-visible`, `aria-pressed` e atributos de estado.
 - Gestos nunca mudam sem intenção `state.rate`, `state.zoom` (fora dos controles próprios), `state.playing`, o estado de importação ou o tema. Scrub muda só o tempo, e a rolagem vertical não muda o tempo.
 
@@ -801,7 +801,7 @@ No Windows, antes de validar o backend, confirme que `py --version` ou `python -
 
 ### 16.4 Regressão geral
 
-WAV e MP3 locais; arrastar e soltar; play, pause, stop e loop; scrub; zoom; presets; volume; tema claro e escuro só pelas Configurações; modo foco; janela separada à esquerda do visualizador; exportação; movimento reduzido; menu Importar abrindo e fechando, com Arquivo local chamando o seletor e Link abrindo a barra; ausência de `btnLink`, `themeLight` e `themeDark` no cabeçalho.
+WAV e MP3 locais; arrastar e soltar; play, pause, stop e loop; scrub; zoom; presets; volume; tema claro e escuro só pelas Configurações; modo foco; janela separada à esquerda do visualizador; exportação; movimento reduzido; modal Importar abrindo e fechando, com Arquivo local chamando o seletor e Link abrindo a barra; ausência de `btnLink`, `themeLight` e `themeDark` no cabeçalho.
 
 ### 16.5 Celular, escala e monitores
 

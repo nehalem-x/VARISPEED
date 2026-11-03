@@ -103,7 +103,7 @@ Na busca da Biblioteca, `:focus-within` muda somente a cor da borda existente do
 
 Organizar primeiro por espaçamento, depois por diferença de superfície e hierarquia tipográfica. Usar divisórias simples quando essas ferramentas não bastarem. Reservar bordas completas para campos, ações independentes que precisam de delimitação, menus flutuantes e limites importantes entre regiões. Usar `.btn--outline` nessas ações; não aplicar a variante a todos os botões.
 
-Ícones, ajudas e controles internos a campos não recebem uma moldura completa no hover ou na seleção. Grupos de presets e passos compartilham uma superfície, sem caixas individuais. Metadados usam alinhamento e espaçamento; duração e velocidade ganham superfícies de apoio. Toolbars dispensam linhas acima e abaixo quando o fundo já separa a região.
+Ícones, ajudas e controles internos a campos não recebem uma moldura completa no hover ou na seleção. Grupos de presets e passos compartilham uma superfície, sem caixas individuais. Metadados usam alinhamento e espaçamento; duração e velocidade ganham superfícies de apoio. Toolbars dispensam linhas acima e abaixo quando o fundo já separa a região. Duas regiões vizinhas nunca somam bordas (uma linha de 2 px): na Biblioteca, o resumo da música e a lista ficam sem linha entre eles, separados pelo brilho da capa.
 
 A espessura permanece estável em todos os estados. O foco de teclado muda a cor da linha reservada na geometria do botão ou da borda existente do campo, sem outline ou ring adicional. Campos desabilitados atenuam a borda. Preservar as separações do painel lateral e dos rodapés fixos, além das divisórias discretas das listas.
 
@@ -138,9 +138,14 @@ O indicador aparece em um lugar só por vez. Na importação por link ele fica n
 - A barra de baixo não tem linha separando-a da visualização. Na linha de posição, a parte já tocada fica clara e o resto apagado, como na forma de onda. A posição atual é mais clara que a duração total.
 - Tocando, a barra, o X e o cursor somem depois de 2,5 s sem mexer o mouse. Qualquer movimento, toque, rolagem ou tecla traz tudo de volta. Pausado, ou com o foco do teclado na barra, ela não some. Com "reduzir movimento" ela some sem transição.
 
+## Tarefas longas em botões
+
+Uma ação que leva mais que um instante (atualizar o yt-dlp, exportar) mostra no próprio botão o que está acontecendo: o nome da etapa com reticências e, a partir de 3 s, o tempo passando entre parênteses. A varredura de progresso corre na base do botão. Quando há etapas, a linha de ajuda embaixo diz qual é ("Etapa 2 de 3: ..."). No fim, um check com o resultado fica no botão por cerca de 3 s antes de ele voltar ao rótulo normal.
+
 ## Modais
 
 - Nunca usar as janelas do navegador (`confirm`, `alert`, `prompt`). Toda confirmação usa `Modal.confirm()` (`modal.js`), com o mesmo desenho do modal de categoria: rótulo pequeno da área, título, uma frase que diz o que acontece, Cancelar (discreto) e a ação (principal) com o verbo da ação ("Remover", "Excluir", "Desligar").
+- Escolhas entre poucas opções (como Importar: Arquivo local ou Link) também usam modal, não lista suspensa: cada opção é um bloco grande com ícone, nome e uma frase dizendo o que aceita.
 - O foco começa em Cancelar, para que Enter nunca confirme uma ação destrutiva sem querer. Escape, o X e clicar fora cancelam.
 - Ao abrir, a camada escurece e o quadro sobe 8 px enquanto aparece (200 ms). Ao fechar, o contrário, em 150 ms. Com "reduzir movimento" o modal aparece e some sem animação. Todo modal novo abre e fecha por `Modal.show()` e `Modal.hide()`.
 

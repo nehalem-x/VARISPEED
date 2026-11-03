@@ -83,7 +83,9 @@ window.Modal = (() => {
       id: 'confirmDialog', role: 'alertdialog', 'aria-modal': 'true',
       'aria-labelledby': 'confirmTitle', 'aria-describedby': 'confirmMessage',
     });
-    const head = make('header');
+    // div, não header/footer: fora de uma seção eles virariam marcos da
+    // página (banner e contentinfo) repetidos para o leitor de tela.
+    const head = make('div', 'modal__head');
     const heading = make('div');
     const eyebrow = make('span', 'mono', { id: 'confirmEyebrow' });
     const title = make('strong', '', { id: 'confirmTitle' });
@@ -94,7 +96,7 @@ window.Modal = (() => {
     const body = make('div', 'modal__body');
     const message = make('p', '', { id: 'confirmMessage' });
     body.appendChild(message);
-    const foot = make('footer');
+    const foot = make('div', 'modal__foot');
     const cancel = make('button', 'btn btn--ghost modal__cancel', { id: 'confirmCancel', type: 'button' });
     const ok = make('button', 'btn btn--primary modal__ok', { id: 'confirmOk', type: 'button' });
     foot.append(cancel, ok);

@@ -540,7 +540,7 @@ toque na waveform
 ```
 
 - Waveform e régua usam `touch-action: pan-y pinch-zoom`; com mouse, `pointerdown` continua fazendo seek na hora. `pointercancel` e `lostpointercapture` encerram gestos interrompidos, e o slider de posição limpa `state.scrubbing` também em `change` e `blur`.
-- Sliders usam `touch-action: none` e área de toque maior com `pointer: coarse`. Itens do menu Importar e botões de fechar (barra de link, Configurações, modo foco) têm 44 × 44 px no toque. Botões e campos usam `touch-action: manipulation` sem destaque de toque.
+- Sliders usam `touch-action: none` e área de toque maior com `pointer: coarse`. Botões de fechar (barra de link, Configurações, modo foco) têm 44 × 44 px no toque. Botões e campos usam `touch-action: manipulation` sem destaque de toque.
 - No celular, `select` e campos de texto usam 16 px para o iOS não dar zoom ao focar. `@media (hover: none)` desliga hovers que ficariam presos; o estado real usa `:active`, `:focus-visible`, `aria-pressed` e `data-state`. `viewport-fit=cover` com `env(safe-area-inset-*)` protege cabeçalho, Configurações e modo foco em telas com notch.
 - As Configurações usam `100dvh` em telas estreitas, rolagem interna contida e bloqueiam a rolagem do fundo. Tocar no texto de um switch também o alterna.
 

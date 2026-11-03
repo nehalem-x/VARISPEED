@@ -937,7 +937,7 @@ window.Settings = (() => {
     ytdlp.channel.addEventListener('change', () => saveYtDlpPrefs({ channel: ytdlp.channel.value }));
     channelRow.append(channelLine, ytdlp.channel);
 
-    ytdlp.action = h('button', 'btn btn--outline cfg__system-action', 'Verificar atualização');
+    ytdlp.action = h('button', 'btn btn--outline btn--progress cfg__system-action', 'Verificar atualização');
     ytdlp.action.type = 'button';
     ytdlp.action.disabled = true;
     ytdlp.action.addEventListener('click', runYtDlpAction);
@@ -971,13 +971,74 @@ window.Settings = (() => {
     else if (state.error) hint = `Não foi possível consultar: ${state.error.replace(/\.$/, '').toLocaleLowerCase('pt-BR')}`;
     else if (state.latest) hint = 'Atualizado. Você já tem a versão mais recente';
     else hint = 'Ainda não verificado';
-    ytdlp.hint.textContent = hint;
 
-    ytdlp.action.textContent = ytdlp.busy
-      ? (state.update_available ? 'Atualizando...' : 'Verificando...')
-      : (state.update_available ? `Atualizar para ${versionText(state.latest)}` : 'Verificar atualização');
+    /* Durante o trabalho o botão diz a etapa e o tempo passando, a linha de
+       baixo explica a etapa e uma varredura corre na base do botão. No fim,
+       um check confirma por alguns segundos. */
+    const stage = ytdlp.busy ? ytdlp.stage : null;
+    if (stage?.hint) hint = stage.hint;
+    ytdlp.hint.textContent = hint;
+    ytdlp.action.classList.toggle('is-busy', Boolean(stage));
+    ytdlp.action.classList.toggle('is-done', !stage && Boolean(ytdlp.done));
+    if (stage) {
+      const secs = Math.floor((Date.now() - ytdlp.startedAt) / 1000);
+      ytdlp.action.textContent = secs >= 3 ? `${stage.label}... (${secs} s)` : `${stage.label}...`;
+    } else if (ytdlp.done) {
+      ytdlp.action.replaceChildren(checkIcon(), document.createTextNode(ytdlp.done));
+    } else {
+      ytdlp.action.textContent = state.update_available ? `Atualizar para ${versionText(state.latest)}` : 'Verificar atualização';
+    }
     ytdlp.action.disabled = ytdlp.busy || !state.can_update || state.restart_required;
     ytdlp.action.setAttribute('aria-busy', String(ytdlp.busy));
+  }
+
+  function checkIcon() {
+    const ns = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(ns, 'svg');
+    svg.setAttribute('class', 'ui-icon');
+    svg.setAttribute('width', '16');
+    svg.setAttribute('height', '16');
+    svg.setAttribute('viewBox', '0 0 24 24');
+    svg.setAttribute('aria-hidden', 'true');
+    svg.setAttribute('focusable', 'false');
+    const use = document.createElementNS(ns, 'use');
+    use.setAttribute('href', '#ui-icon-check');
+    svg.appendChild(use);
+    return svg;
+  }
+
+  /* Etapas da atualização, na ordem em que acontecem. */
+  const YTDLP_STAGES = {
+    check: { label: 'Verificando', hint: 'Consultando a versão mais recente do yt-dlp.' },
+    install: { step: 1, label: 'Instalando', hint: 'Etapa 1 de 3: baixando e instalando a versão nova. Pode levar até um minuto.' },
+    restart: { step: 2, label: 'Reiniciando o servidor', hint: 'Etapa 2 de 3: o servidor local reinicia para carregar a versão nova. O app continua aberto.' },
+    verify: { step: 3, label: 'Conferindo a versão', hint: 'Etapa 3 de 3: conferindo se o servidor voltou com a versão nova.' },
+  };
+
+  function setYtDlpStage(key, version = '') {
+    const base = YTDLP_STAGES[key];
+    const label = key === 'install' && version ? `Instalando ${versionText(version)}` : base.label;
+    if (!ytdlp.stage || ytdlp.stage.key !== key) ytdlp.stage = { ...base, key, label };
+    renderYtDlp();
+  }
+
+  function startYtDlpWork() {
+    clearTimeout(ytdlp.doneTimer);
+    ytdlp.done = '';
+    ytdlp.busy = true;
+    ytdlp.startedAt = Date.now();
+    clearInterval(ytdlp.clock);
+    ytdlp.clock = setInterval(() => { if (ytdlp.busy) renderYtDlp(); }, 1000);
+  }
+
+  function endYtDlpWork(doneText = '') {
+    ytdlp.busy = false;
+    ytdlp.stage = null;
+    clearInterval(ytdlp.clock);
+    ytdlp.done = doneText;
+    if (doneText) {
+      ytdlp.doneTimer = setTimeout(() => { ytdlp.done = ''; renderYtDlp(); }, 3200);
+    }
   }
 
   async function ytdlpRequest(path, options = {}) {
@@ -1020,8 +1081,12 @@ window.Settings = (() => {
       await new Promise((resolve) => setTimeout(resolve, 600));
       try {
         const health = await ytdlpRequest('/api/health');
+        // Respondeu: já voltou, falta ver se é a versão nova.
+        setYtDlpStage('verify');
         if (sameVersion(health.yt_dlp, version)) return true;
-      } catch (_) { /* servidor reiniciando */ }
+      } catch (_) {
+        setYtDlpStage('restart'); // fora do ar enquanto reinicia
+      }
     }
     return false;
   }
@@ -1029,33 +1094,36 @@ window.Settings = (() => {
   async function runYtDlpAction() {
     if (ytdlp.busy || !ytdlp.state) return;
     const updating = ytdlp.state.update_available;
-    ytdlp.busy = true;
-    renderYtDlp();
+    startYtDlpWork();
+    let doneText = '';
     try {
       if (!updating) {
+        setYtDlpStage('check');
         const state = await ytdlpRequest('/api/system/ytdlp?refresh=1');
-        ytdlp.busy = false;
+        endYtDlpWork(state.error ? '' : (state.update_available ? '' : 'Você já tem a mais recente'));
         renderYtDlp(state);
         if (state.error) panelFeedback(state.error, { kind: 'err', hold: 4200 });
         return;
       }
-      panelFeedback('Atualizando yt-dlp...', { persist: true });
+      setYtDlpStage('install', ytdlp.state.latest);
       const result = await ytdlpRequest('/api/system/ytdlp/update', { method: 'POST' });
       if (result.restarting) {
-        panelFeedback(`Reiniciando o servidor com o yt-dlp ${versionText(result.version)}`, { persist: true });
+        setYtDlpStage('restart');
         const back = await waitForYtDlp(result.version);
+        if (back) doneText = `Atualizado para ${versionText(result.version)}`;
         panelFeedback(back
           ? `yt-dlp atualizado para ${versionText(result.version)}`
           : 'O servidor não voltou. Abra o VARISPEED de novo', { kind: back ? '' : 'err', hold: 5200 });
       } else if (result.restart_required) {
         panelFeedback(`yt-dlp ${versionText(result.version)} instalado. Reinicie o VARISPEED para usar`, { hold: 6200 });
       } else {
+        doneText = 'Você já tem a mais recente';
         panelFeedback(`O yt-dlp ${versionText(result.version)} já era a versão mais recente`, { hold: 4200 });
       }
     } catch (err) {
       panelFeedback(err.message || 'Não foi possível atualizar o yt-dlp.', { kind: 'err', hold: 6200 });
     } finally {
-      ytdlp.busy = false;
+      if (ytdlp.busy) endYtDlpWork(doneText);
       refreshYtDlp();
     }
   }

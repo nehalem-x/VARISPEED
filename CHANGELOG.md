@@ -1,5 +1,19 @@
 # Registro de mudanças
 
+## Novembro de 2026: importar em modal
+
+- O botão Importar abre um modal ("De onde vem o áudio?") em vez da listinha embaixo do botão. São duas opções grandes, Arquivo local e Link, cada uma com uma frase dizendo o que aceita. O modal tem a mesma animação dos outros, começa com o foco em Arquivo local, troca de opção com as setas e fecha com o X, clique fora ou Escape.
+- A setinha ao lado de "Importar" saiu, porque o botão não abre mais uma lista.
+
+## Novembro de 2026: atualização do yt-dlp com etapas
+
+- Ao atualizar o yt-dlp, o botão mostra a etapa e o tempo passando ("Instalando 2026.11.02... (12 s)", "Reiniciando o servidor...", "Conferindo a versão..."), com uma varredura na base. A linha de baixo explica cada etapa (1 de 3, 2 de 3, 3 de 3).
+- No fim, o botão mostra um check e "Atualizado para …" por alguns segundos. Ao só verificar, mostra "Você já tem a mais recente".
+
+## Novembro de 2026: Biblioteca sem linha entre resumo e lista
+
+- Com o resumo da música aberto ao lado da lista, a linha entre os dois saiu. Eram duas bordas coladas, que pareciam uma linha mais grossa. A separação agora vem só do fundo: o brilho da capa no resumo e o preto da lista. Sem o resumo aberto, a linha entre o mapa e a lista continua.
+
 ## Novembro de 2026: vectorscope sem borda
 
 - As partículas do vectorscope vão até o fim da tela. Antes elas paravam numa linha nas laterais e se acumulavam ali, como uma parede.

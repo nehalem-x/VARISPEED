@@ -49,7 +49,7 @@
     root: document.documentElement, themeColor: $('themeColor'),
     file: $('file'), btnImport: $('btnImport'), btnEmptyImport: $('btnEmptyImport'),
     importMenu: $('importMenu'), importFile: $('importFile'), importLink: $('importLink'),
-    importMenuWrap: document.querySelector('.import-menu-wrap'),
+    importClose: $('importClose'),
     btnLibraryAdd: $('btnLibraryAdd'), libraryAddLabel: $('libraryAddLabel'),
     fileName: $('fileName'), fileMeta: $('fileMeta'),
     libraryTransport: $('libraryTransport'), libraryPlay, libraryStop,
@@ -2516,33 +2516,36 @@
     if (restoreFocus && !el.linkbar.hidden) el.url.focus({ preventScroll: true });
   };
 
-  /* ── menu unificado de importação ──────────────────────
-     O header expõe apenas uma entrada. Arquivo local e URL
-     são escolhas do mesmo fluxo de aquisição, não ações globais
-     independentes. O menu não altera a linkbar nem o motor de áudio. */
+  /* ── modal de importação ───────────────────────────────
+     O header expõe apenas uma entrada. Arquivo local e link são
+     as duas escolhas do mesmo modal, que abre e fecha pelo
+     Modal.show/hide (com animação). Ele não altera a linkbar nem
+     o motor de áudio até uma das opções ser escolhida. */
+  // Sem modal.js (servidor antigo), o modal só aparece e some.
+  const modalApi = () => window.Modal || {
+    show: (layer) => { layer.hidden = false; },
+    hide: (layer) => { layer.hidden = true; },
+    isOpen: (layer) => !layer.hidden,
+  };
+  const importIsOpen = () => modalApi().isOpen(el.importMenu);
   let importTrigger = el.btnImport;
-  function importMenuOpen(on, focusFirst = false) {
-    el.importMenu.hidden = !on;
+  function importMenuOpen(on, { restoreFocus = false } = {}) {
+    if (on === importIsOpen()) return;
+    if (on) modalApi().show(el.importMenu); else modalApi().hide(el.importMenu);
     el.btnImport.setAttribute('aria-expanded', String(on));
     el.btnEmptyImport.setAttribute('aria-expanded', String(on));
-    if (on && focusFirst) requestAnimationFrame(() => el.importFile.focus());
+    if (on) el.importFile.focus({ preventScroll: true });
+    else if (restoreFocus && importTrigger?.isConnected) importTrigger.focus({ preventScroll: true });
   }
   el.btnEmptyImport.addEventListener('click', () => {
     importTrigger = el.btnEmptyImport;
-    importMenuOpen(true, true);
+    importMenuOpen(true);
   });
   el.btnImport.addEventListener('click', () => {
     importTrigger = el.btnImport;
-    importMenuOpen(el.importMenu.hidden);
+    importMenuOpen(!importIsOpen());
   });
-  el.btnImport.addEventListener('keydown', (e) => {
-    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-      e.preventDefault();
-      importTrigger = el.btnImport;
-      importMenuOpen(true, true);
-      if (e.key === 'ArrowUp') requestAnimationFrame(() => el.importLink.focus());
-    }
-  });
+  el.importClose.addEventListener('click', () => importMenuOpen(false, { restoreFocus: true }));
   el.importFile.addEventListener('click', () => {
     importMenuOpen(false);
     window.MediaLibrary?.hide();
@@ -2555,20 +2558,30 @@
     linkOpen(true);
   });
   el.importMenu.addEventListener('keydown', (e) => {
-    const items = [el.importFile, el.importLink];
-    const i = items.indexOf(document.activeElement);
+    const options = [el.importFile, el.importLink];
+    const i = options.indexOf(document.activeElement);
     if (e.key === 'Escape') {
+      // Fecha só o modal; a Biblioteca ou a barra de link por trás continuam.
       e.preventDefault();
-      importMenuOpen(false);
-      importTrigger.focus();
+      e.stopPropagation();
+      importMenuOpen(false, { restoreFocus: true });
     } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
       e.preventDefault();
       const step = e.key === 'ArrowDown' ? 1 : -1;
-      items[(i + step + items.length) % items.length].focus();
+      options[(Math.max(i, 0) + step + options.length) % options.length].focus();
+    } else if (e.key === 'Tab') {
+      // O foco fica dentro do modal enquanto ele está aberto.
+      const focusable = [el.importClose, el.importFile, el.importLink];
+      const first = focusable[0], last = focusable[focusable.length - 1];
+      if (e.shiftKey ? document.activeElement === first : document.activeElement === last) {
+        e.preventDefault();
+        (e.shiftKey ? last : first).focus();
+      }
     }
   });
-  document.addEventListener('pointerdown', (e) => {
-    if (!el.importMenu.hidden && !el.importMenuWrap.contains(e.target)) importMenuOpen(false);
+  // Clicar fora do quadro fecha.
+  el.importMenu.addEventListener('pointerdown', (e) => {
+    if (e.target === el.importMenu) importMenuOpen(false, { restoreFocus: true });
   });
 
   el.urlThumb.addEventListener('load', () => el.urlThumbWrap.classList.add('has-image'));
@@ -2641,7 +2654,7 @@
   document.addEventListener('keydown', (e) => {
     const target = e.target instanceof Element ? e.target : document.activeElement;
     if (e.key === 'Escape') {
-      if (!el.importMenu.hidden) { importMenuOpen(false); importTrigger.focus(); return; }
+      if (importIsOpen()) { importMenuOpen(false, { restoreFocus: true }); return; }
       if (window.Settings.isOpen()) { window.Settings.close(); return; }
       if (state.focus) { focusOff(); return; }
       if (!el.linkbar.hidden) { linkOpen(false); return; }

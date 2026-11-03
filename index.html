@@ -213,23 +213,10 @@ SOFTWARE.
         <svg class="ui-icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#ui-icon-library-add"/></svg>
         <span id="libraryAddLabel">Salvar na Biblioteca</span>
       </button>
-      <div class="import-menu-wrap">
-        <button class="btn btn--import-primary" id="btnImport" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="importMenu">
-          <svg class="ui-icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#ui-icon-import"/></svg>
-          Importar
-          <svg class="ui-icon import-menu__chev ui-icon--small" width="12" height="12" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#ui-icon-chevron-down"/></svg>
-        </button>
-        <div class="import-menu" id="importMenu" role="menu" aria-label="Opções de importação" hidden>
-          <button class="import-menu__item" id="importFile" type="button" role="menuitem">
-            <svg class="ui-icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#ui-icon-folder"/></svg>
-            <span>Arquivo local</span>
-          </button>
-          <button class="import-menu__item" id="importLink" type="button" role="menuitem">
-            <svg class="ui-icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#ui-icon-link"/></svg>
-            <span>Link</span>
-          </button>
-        </div>
-      </div>
+      <button class="btn btn--import-primary" id="btnImport" type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="importMenu">
+        <svg class="ui-icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#ui-icon-import"/></svg>
+        Importar
+      </button>
       <button class="btn btn--outline btn--icon" id="btnConfig" type="button" title="Configurações (,)" aria-label="Configurações" aria-expanded="false" aria-controls="cfg">
         <svg class="ui-icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#ui-icon-settings"/></svg>
       </button>
@@ -526,7 +513,7 @@ SOFTWARE.
             <div class="empty__ghost" id="emptyGhost" aria-hidden="true"></div>
             <p class="empty__title">Dê outro tempo<br>à sua música.</p>
             <p class="empty__description">Arraste um áudio ou importe um arquivo ou link.</p>
-            <button class="btn btn--primary empty__import" id="btnEmptyImport" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="importMenu">Importar áudio</button>
+            <button class="btn btn--primary empty__import" id="btnEmptyImport" type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="importMenu">Importar áudio</button>
             <p class="empty__hint mono">WAV, MP3, FLAC, OGG e M4A</p>
           </div>
           <div class="loading" id="loading" hidden><span class="loading__bar"></span></div>
@@ -713,6 +700,37 @@ SOFTWARE.
   </div>
 
   <div class="drop" id="drop" hidden><span class="drop__box">Soltar para carregar</span></div>
+</div>
+
+<!-- ─── IMPORTAR ─────────────────────────────────────────── -->
+<div class="modal-layer" id="importMenu" hidden>
+  <div class="modal import-modal" role="dialog" aria-modal="true" aria-labelledby="importTitle">
+    <div class="modal__head">
+      <div>
+        <span class="mono">Importar</span>
+        <strong id="importTitle">De onde vem o áudio?</strong>
+      </div>
+      <button class="btn btn--ghost btn--icon" id="importClose" type="button" title="Fechar" aria-label="Fechar">
+        <svg class="ui-icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#ui-icon-close"/></svg>
+      </button>
+    </div>
+    <div class="import-modal__options">
+      <button class="import-option" id="importFile" type="button" aria-describedby="importFileHint">
+        <svg class="ui-icon" width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#ui-icon-folder"/></svg>
+        <span class="import-option__text">
+          <strong>Arquivo local</strong>
+          <span id="importFileHint">WAV, MP3, FLAC, OGG e M4A do computador. Também dá para arrastar o arquivo para o editor.</span>
+        </span>
+      </button>
+      <button class="import-option" id="importLink" type="button" aria-describedby="importLinkHint">
+        <svg class="ui-icon" width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#ui-icon-link"/></svg>
+        <span class="import-option__text">
+          <strong>Link</strong>
+          <span id="importLinkHint">YouTube, SoundCloud e outros sites. O áudio é baixado pelo yt-dlp, com prévia antes.</span>
+        </span>
+      </button>
+    </div>
+  </div>
 </div>
 
 <input type="file" id="file" accept="audio/*" hidden />
