@@ -66,6 +66,16 @@ class NetworkPrefsTests(unittest.TestCase):
         self.assertTrue(body["restarting"])
         restart.assert_called_once()
 
+    def test_relaunch_tells_the_new_server_its_address(self) -> None:
+        from server import relaunch
+
+        with mock.patch.object(relaunch, "_port_free", return_value=True), \
+                mock.patch.object(relaunch.subprocess, "Popen") as popen, \
+                mock.patch.dict(os.environ, {"VARISPEED_BIND_HOST": "127.0.0.1"}):
+            relaunch.main(["--host", "0.0.0.0", "--port", "8799"])
+        env = popen.call_args.kwargs["env"]
+        self.assertEqual(env["VARISPEED_BIND_HOST"], "0.0.0.0")
+
     def test_missing_optional_asset_is_404_not_500(self) -> None:
         with mock.patch.object(main, "ROOT", main.ROOT / "pasta-que-nao-existe"):
             with self.assertRaises(HTTPException) as caught:

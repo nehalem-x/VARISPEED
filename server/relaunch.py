@@ -73,6 +73,10 @@ def main(argv: list[str] | None = None) -> int:
                 "warning",
             ],
             cwd=ROOT,
+            # O servidor lê o próprio endereço de VARISPEED_BIND_HOST. Sem isto,
+            # ele herdaria o endereço antigo: ao ligar a rede, escutava em
+            # 0.0.0.0 mas se dizia só local ("Rede local: Desligada").
+            env={**os.environ, "VARISPEED_BIND_HOST": args.host},
             stdin=subprocess.DEVNULL,
             stdout=log,
             stderr=subprocess.STDOUT,
