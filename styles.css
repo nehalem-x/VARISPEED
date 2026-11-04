@@ -2486,7 +2486,7 @@ kbd {
 .cfg__pane > .cfg__group + .cfg__group,
 .cfg__pane > .cfg__advanced,
 .cfg__pane > .cfg__advanced + .cfg__group { border-top: var(--border) solid var(--divider); }
-.cfg__subtitle { font-size: var(--text-md); font-weight: 600; color: var(--text); }
+.cfg__subtitle { font-size: var(--text-lg); font-weight: 600; letter-spacing: var(--tr-tight, -0.01em); color: var(--text); }
 /* Diagnóstico recolhido: ferramenta para investigar lentidão. */
 .cfg__advanced-summary {
   display: flex;
