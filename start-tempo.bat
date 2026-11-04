@@ -61,7 +61,7 @@ echo [VARISPEED] Local: http://127.0.0.1:8765/
 echo [VARISPEED] Rede local: veja o endereco em Configuracoes ^> Sistema.
 echo [VARISPEED] Ctrl+C encerra o servidor.
 echo.
-"%VENV_PY%" -m uvicorn server.main:app --host 0.0.0.0 --port 8765
+"%VENV_PY%" -m uvicorn server.main:app --host 127.0.0.1 --port 8765
 exit /b %errorlevel%
 
 :python_missing

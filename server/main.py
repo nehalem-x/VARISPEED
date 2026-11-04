@@ -5,8 +5,9 @@ osciloscópio e exportação WAV. Este serviço faz somente duas coisas:
 1) extrai metadados de uma URL sem baixar a mídia;
 2) obtém a melhor faixa de áudio disponível e a entrega ao navegador.
 
-O servidor pode ser exposto na rede local quando o launcher usa 0.0.0.0;
-rotas sensíveis de controle continuam restritas ao próprio computador.
+Por padrão o servidor só aceita conexões deste computador (127.0.0.1). Com o
+acesso pela rede ligado nas Configurações ele escuta em 0.0.0.0; rotas
+sensíveis de controle continuam restritas ao próprio computador.
 """
 
 from __future__ import annotations
@@ -23,6 +24,7 @@ import sys
 import tempfile
 import threading
 import time
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
@@ -34,7 +36,7 @@ from pydantic import BaseModel, Field
 from starlette.background import BackgroundTask
 from starlette.responses import Response
 
-from server import ytdlp_update
+from server import network_prefs, ytdlp_update
 from server.browser_auth import BrowserAuthError, BrowserSessionResolver
 from server.dedicated_auth import DedicatedAuthError, DedicatedYouTubeSession
 from server.relaunch import detached_flags
@@ -44,7 +46,7 @@ from server.youtube_pot import status as youtube_pot_status
 ROOT = Path(__file__).resolve().parent.parent
 
 APP_PORT = int(os.getenv("VARISPEED_PORT", "8765") or 8765)
-APP_BIND_HOST = os.getenv("VARISPEED_BIND_HOST", "0.0.0.0") or "0.0.0.0"  # noqa: S104
+APP_BIND_HOST = os.getenv("VARISPEED_BIND_HOST", network_prefs.LOCAL_HOST) or network_prefs.LOCAL_HOST
 # O launcher marca o processo que ele mesmo iniciou; só esse reinicia sozinho.
 # Quem sobe o Uvicorn à mão (start-tempo, execução manual) reinicia à mão.
 MANAGED = os.getenv("VARISPEED_MANAGED") == "1"
@@ -52,6 +54,62 @@ LATEST_CACHE_SECONDS = 6 * 60 * 60
 _UPDATE_LOCK = threading.Lock()
 SUPPORTED_AUTH_BROWSERS = frozenset({"chrome", "edge", "firefox", "brave", "vivaldi"})
 SUPPORTED_AUTH_MODES = SUPPORTED_AUTH_BROWSERS | {"auto", "dedicated"}
+
+# Tamanho máximo de uma mídia baixada por link. Livra o disco de um download
+# que não termina. VARISPEED_MAX_FILESIZE_MB=0 desliga o limite.
+MAX_FILESIZE_MB = int(os.getenv("VARISPEED_MAX_FILESIZE_MB", "1024") or 0)
+
+
+def _max_duration_seconds() -> int:
+    return int(os.getenv("VARISPEED_MAX_DURATION_SECONDS", os.getenv("TEMPO_MAX_DURATION_SECONDS", "0")) or 0)
+
+
+# ── trava de rede do yt-dlp ─────────────────────────────────────
+# _validate_url só confere o primeiro endereço. Redirecionamentos, ou um
+# domínio que troca de IP entre a checagem e o download (DNS rebinding),
+# levariam o yt-dlp até a rede local. Enquanto uma extração ou um download
+# roda (_network_guard), toda resolução de nome feita nessa thread recusa
+# endereços que não são públicos. O próprio computador (loopback) continua
+# permitido porque o provedor de PO Token conversa com um navegador local;
+# com a rede local desligada, só quem está neste computador usa o servidor.
+_NET_GUARD = threading.local()
+_ORIGINAL_GETADDRINFO = socket.getaddrinfo
+
+
+def _guarded_ip_allowed(ip_text: str) -> bool:
+    try:
+        ip = ipaddress.ip_address(ip_text.split("%", 1)[0])
+    except ValueError:
+        return False
+    return ip.is_global or ip.is_loopback
+
+
+def _guarded_getaddrinfo(host: Any, *args: Any, **kwargs: Any) -> list[Any]:
+    infos = _ORIGINAL_GETADDRINFO(host, *args, **kwargs)
+    if not getattr(_NET_GUARD, "active", False):
+        return infos
+    allowed = [info for info in infos if _guarded_ip_allowed(str(info[4][0]))]
+    if not allowed:
+        raise socket.gaierror(socket.EAI_NONAME, "Endereços de rede local/privada não são permitidos.")
+    return allowed
+
+
+socket.getaddrinfo = _guarded_getaddrinfo
+
+
+@contextmanager
+def _network_guard() -> Any:
+    previous = getattr(_NET_GUARD, "active", False)
+    _NET_GUARD.active = True
+    try:
+        yield
+    finally:
+        _NET_GUARD.active = previous
+
+
+def _guarded(fn: Any, *args: Any) -> Any:
+    with _network_guard():
+        return fn(*args)
 _AUTH_LOCK = threading.Lock()
 _AUTH_BROWSER = ""
 _AUTH_PROFILE = ""
@@ -124,7 +182,9 @@ def _restart_process(delay: float = 0.6) -> None:
     """Sobe um ajudante que espera a porta liberar e inicia o servidor de novo."""
     time.sleep(delay)
     subprocess.Popen(  # noqa: S603 - comando fixo, sem shell
-        [sys.executable, "-m", "server.relaunch", "--host", APP_BIND_HOST, "--port", str(APP_PORT)],
+        # O endereço vem da preferência atual: ligar ou desligar a rede reinicia
+        # o servidor já no novo endereço.
+        [sys.executable, "-m", "server.relaunch", "--host", network_prefs.bind_host(), "--port", str(APP_PORT)],
         cwd=ROOT,
         stdin=subprocess.DEVNULL,
         stdout=subprocess.DEVNULL,
@@ -478,7 +538,7 @@ def _extract_with_auto_browser(url: str) -> tuple[dict[str, Any], str]:
 
 def _media_payload(data: dict[str, Any], url: str, *, auth_required: bool) -> dict[str, Any]:
     duration = data.get("duration")
-    max_duration = int(os.getenv("VARISPEED_MAX_DURATION_SECONDS", os.getenv("TEMPO_MAX_DURATION_SECONDS", "0")) or 0)
+    max_duration = _max_duration_seconds()
     if max_duration > 0 and duration and float(duration) > max_duration:
         raise HTTPException(
             status_code=413,
@@ -538,6 +598,20 @@ def _mark_dedicated_result(exc: Exception, auth_browser: str) -> None:
         DEDICATED_AUTH.mark_validation("invalid")
 
 
+def _download_refusal(info: dict[str, Any]) -> str:
+    """Motivo para não baixar, decidido antes do download começar."""
+    if info.get("is_live") or info.get("live_status") in {"is_live", "is_upcoming"}:
+        return "Streams ao vivo não são suportados nesta versão."
+    duration = info.get("duration")
+    max_duration = _max_duration_seconds()
+    if max_duration > 0 and duration and float(duration) > max_duration:
+        return f"A mídia excede o limite configurado de {max_duration} segundos."
+    size = info.get("filesize") or info.get("filesize_approx")
+    if MAX_FILESIZE_MB > 0 and size and float(size) > MAX_FILESIZE_MB * 1024 * 1024:
+        return f"O arquivo passa do limite de {MAX_FILESIZE_MB} MB."
+    return ""
+
+
 def _download_sync(
     url: str,
     auth_browser: str = "",
@@ -554,8 +628,24 @@ def _download_sync(
             "format": "bestaudio[ext=m4a]/bestaudio[ext=webm]/bestaudio/best",
             "outtmpl": str(temp_dir / "%(id)s.%(ext)s"),
             "overwrites": True,
+            # Lives, mídias longas e arquivos grandes são recusados antes de
+            # baixar (antes, a checagem só vinha depois do download inteiro).
+            "match_filter": refuse_before_download,
         })
+        if MAX_FILESIZE_MB > 0:
+            opts["max_filesize"] = MAX_FILESIZE_MB * 1024 * 1024
         return opts
+
+    refused: dict[str, str] = {}
+
+    def refuse_before_download(info: dict[str, Any], *, incomplete: bool = False) -> str | None:
+        if incomplete:
+            return None
+        reason = _download_refusal(info)
+        if reason:
+            refused["reason"] = reason
+            return reason
+        return None
 
     def download_once(browser: str = "", profile: str = "") -> dict[str, Any]:
         logger = ExtractionLogger()
@@ -563,7 +653,10 @@ def _download_sync(
         opts["logger"] = logger
         try:
             with yt_dlp.YoutubeDL(opts) as ydl:
-                return _single_media(ydl.extract_info(url, download=True))
+                info = ydl.extract_info(url, download=True)
+            if refused.get("reason"):
+                raise HTTPException(status_code=413, detail=refused["reason"])
+            return _single_media(info)
         except Exception as exc:
             setattr(exc, "varispeed_account_cookies", logger.account_cookies)
             setattr(exc, "varispeed_playback_verification", logger.playback_verification)
@@ -641,10 +734,13 @@ async def health() -> dict[str, Any]:
 
 @app.get("/api/system/info")
 async def system_info(request: Request) -> dict[str, Any]:
-    lan_urls = [f"http://{ip}:{APP_PORT}/" for ip in _local_ipv4s()]
+    listening = network_prefs.listens_on_lan(APP_BIND_HOST)
+    lan_urls = [f"http://{ip}:{APP_PORT}/" for ip in _local_ipv4s()] if listening else []
     return {
         "ok": True,
         "port": APP_PORT,
+        "lan": listening,
+        "lan_preference": network_prefs.lan_enabled(),
         "local_url": f"http://127.0.0.1:{APP_PORT}/",
         "lan_urls": lan_urls,
         "can_shutdown": _is_loopback_client(request),
@@ -882,6 +978,28 @@ def _require_local_system_control(request: Request) -> None:
         raise HTTPException(status_code=403, detail="Origem não autorizada para alterar o sistema.")
 
 
+class NetworkRequest(BaseModel):
+    lan: bool
+
+
+@app.post("/api/system/network")
+async def system_network(payload: NetworkRequest, request: Request) -> dict[str, Any]:
+    """Liga ou desliga o acesso de outros aparelhos da rede (só neste computador)."""
+    _require_local_system_control(request)
+    await asyncio.to_thread(network_prefs.set_lan, payload.lan)
+    wanted = network_prefs.bind_host()
+    changed = wanted != APP_BIND_HOST
+    restarting = changed and MANAGED
+    if restarting:
+        _schedule_restart()
+    return {
+        "ok": True,
+        "lan": payload.lan,
+        "restarting": restarting,
+        "restart_required": changed and not MANAGED,
+    }
+
+
 @app.post("/api/system/shutdown")
 async def system_shutdown(request: Request) -> dict[str, Any]:
     # Controle destrutivo disponível apenas via loopback. Assim, abrir o
@@ -900,7 +1018,7 @@ async def system_shutdown(request: Request) -> dict[str, Any]:
 async def media_info(payload: MediaRequest, request: Request) -> dict[str, Any]:
     url = await asyncio.to_thread(_validate_url, payload.url)
     browser, profile = _configured_auth_source(request)
-    return await asyncio.to_thread(_extract_info_sync, url, browser, profile)
+    return await asyncio.to_thread(_guarded, _extract_info_sync, url, browser, profile)
 
 
 @app.post("/api/media/audio")
@@ -908,6 +1026,7 @@ async def media_audio(payload: MediaRequest, request: Request) -> FileResponse:
     url = await asyncio.to_thread(_validate_url, payload.url)
     browser, profile = _configured_auth_source(request)
     temp_dir, media_path, display_name = await asyncio.to_thread(
+        _guarded,
         _download_sync,
         url,
         browser,

@@ -1,5 +1,14 @@
 # Registro de mudanças
 
+## Novembro de 2026: segurança da importação por link
+
+- O acesso de outros aparelhos da rede ficou desligado por padrão: só o próprio computador abre o VARISPEED. Para usar no celular, ligue "Permitir acesso de outros aparelhos da rede" em Configurações → Sistema. O servidor reinicia sozinho e o endereço da rede aparece logo abaixo.
+
+- O download por link agora recusa transmissões ao vivo, mídias acima do limite de duração (`VARISPEED_MAX_DURATION_SECONDS`) e arquivos acima de 1 GB (`VARISPEED_MAX_FILESIZE_MB`, 0 desliga) antes de começar a baixar. Antes, uma live mandada direto para o download gravava até encher o disco.
+- Enquanto o yt-dlp extrai ou baixa, toda conexão para um endereço da rede local é recusada, inclusive depois de um redirecionamento ou de um domínio que troca de IP. Antes, só o primeiro endereço era conferido. O próprio computador continua permitido, porque o PO Token usa um navegador local.
+- A tela de inicialização só aceita "tentar de novo" vinda dela mesma.
+- A janela separada do visualizador e a janela principal só trocam mensagens entre si (mesma origem). Antes, qualquer janela com referência ao app podia receber o áudio analisado e o nome da música.
+
 ## Novembro de 2026: Biblioteca sem perda de músicas
 
 - Se o navegador não conseguir gravar a lista da Biblioteca (armazenamento cheio, modo privado), as músicas não são mais apagadas. Antes, na abertura seguinte, o áudio dessas músicas era apagado de vez. Agora a música volta, com os dados guardados junto do áudio, e um aviso diz que a lista não pôde ser salva.

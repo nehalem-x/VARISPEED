@@ -3,7 +3,8 @@
 Este arquivo usa somente a biblioteca padrão do Python. Ele sobe uma pequena
 página de inicialização em 127.0.0.1:8764, prepara o ambiente do backend e,
 quando o FastAPI estiver saudável, a página redireciona para 127.0.0.1. O
-backend principal escuta em 0.0.0.0 para também ficar disponível na rede local.
+backend principal escuta só neste computador, ou em 0.0.0.0 quando o acesso
+pela rede está ligado nas Configurações (server/network_prefs.py).
 
 No Windows, o ponto de entrada normal é VARISPEED.vbs, que executa este script
 com a janela do console oculta. start-tempo.bat fica reservado para diagnóstico.
@@ -28,12 +29,11 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
 
-from server import ytdlp_update
+from server import network_prefs, ytdlp_update
 
 ROOT = Path(__file__).resolve().parent
 STARTUP_HOST = "127.0.0.1"
 STARTUP_PORT = 8764
-APP_BIND_HOST = "0.0.0.0"
 APP_HOST = "127.0.0.1"
 APP_PORT = int(os.getenv("VARISPEED_PORT", "8765") or 8765)
 STARTUP_URL = f"http://{STARTUP_HOST}:{STARTUP_PORT}/"
@@ -295,13 +295,15 @@ def _start_backend() -> subprocess.Popen[Any]:
     global APP_PROCESS
     LOG_DIR.mkdir(parents=True, exist_ok=True)
     server_log = (LOG_DIR / "server.log").open("a", encoding="utf-8")
+    # Só este computador, a menos que o acesso pela rede esteja ligado.
+    bind_host = network_prefs.bind_host()
     command = [
         str(VENV_PY),
         "-m",
         "uvicorn",
         "server.main:app",
         "--host",
-        APP_BIND_HOST,
+        bind_host,
         "--port",
         str(APP_PORT),
         "--log-level",
@@ -310,7 +312,7 @@ def _start_backend() -> subprocess.Popen[Any]:
     STATE.log("$ " + " ".join(command))
     # VARISPEED_MANAGED deixa o servidor se reiniciar sozinho depois de
     # atualizar o yt-dlp, porque o launcher já não estará por perto.
-    env = {**os.environ, "VARISPEED_MANAGED": "1", "VARISPEED_BIND_HOST": APP_BIND_HOST}
+    env = {**os.environ, "VARISPEED_MANAGED": "1", "VARISPEED_BIND_HOST": bind_host}
     # Node embutido resolve os desafios de JavaScript do YouTube sem instalar nada.
     if BUNDLED_NODE.is_file() and not env.get("VARISPEED_NODE_PATH"):
         env["VARISPEED_NODE_PATH"] = str(BUNDLED_NODE)
@@ -528,6 +530,12 @@ class StartupHandler(BaseHTTPRequestHandler):
     def do_POST(self) -> None:  # noqa: N802
         path = self.path.split("?", 1)[0]
         if path == "/retry":
+            # Só a própria tela de inicialização pode pedir para tentar de novo;
+            # um site qualquer no navegador não dispara venv, pip e servidor.
+            origin = (self.headers.get("Origin") or "").rstrip("/").lower()
+            if origin not in {"", f"http://{STARTUP_HOST}:{STARTUP_PORT}", f"http://localhost:{STARTUP_PORT}"}:
+                self._send_bytes(b"forbidden", "text/plain; charset=utf-8", HTTPStatus.FORBIDDEN)
+                return
             started = _retry()
             body = json.dumps({"ok": True, "started": started}).encode("utf-8")
             self._send_bytes(body, "application/json; charset=utf-8")

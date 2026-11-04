@@ -20,10 +20,12 @@
   let lastMsg = 0;
 
   const post = (msg) => {
-    try { if (host && !host.closed) host.postMessage(msg, '*'); } catch (e) { /* sem canal */ }
+    try { if (host && !host.closed) host.postMessage(msg, window.location.origin); } catch (e) { /* sem canal */ }
   };
 
   window.addEventListener('message', (e) => {
+    // Só a sessão principal do próprio app (mesma origem) manda quadros.
+    if (e.origin !== window.location.origin) return;
     const d = e.data;
     if (!d || typeof d !== 'object') return;
     if (d.type === 'tempo:frame') {

@@ -4,7 +4,7 @@ O yt-dlp fica carregado na memória do processo do servidor. Para usar a versão
 nova, o servidor dispara este script e se encerra; o script espera a porta
 ficar livre e sobe o Uvicorn de novo com os mesmos parâmetros.
 
-Uso: python -m server.relaunch --host 0.0.0.0 --port 8765
+Uso: python -m server.relaunch --host 127.0.0.1 --port 8765
 """
 
 from __future__ import annotations
@@ -43,7 +43,7 @@ def detached_flags() -> dict[str, object]:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--host", default="0.0.0.0")  # noqa: S104 - mesmo bind do launcher
+    parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8765)
     parser.add_argument("--wait", type=float, default=20.0)
     args = parser.parse_args(argv)

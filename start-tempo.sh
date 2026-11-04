@@ -15,4 +15,4 @@ fi
 
 command -v ffmpeg >/dev/null 2>&1 || echo '[VARISPEED] Aviso: FFmpeg nao foi encontrado no PATH. Alguns links podem exigir FFmpeg.'
 printf '\n[VARISPEED] Local: http://127.0.0.1:8765/\n[VARISPEED] Rede local: veja o endereco em Configuracoes > Sistema.\n[VARISPEED] Ctrl+C encerra o servidor.\n\n'
-exec "$PY" -m uvicorn server.main:app --host 0.0.0.0 --port 8765
+exec "$PY" -m uvicorn server.main:app --host 127.0.0.1 --port 8765

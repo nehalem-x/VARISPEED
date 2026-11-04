@@ -37,7 +37,7 @@ O `yt-dlp` só obtém a mídia e não participa da mudança de velocidade.
 - Tema claro/escuro, configurações persistentes e presets em JSON.
 - Layout para desktop, notebook, tablet e celular, inclusive telas baixas, toque, zoom do navegador e DPR fracionário.
 - Launcher para Windows sem terminal visível, com tela de inicialização e logs.
-- Acesso por outros dispositivos da rede local, com desligamento permitido só no próprio computador.
+- Acesso por outros aparelhos da rede local, desligado por padrão e ligado em Configurações → Sistema; desligar o app continua permitido só no próprio computador.
 
 ## Interface
 
@@ -218,7 +218,7 @@ Abre o mesmo launcher gráfico do Windows, com a tela de inicialização, e o na
 ```bash
 python -m venv .venv
 .venv/bin/python -m pip install -r server/requirements.txt
-.venv/bin/python -m uvicorn server.main:app --host 0.0.0.0 --port 8765
+.venv/bin/python -m uvicorn server.main:app --host 127.0.0.1 --port 8765
 ```
 
 No Windows, troque `.venv/bin/python` por `.venv\Scripts\python` e use `server\requirements.txt`.
@@ -315,7 +315,7 @@ O YouTube muda com frequência, e um `yt-dlp` velho é a causa mais comum de lin
 
 ### Rede local e segurança
 
-O backend escuta em `0.0.0.0:8765` (a porta muda com `VARISPEED_PORT`), para que outros dispositivos da rede local abram o app. No computador host, use `http://127.0.0.1:8765/`. Configurações → Sistema mostra o IPv4 da rede, como `http://192.168.1.20:8765/`, priorizando o da rota ativa. Com adaptadores virtuais pode haver outras URLs; a principal é a primeira devolvida pelo backend.
+Por padrão o backend escuta só em `127.0.0.1:8765` (a porta muda com `VARISPEED_PORT`): só o próprio computador abre o app. Para usar no celular ou em outro aparelho do mesmo Wi-Fi, ligue "Permitir acesso de outros aparelhos da rede" em Configurações → Sistema; o servidor reinicia em `0.0.0.0:8765`. No computador host, use sempre `http://127.0.0.1:8765/`. Configurações → Sistema mostra o IPv4 da rede, como `http://192.168.1.20:8765/`, priorizando o da rota ativa. Com adaptadores virtuais pode haver outras URLs; a principal é a primeira devolvida pelo backend.
 
 No Windows, o Firewall pode pedir permissão para o Python. Libere só em redes privadas. Não encaminhe a porta 8765 no roteador nem exponha o serviço à internet sem autenticação, rate limiting e isolamento.
 
@@ -632,7 +632,7 @@ Manter, salvo pedido explícito:
 5. waveform e exportação WAV continuam no navegador;
 6. interface minimalista e técnica, com fundo preto sólido no tema escuro;
 7. progresso com número só quando o número é real;
-8. backend em `0.0.0.0:8765` para a rede local, com ações destrutivas só via loopback.
+8. backend em `127.0.0.1:8765` por padrão (rede local só quando ligada nas Configurações), com ações destrutivas só via loopback.
 
 ## Problemas comuns
 

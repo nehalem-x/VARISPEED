@@ -646,7 +646,7 @@
         vectorDensity: o.vectorDensity,
         theme: el.root.dataset.theme,
         title: state.meta.name || '',
-      }, '*');
+      }, window.location.origin);
     } catch (e) { /* janela fechando */ }
   }
   const repaintScope = () => pumpScope(performance.now());
@@ -2056,6 +2056,8 @@
   el.btnPop.addEventListener('click', popToggle);
 
   window.addEventListener('message', (e) => {
+    // Só a janela separada do próprio app (mesma origem) recebe áudio e título.
+    if (e.origin !== window.location.origin) return;
     const d = e.data;
     if (!d || typeof d !== 'object') return;
     if (d.type === 'tempo:hello') { pop.win = e.source || pop.win; popState(true); }
@@ -2071,7 +2073,7 @@
       position: state.audio.currentTime || 0,
     });
     if (pop.win && !pop.win.closed) {
-      try { pop.win.postMessage({ type: 'tempo:bye' }, '*'); } catch (e) { /* noop */ }
+      try { pop.win.postMessage({ type: 'tempo:bye' }, window.location.origin); } catch (e) { /* noop */ }
     }
   });
 

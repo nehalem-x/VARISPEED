@@ -11,7 +11,7 @@ Arquivo local:  File -> ingest -> decode -> editor
 Link:           URL -> /api/media/info -> prévia -> confirmação
                     -> /api/media/audio -> yt-dlp -> Blob -> ingest -> decode -> editor
 Windows:        VARISPEED.vbs -> launcher.py -> .venv -> dependências
-                    -> Uvicorn em 0.0.0.0:8765 (local via 127.0.0.1, rede via IPv4 privado)
+                    -> Uvicorn em 127.0.0.1:8765 (0.0.0.0 só com o acesso pela rede ligado)
 ```
 
 O `yt-dlp` não entra no motor de áudio, o pitch nunca é preservado e o backend não deve ser exposto à internet sem as proteções da seção 5.5.
@@ -157,7 +157,7 @@ VARISPEED.lnk
   -> pronto: a tela redireciona para :8765
 ```
 
-`launcher.py` usa `APP_BIND_HOST = 0.0.0.0`, `APP_HOST = 127.0.0.1` (health check e redirecionamento) e `APP_PORT = 8765`, que muda com `VARISPEED_PORT`.
+`launcher.py` escuta em `network_prefs.bind_host()` (127.0.0.1 por padrão, 0.0.0.0 com o acesso pela rede ligado), usa `APP_HOST = 127.0.0.1` (health check e redirecionamento) e `APP_PORT = 8765`, que muda com `VARISPEED_PORT`.
 
 Regras:
 
@@ -188,7 +188,7 @@ O layout aprovado é um bloco compacto e centralizado, com o gato e `VARISPEED 1
 
 ### 3.3 `start-tempo.bat` (modo diagnóstico)
 
-Fica por compatibilidade e para depuração; não é o launcher do dia a dia. O terminal fica visível e ligado ao Uvicorn. O script detecta Python 3.11+, prefere `py -3`, cria ou reaproveita `.venv`, instala as dependências, avisa sobre o FFmpeg e sobe o Uvicorn em `0.0.0.0:8765`.
+Fica por compatibilidade e para depuração; não é o launcher do dia a dia. O terminal fica visível e ligado ao Uvicorn. O script detecta Python 3.11+, prefere `py -3`, cria ou reaproveita `.venv`, instala as dependências, avisa sobre o FFmpeg e sobe o Uvicorn em `127.0.0.1:8765`.
 
 Ele chama direto `py -3 -m venv .venv`, usa `python -m venv .venv` só como alternativa validada, recria uma `.venv` sem `.venv\Scripts\python.exe` e para na hora se a criação falhar. O fluxo usa rótulos e `goto` por causa de um erro já visto: com Python 3.13.15, o script antigo fazia `set "PY_CMD=py -3"` dentro de um bloco `IF (...)` e usava `%PY_CMD% -m venv .venv` no mesmo bloco. O `cmd.exe` expande `%VAR%` ao ler o bloco, antes das atribuições, então só `-m venv .venv` era executado e aparecia `'-m' is not recognized as an internal or external command`. Não definir uma variável dentro de `IF (...)` e usá-la com `%VAR%` no mesmo bloco sem `EnableDelayedExpansion`. O launcher gráfico não justifica piorar o `.bat`.
 
@@ -288,7 +288,7 @@ A versão antiga bloqueava YouTube, Spotify e outros no navegador por causa do C
 
 ### 5.1 Rede local
 
-O backend escuta em `0.0.0.0:8765` de propósito, para outros dispositivos da rede usarem o editor. O host acessa por `127.0.0.1:8765`.
+Por padrão o backend escuta só em `127.0.0.1:8765`. Em Configurações → Sistema, "Permitir acesso de outros aparelhos da rede" grava `{"lan": true}` em `%LOCALAPPDATA%/VARISPEED/network.json` (`server/network_prefs.py`) por `POST /api/system/network`, que só aceita o próprio computador; o servidor reinicia em `0.0.0.0:8765` e o Sistema mostra o IPv4 da rede. O host sempre acessa por `127.0.0.1:8765`.
 
 - `GET /api/system/info` devolve `local_url`, `lan_urls`, `port` e `can_shutdown`.
 - `POST /api/system/shutdown` encerra o processo depois de responder. Só aceita cliente loopback e, quando há header `Origin`, exige `127.0.0.1:8765` ou `localhost:8765`. Clientes em `192.168.x.x:8765` usam o editor, mas não desligam o host.
@@ -296,7 +296,7 @@ O backend escuta em `0.0.0.0:8765` de propósito, para outros dispositivos da re
 
 ### 5.2 Validação de URL
 
-`_validate_url()` aceita só HTTP e HTTPS, bloqueia localhost e `.local`, confere IP literal, resolve o DNS e recusa qualquer IP não global. Isso impede que a importação vire proxy para a rede local (SSRF). Também valem `noplaylist`, recusa de lives, diretório temporário por download, limpeza depois da resposta e whitelist de arquivos públicos.
+`_validate_url()` aceita só HTTP e HTTPS, bloqueia localhost e `.local`, confere IP literal, resolve o DNS e recusa qualquer IP não global. Isso impede que a importação vire proxy para a rede local (SSRF). Enquanto o `yt-dlp` extrai ou baixa (`_network_guard`), toda resolução de nome na thread recusa IPs que não são públicos nem loopback, o que cobre redirecionamentos e DNS rebinding. Lives, mídias acima de `VARISPEED_MAX_DURATION_SECONDS` e arquivos acima de `VARISPEED_MAX_FILESIZE_MB` (1024 por padrão) são recusados antes do download (`match_filter`). Também valem `noplaylist`, diretório temporário por download, limpeza depois da resposta e whitelist de arquivos públicos.
 
 ### 5.3 Cabeçalhos HTTP
 
@@ -770,7 +770,7 @@ Outros comandos:
 node --check app.js            # e os demais scripts listados no CI
 python -m py_compile launcher.py server/main.py server/browser_auth.py server/dedicated_auth.py server/youtube_pot.py server/ytdlp_update.py server/relaunch.py
 python -m ruff check launcher.py server tests
-python -m uvicorn server.main:app --host 0.0.0.0 --port 8765
+python -m uvicorn server.main:app --host 127.0.0.1 --port 8765
 ```
 
 No Windows, antes de validar o backend, confirme que `py --version` ou `python --version` encontra um Python válido.

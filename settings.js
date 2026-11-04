@@ -761,7 +761,8 @@ window.Settings = (() => {
       if (!response.ok) throw new Error('indisponível');
       const info = await response.json();
       const urls = Array.isArray(info.lan_urls) ? info.lan_urls : [];
-      const primary = urls[0] || 'Não detectada';
+      const primary = info.lan ? (urls[0] || 'Não detectada') : 'Desligada';
+      syncLanSwitch(info);
       if (lan) {
         lan.textContent = primary;
         lan.title = urls.length > 1 ? urls.join('\n') : primary;
@@ -778,10 +779,82 @@ window.Settings = (() => {
       }
     } catch (_) {
       if (lan) { lan.textContent = 'Indisponível'; lan.dataset.url = ''; }
+      if (systemLanSwitch && !systemLanBusy) systemLanSwitch.disabled = true;
       if (port) port.textContent = '—';
       if (stateCell) stateCell.textContent = 'Sem conexão';
       if (systemCopyBtn) systemCopyBtn.disabled = true;
       if (systemShutdownBtn) systemShutdownBtn.disabled = true;
+    }
+  }
+
+  /* Acesso pela rede local. Desligado por padrão: só este computador abre o
+     app. Ligar ou desligar reinicia o servidor no novo endereço (127.0.0.1 ou
+     0.0.0.0); a página espera ele voltar antes de mostrar o resultado. */
+  let systemLanSwitch = null;
+  let systemLanHint = null;
+  let systemLanBusy = false;
+
+  function syncLanSwitch(info) {
+    if (!systemLanSwitch) return;
+    const on = info.lan_preference === true;
+    systemLanSwitch.setAttribute('aria-checked', String(on));
+    systemLanSwitch.disabled = systemLanBusy || !info.can_shutdown;
+    if (systemLanHint && !systemLanBusy) {
+      systemLanHint.textContent = !info.can_shutdown
+        ? 'Só dá para mudar no computador em que o VARISPEED está rodando.'
+        : info.lan
+          ? 'Abra o endereço de rede local em outro aparelho conectado ao mesmo Wi-Fi.'
+          : 'Só este computador abre o VARISPEED. Ligue para usar no celular ou em outro aparelho do mesmo Wi-Fi.';
+    }
+  }
+
+  async function waitServerBack(timeoutMs = 30000) {
+    const deadline = Date.now() + timeoutMs;
+    let wentDown = false;
+    while (Date.now() < deadline) {
+      await new Promise((resolve) => setTimeout(resolve, 600));
+      try {
+        const response = await fetch('/api/health', { cache: 'no-store' });
+        if (response.ok && wentDown) return true;
+      } catch (_) { wentDown = true; }
+    }
+    return false;
+  }
+
+  async function toggleLan() {
+    if (!systemLanSwitch || systemLanBusy) return;
+    const next = systemLanSwitch.getAttribute('aria-checked') !== 'true';
+    systemLanBusy = true;
+    systemLanSwitch.disabled = true;
+    systemLanSwitch.setAttribute('aria-busy', 'true');
+    if (systemLanHint) systemLanHint.textContent = 'Reiniciando o servidor local...';
+    try {
+      const response = await fetch('/api/system/network', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lan: next }),
+        cache: 'no-store',
+      });
+      if (!response.ok) {
+        let message = 'Não foi possível mudar o acesso pela rede.';
+        try { const body = await response.json(); message = body.detail || message; } catch (_) {}
+        throw new Error(message);
+      }
+      const result = await response.json();
+      if (result.restarting) {
+        const back = await waitServerBack();
+        panelFeedback(back
+          ? (next ? 'Acesso pela rede ligado' : 'Acesso pela rede desligado')
+          : 'O servidor não voltou. Abra o VARISPEED de novo', { kind: back ? '' : 'err', hold: 4200 });
+      } else if (result.restart_required) {
+        panelFeedback('Preferência salva. Reinicie o VARISPEED para aplicar', { hold: 5200 });
+      }
+    } catch (err) {
+      panelFeedback(err && err.message ? err.message : 'Não foi possível mudar o acesso pela rede.', { kind: 'err', hold: 4200 });
+    } finally {
+      systemLanBusy = false;
+      systemLanSwitch.removeAttribute('aria-busy');
+      refreshSystemInfo();
     }
   }
 
@@ -858,6 +931,20 @@ window.Settings = (() => {
   }
 
   function buildSystemGroup(sec) {
+    const lanRow = h('div', 'cfg__row cfg__row--inline cfg__row--switch');
+    const lanLine = h('div', 'cfg__label-line');
+    lanLine.appendChild(h('label', 'cfg__label', 'Permitir acesso de outros aparelhos da rede'));
+    systemLanSwitch = h('button', 'sw');
+    systemLanSwitch.type = 'button';
+    systemLanSwitch.setAttribute('role', 'switch');
+    systemLanSwitch.setAttribute('aria-label', 'Permitir acesso de outros aparelhos da rede');
+    systemLanSwitch.setAttribute('aria-checked', 'false');
+    systemLanSwitch.disabled = true;
+    systemLanSwitch.appendChild(h('span', 'sw__knob'));
+    systemLanSwitch.addEventListener('click', toggleLan);
+    lanRow.append(lanLine, systemLanSwitch);
+    sec.appendChild(lanRow);
+
     const list = h('dl', 'rows cfg__system-rows');
     [['state', 'Servidor'], ['lan', 'Rede local'], ['port', 'Porta']].forEach(([id, label]) => {
       const r = h('div', 'row');
@@ -869,8 +956,9 @@ window.Settings = (() => {
     });
     sec.appendChild(list);
 
-    const hint = h('p', 'cfg__system-hint', 'Abra o endereço de rede local em outro dispositivo conectado à mesma rede.');
-    sec.appendChild(hint);
+    systemLanHint = h('p', 'cfg__system-hint', 'Verificando o acesso pela rede...');
+    systemLanHint.setAttribute('aria-live', 'polite');
+    sec.appendChild(systemLanHint);
 
     const actions = h('div', 'cfg__system-actions');
     systemCopyBtn = h('button', 'btn btn--outline cfg__system-action', 'Copiar endereço');
