@@ -36,7 +36,7 @@ from pydantic import BaseModel, Field
 from starlette.background import BackgroundTask
 from starlette.responses import Response
 
-from server import network_prefs, ytdlp_update
+from server import app_version, network_prefs, ytdlp_update
 from server.browser_auth import BrowserAuthError, BrowserSessionResolver
 from server.dedicated_auth import DedicatedAuthError, DedicatedYouTubeSession
 from server.relaunch import detached_flags
@@ -44,6 +44,9 @@ from server.youtube_pot import authenticated_youtube_options
 from server.youtube_pot import status as youtube_pot_status
 
 ROOT = Path(__file__).resolve().parent.parent
+# Versão em disco quando o servidor subiu; o launcher compara para saber
+# se este processo ficou desatualizado (server/app_version.py).
+APP_BUILD = app_version.fingerprint(ROOT)
 
 APP_PORT = int(os.getenv("VARISPEED_PORT", "8765") or 8765)
 APP_BIND_HOST = os.getenv("VARISPEED_BIND_HOST", network_prefs.LOCAL_HOST) or network_prefs.LOCAL_HOST
@@ -726,6 +729,7 @@ def _download_sync(
 async def health() -> dict[str, Any]:
     return {
         "ok": True,
+        "build": APP_BUILD,
         "yt_dlp": yt_dlp.version.__version__,
         "ffmpeg": shutil.which("ffmpeg") is not None,
         "youtube_po": youtube_pot_status(),
@@ -1053,7 +1057,9 @@ async def index() -> FileResponse:
 async def public_asset(asset_name: str) -> FileResponse:
     # Whitelist explícita: o diretório server/ e a documentação não são
     # publicados acidentalmente pelo servidor local.
-    if asset_name not in PUBLIC_FILES:
+    # Arquivos opcionais (as fotos do criador não vêm no Git nem no pacote)
+    # podem faltar: 404, que a seção Sobre trata, em vez de 500.
+    if asset_name not in PUBLIC_FILES or not (ROOT / asset_name).is_file():
         raise HTTPException(status_code=404, detail="Arquivo não encontrado.")
     # O mimetypes do Windows nem sempre conhece woff2.
     media_type = "font/woff2" if asset_name.endswith(".woff2") else None

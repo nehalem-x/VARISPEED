@@ -918,15 +918,13 @@ button, input { font: inherit; color: inherit; }
   overflow-wrap: anywhere;
 }
 .library__organization { display: grid; gap: var(--space-2); }
-.library__category-label,
-.library__category-kicker {
+.library__category-label {
   color: var(--text-3);
   font-size: var(--text-xs);
 }
 /* Select da categoria com o botão quadrado de nova categoria, como na barra da Biblioteca. */
 .library__category-line { display: grid; grid-template-columns: minmax(0, 1fr) var(--ctl-h); gap: var(--space-2); }
 .library__category-line .sel { width: 100%; max-width: none; }
-.library__organization-hint,
 .library__category-dialog-body p {
   margin: 0;
   color: var(--text-3);
@@ -2158,10 +2156,6 @@ button, input { font: inherit; color: inherit; }
 }
 /* Na Biblioteca, só o atalho de reprodução continua valendo. */
 [data-view='library'] .sbar__item--editor { display: none; }
-.foot__note {
-  font-size: var(--text-xs);
-  color: var(--text-3);
-}
 
 /* ═══ status bar ══════════════════════════════════════════ */
 .sbar {
@@ -2297,7 +2291,7 @@ kbd {
 .sbar__msg .eph { color: var(--text); }
 
 /* estado de operação em andamento — varredura de 1px, sem glow */
-.btn--primary#btnExport, .btn--export, .btn--progress { position: relative; overflow: hidden; }
+.btn--primary#btnExport, .btn--progress { position: relative; overflow: hidden; }
 #btnExport.is-busy::after,
 .btn--progress.is-busy::after {
   content: '';

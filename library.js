@@ -423,6 +423,9 @@
     };
     if (el.browser.hidden || window.Motion?.reduced?.()) { finish(); return; }
     el.browser.classList.add('is-leaving');
+    // Durante a saída a lista não aceita nem mouse nem teclado; refresh()
+    // devolve o inert certo ao terminar ou ao reabrir no meio.
+    el.browser.inert = true;
     browserLeaveTimer = setTimeout(finish, 260); // --dur-cine-exit
   }
 

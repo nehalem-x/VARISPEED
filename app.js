@@ -226,7 +226,7 @@
     if (locked) return;
     const progress = duration > 0 ? clamp(current / duration, 0, 1) : 0;
     input.value = String(Math.round(progress * 1000));
-    setScrubFill(input);
+    if (input === el.fScrub) setScrubFill(input); // só a linha do modo foco usa --p
   }
 
   /* --p pinta a parte já tocada da linha (usado no modo foco). */
@@ -584,7 +584,7 @@
         right: scope.rightBuf.subarray(start, start + win),
       };
       scope.lastStereo = stereo;
-      return { samples: null, stereo };
+      return remember({ samples: null, stereo });
     }
     const buf = scope.buf;
     scope.an.getFloatTimeDomainData(buf);
@@ -598,7 +598,12 @@
       }
     }
     trig = clamp(trig, 0, limit);
-    return { samples: buf.subarray(trig, trig + win), stereo: null };
+    return remember({ samples: buf.subarray(trig, trig + win), stereo: null });
+  }
+  function remember(analysed) {
+    scope.lastAnalysed = analysed;
+    scope.lastAnalysedAt = performance.now();
+    return analysed;
   }
 
   /* um quadro, três destinos */
@@ -624,7 +629,10 @@
     if (cfg('scope.fps') === '30' && ts - pop.last < 32) return;
     pop.last = ts;
     const st = scopeState();
-    const analysed = st === 'live' ? analyse() : null;
+    // Reaproveita a análise do tick quando ela é recente: com a janela principal
+    // visível, o mesmo quadro não é analisado duas vezes.
+    const fresh = scope.lastAnalysed && performance.now() - scope.lastAnalysedAt < 12;
+    const analysed = st === 'live' ? (fresh ? scope.lastAnalysed : analyse()) : null;
     const samples = analysed ? analysed.samples : null;
     const stereo = analysed ? analysed.stereo
       : (cfg('scope.visualizer') === 'vectorscope' ? scope.lastStereo : null);
@@ -1481,11 +1489,19 @@
     if (!hadLoaded) el.empty.hidden = true;
 
     let ac = null;
+    let failure = 'Não foi possível decodificar o áudio';
     try {
+      // Um arquivo enorme vira PCM várias vezes maior na memória e derruba a aba.
+      if (blob.size > MAX_INPUT_BYTES) {
+        failure = `O arquivo tem ${fmtBytes(blob.size)}, acima do limite de ${fmtBytes(MAX_INPUT_BYTES)} para abrir no navegador`;
+        throw new RangeError(failure);
+      }
       const bytes = await blob.arrayBuffer();
       const AC = window.AudioContext || window.webkitAudioContext;
       ac = new AC();
-      const buf = await ac.decodeAudioData(bytes.slice(0));
+      // decodeAudioData consome o buffer; bytes não é usado depois, então não
+      // há por que copiar o arquivo inteiro (a cópia dobrava a memória).
+      const buf = await ac.decodeAudioData(bytes);
       ac.close(); ac = null;
 
       /* Uma ação mais nova começou enquanto esta decodificava: descartar o
@@ -1573,7 +1589,9 @@
         el.waveHost.classList.add('is-empty');
         dot('idle');
       }
-      status('Não foi possível decodificar o áudio');
+      status(isMemoryError(err) && failure === 'Não foi possível decodificar o áudio'
+        ? 'Memória insuficiente para abrir este áudio no navegador'
+        : failure);
       return false;
     } finally {
       if (activeDecodeIntent === intent) {
@@ -1694,6 +1712,15 @@
   /* ── nome do arquivo por template ───────────────────── */
   const outSampleRate = () => Core.outSampleRate(cfg('export.sampleRate'), state.meta.sampleRate);
 
+  /* Limites de memória do navegador. Um ArrayBuffer passa de ~2 GB com
+     dificuldade, e o tamanho no cabeçalho do WAV é de 32 bits. Ficam depois de
+     outSampleRate porque tests/ui-export.test.js executa a seção de exportação
+     a partir dessa linha. */
+  const MAX_WAV_BYTES = 2 * 1024 * 1024 * 1024 - 64 * 1024 * 1024;
+  const MAX_INPUT_BYTES = 1024 * 1024 * 1024;
+  const isMemoryError = (e) => e instanceof RangeError
+    || /RangeError|allocation failed|out of memory|memória/i.test(String((e && (e.message || e.type)) || e));
+
   /* Tokens, saneamento, teto de 176 code points e nomes de
      dispositivo reservados do Windows vivem em core.js e têm
      cobertura em tests/core.test.js. */
@@ -1751,6 +1778,14 @@
       const depth = cfg('export.bits');
       const opts = { normalize: cfg('export.normalize'), ceiling: cfg('export.ceiling') };
       const frames = Math.max(1, Math.ceil((src.duration / r) * sr));
+      /* O WAV inteiro é montado num ArrayBuffer só, e o cabeçalho RIFF guarda o
+         tamanho em 32 bits. Acima do limite, avisar antes de renderizar em vez
+         de travar a aba e falhar com uma mensagem genérica. */
+      const wavBytes = 44 + frames * src.numberOfChannels * (depth === '32f' ? 4 : depth === '24' ? 3 : 2);
+      if (wavBytes > MAX_WAV_BYTES) {
+        status(`A saída teria ${fmtBytes(wavBytes)}, acima do limite de ${fmtBytes(MAX_WAV_BYTES)} do navegador. Use 16 bits ou uma taxa de amostragem menor`);
+        return;
+      }
       const OAC = window.OfflineAudioContext || window.webkitOfflineAudioContext;
       const oac = new OAC(src.numberOfChannels, frames, sr);
       const node = oac.createBufferSource();
@@ -1765,6 +1800,9 @@
       try {
         blob = await encodeOffThread(out, depth, opts);
       } catch (e) {
+        // Sem memória no worker, repetir na thread principal dobraria o uso e
+        // travaria a aba: só repete quando o worker falhou por outro motivo.
+        if (isMemoryError(e)) throw e;
         blob = await encodeOnThread(out, depth, opts);
       }
       const a = document.createElement('a');
@@ -1774,7 +1812,7 @@
       setTimeout(() => URL.revokeObjectURL(a.href), 4000);
       done = { name: a.download, size: blob.size };
     } catch (err) {
-      status('Falha ao renderizar a saída');
+      status(isMemoryError(err) ? 'Memória insuficiente para exportar. Use 16 bits ou uma taxa de amostragem menor' : 'Falha ao renderizar a saída');
     } finally {
       state.exporting = false;
       syncStatusPriority();
@@ -2672,6 +2710,14 @@
   el.btnImport.addEventListener('click', () => {
     importTrigger = el.btnImport;
     importMenuOpen(!importIsOpen());
+  });
+  // Atalho da antiga lista: ↓ abre em Arquivo local e ↑ abre em Link.
+  el.btnImport.addEventListener('keydown', (e) => {
+    if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+    e.preventDefault();
+    importTrigger = el.btnImport;
+    importMenuOpen(true);
+    if (e.key === 'ArrowUp') el.importLink.focus({ preventScroll: true });
   });
   el.importClose.addEventListener('click', () => importMenuOpen(false, { restoreFocus: true }));
   el.importFile.addEventListener('click', () => {

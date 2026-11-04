@@ -66,6 +66,12 @@ class NetworkPrefsTests(unittest.TestCase):
         self.assertTrue(body["restarting"])
         restart.assert_called_once()
 
+    def test_missing_optional_asset_is_404_not_500(self) -> None:
+        with mock.patch.object(main, "ROOT", main.ROOT / "pasta-que-nao-existe"):
+            with self.assertRaises(HTTPException) as caught:
+                asyncio.run(main.public_asset("assets/creator-light.png"))
+        self.assertEqual(caught.exception.status_code, 404)
+
     def test_system_info_hides_lan_urls_when_local_only(self) -> None:
         with mock.patch.object(main, "APP_BIND_HOST", "127.0.0.1"):
             info = asyncio.run(main.system_info(_request("127.0.0.1")))

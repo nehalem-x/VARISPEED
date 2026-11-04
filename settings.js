@@ -1043,7 +1043,14 @@ window.Settings = (() => {
       version.textContent = '—';
       latest.textContent = '—';
       ytdlp.hint.textContent = 'Sem conexão. O servidor local não respondeu';
+      // Também sai do estado de trabalho: sem isto, uma atualização que termina
+      // com o servidor fora do ar deixava o botão preso em "Reiniciando...".
+      if (!ytdlp.busy) {
+        ytdlp.action.classList.remove('is-busy', 'is-done');
+        ytdlp.action.textContent = 'Verificar atualização';
+      }
       ytdlp.action.disabled = true;
+      ytdlp.action.setAttribute('aria-busy', String(Boolean(ytdlp.busy)));
       return;
     }
     version.textContent = versionText(state.version) || '—';

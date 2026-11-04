@@ -21,9 +21,14 @@ window.Modal = (() => {
   const reduced = () => (window.Motion && window.Motion.reduced ? window.Motion.reduced() : mq.matches);
   const timers = new WeakMap();
 
+  // Cancela a espera da entrada ou da saída e resolve a Promise pendente,
+  // para quem faz await de show()/hide() nunca ficar esperando para sempre.
   function settle(layer) {
-    clearTimeout(timers.get(layer));
+    const pending = timers.get(layer);
+    if (!pending) return;
+    clearTimeout(pending.timer);
     timers.delete(layer);
+    pending.resolve();
   }
 
   function show(layer) {
@@ -38,7 +43,10 @@ window.Modal = (() => {
       void layer.offsetWidth; // aplica o estado inicial antes da transição
     }
     layer.dataset.state = 'open';
-    return new Promise((resolve) => timers.set(layer, setTimeout(resolve, ENTER_MS)));
+    return new Promise((resolve) => timers.set(layer, {
+      resolve,
+      timer: setTimeout(() => { timers.delete(layer); resolve(); }, ENTER_MS),
+    }));
   }
 
   function hide(layer) {
@@ -47,13 +55,16 @@ window.Modal = (() => {
     layer.inert = true;
     if (reduced()) { layer.hidden = true; delete layer.dataset.state; layer.inert = false; return Promise.resolve(); }
     layer.dataset.state = 'leave';
-    return new Promise((resolve) => timers.set(layer, setTimeout(() => {
-      timers.delete(layer);
-      layer.hidden = true;
-      layer.inert = false;
-      delete layer.dataset.state;
-      resolve();
-    }, LEAVE_MS)));
+    return new Promise((resolve) => timers.set(layer, {
+      resolve,
+      timer: setTimeout(() => {
+        timers.delete(layer);
+        layer.hidden = true;
+        layer.inert = false;
+        delete layer.dataset.state;
+        resolve();
+      }, LEAVE_MS),
+    }));
   }
 
   const isOpen = (layer) => Boolean(layer) && !layer.hidden && layer.dataset.state !== 'leave';

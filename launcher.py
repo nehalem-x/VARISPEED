@@ -29,7 +29,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
 
-from server import network_prefs, ytdlp_update
+from server import app_version, network_prefs, ytdlp_update
 
 ROOT = Path(__file__).resolve().parent
 STARTUP_HOST = "127.0.0.1"
@@ -330,6 +330,28 @@ def _start_backend() -> subprocess.Popen[Any]:
     return APP_PROCESS
 
 
+def _is_current(health: dict[str, Any]) -> bool:
+    """O servidor em execução é da mesma versão que está no disco?"""
+    return health.get("build") == app_version.fingerprint(ROOT)
+
+
+def _stop_stale_backend() -> bool:
+    """Desliga um servidor de versão anterior e espera a porta liberar."""
+    request = urllib.request.Request(f"http://{APP_HOST}:{APP_PORT}/api/system/shutdown", data=b"", method="POST")
+    try:
+        with urllib.request.urlopen(request, timeout=2):  # noqa: S310 - endereço local fixo
+            pass
+    except Exception as exc:  # noqa: BLE001 - o servidor pode cair antes de responder
+        STATE.log(f"Pedido de desligamento: {exc}")
+    deadline = time.time() + 10
+    while time.time() < deadline:
+        if not _http_json(HEALTH_URL, timeout=0.4):
+            time.sleep(0.4)  # folga para o sistema liberar a porta
+            return True
+        time.sleep(0.3)
+    return False
+
+
 def _bootstrap() -> None:
     if not BOOT_LOCK.acquire(blocking=False):
         return
@@ -340,6 +362,15 @@ def _bootstrap() -> None:
 
         # Se o backend já estiver ativo, não cria uma segunda instância.
         existing = _http_json(HEALTH_URL)
+        if existing and existing.get("ok") and not _is_current(existing):
+            # Versão nova no disco: reiniciar em vez de reaproveitar o servidor
+            # antigo, que continuaria com o código e a lista de arquivos de antes.
+            STATE.log("O servidor em execução é de uma versão anterior; reiniciando.")
+            STATE.set_step("server", "active", "Reiniciando versão anterior")
+            if not _stop_stale_backend():
+                STATE.set_step("server", "error", "A versão anterior não desligou")
+                raise RuntimeError("O VARISPEED anterior não desligou. Feche-o em Configurações → Sistema e tente de novo.")
+            existing = None
         if existing and existing.get("ok"):
             if not _http_ok(APP_URL):
                 STATE.set_step("server", "ok", "Instância existente")
@@ -558,7 +589,9 @@ def main() -> int:
 
     # Segundo clique com o sistema já pronto: não cria outro backend.
     existing = _http_json(HEALTH_URL, timeout=0.45)
-    if existing and existing.get("ok") and _http_ok(APP_URL, timeout=0.55):
+    # Só reaproveita direto um servidor da mesma versão; um antigo passa pela
+    # tela de inicialização, que o reinicia.
+    if existing and existing.get("ok") and _is_current(existing) and _http_ok(APP_URL, timeout=0.55):
         webbrowser.open(APP_URL, new=1)
         return 0
 

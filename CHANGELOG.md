@@ -1,5 +1,15 @@
 # Registro de mudanças
 
+## Novembro de 2026: correções da revisão
+
+- Abrir o VARISPEED pelo atalho com uma versão anterior ainda rodando agora reinicia o servidor, em vez de reaproveitá-lo. Antes, depois de atualizar o app, arquivos novos davam 404 até alguém derrubar o servidor. O servidor informa a própria versão em `/api/health` (`build`) e o launcher compara com a do disco.
+- Arquivos opcionais que não existem, como as fotos do criador num clone novo, respondem 404 em vez de 500.
+- O botão de atualizar o yt-dlp não fica mais preso em "Reiniciando o servidor..." quando o servidor não volta.
+- Exportações maiores que o limite do navegador (cerca de 2 GB) são recusadas antes de renderizar, com uma mensagem que diz o tamanho e o que fazer. Falta de memória não repete mais o trabalho na thread principal, que travava a aba.
+- Abrir um áudio não copia mais o arquivo inteiro antes de decodificar, o que dobrava a memória usada. Arquivos acima de 1 GB são recusados com uma mensagem clara.
+- Seta ↓ ou ↑ no botão Importar volta a abrir a importação, já na primeira ou na última opção.
+- Durante a saída da lista para o mapa, o teclado também fica bloqueado na lista.
+
 ## Novembro de 2026: segurança da importação por link
 
 - O acesso de outros aparelhos da rede ficou desligado por padrão: só o próprio computador abre o VARISPEED. Para usar no celular, ligue "Permitir acesso de outros aparelhos da rede" em Configurações → Sistema. O servidor reinicia sozinho e o endereço da rede aparece logo abaixo.
