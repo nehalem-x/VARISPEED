@@ -137,7 +137,7 @@ Não vai para o app nem para `PUBLIC_FILES`. Usa `node:test` no JavaScript e `un
 - JavaScript no Node.js 24/Linux: confere a sintaxe dos scripts, roda `tests/*.test.js` e valida `index.html`, `startup.html` e `scope.html` com html-validate.
 - Repository hygiene: falha se segredos comuns, cookies, chaves, ambientes, caches, logs, ZIPs ou `GraphEngine.txt` estiverem no repositório.
 
-As actions ficam presas ao SHA completo, o workflow só declara `contents: read` e cancela execuções antigas do mesmo branch. Não adicionar permissão de escrita sem necessidade. `dependabot.yml` abre no máximo três atualizações por mês para `pip` e GitHub Actions. O html-validate roda por versão fixa via `npx`, sem dependência npm guardada.
+As actions ficam presas ao SHA completo, o workflow só declara `contents: read` e cancela execuções antigas do mesmo branch. Não adicionar permissão de escrita sem necessidade. As dependências são atualizadas à mão (não há `dependabot.yml`); o yt-dlp se atualiza sozinho pelo app, e os alertas de segurança do GitHub avisam de falhas conhecidas. O html-validate roda por versão fixa via `npx`, sem dependência npm guardada.
 
 ## 3. Inicialização
 

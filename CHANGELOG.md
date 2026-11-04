@@ -1,5 +1,9 @@
 # Registro de mudanças
 
+## Novembro de 2026: sem atualizações automáticas do Dependabot
+
+- Atualizações automáticas do Dependabot desligadas; dependências atualizadas à mão e alertas de segurança do GitHub mantidos.
+
 ## Novembro de 2026: correções da revisão
 
 - Abrir o VARISPEED pelo atalho com uma versão anterior ainda rodando agora reinicia o servidor, em vez de reaproveitá-lo. Antes, depois de atualizar o app, arquivos novos davam 404 até alguém derrubar o servidor. O servidor informa a própria versão em `/api/health` (`build`) e o launcher compara com a do disco.

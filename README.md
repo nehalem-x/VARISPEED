@@ -600,7 +600,7 @@ O CI (`.github/workflows/ci.yml`) roda em todo push, pull request e acionamento 
 - Node.js 24 no Linux, com verificação de sintaxe, toda a suíte `node:test` e validação dos três HTML.
 - Uma checagem que recusa `.env`, cookies, chaves privadas, ambientes, caches, logs, ZIPs e o protótipo `GraphEngine.txt` no repositório.
 
-As actions ficam presas a SHAs completos e o workflow só tem permissão de leitura. O projeto não tem `package.json` nem dependências npm. O Dependabot confere dependências Python e GitHub Actions todo mês, com no máximo três PRs abertos por ecossistema.
+As actions ficam presas a SHAs completos e o workflow só tem permissão de leitura. O projeto não tem `package.json` nem dependências npm. As dependências são atualizadas à mão: o yt-dlp se atualiza sozinho pelo app, e os alertas de segurança do GitHub avisam de falhas conhecidas.
 
 ### Onde mexer
 
