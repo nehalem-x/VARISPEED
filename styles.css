@@ -1437,6 +1437,10 @@ button, input { font: inherit; color: inherit; }
     transform var(--dur-cine-settle) var(--ease-cine);
 }
 .library__detail-artwork.has-image img { filter: none; transform: none; }
+/* Perder o foco é instantâneo; só a volta ao foco é animada. Com transição
+   nos dois sentidos, a troca de música começava a desfocar devagar e o load
+   da capa nova revertia antes de qualquer desfoque aparecer. */
+.library__detail-artwork:not(.has-image) img { transition: none; }
 .library__detail-wash:not([hidden]) { animation: cine-fade-in var(--dur-cine-settle) var(--ease-cine) both; }
 
 /* Barra de link: o campo aparece e, quando o link é analisado, a prévia

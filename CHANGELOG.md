@@ -9,6 +9,8 @@
 - Abrir um áudio não copia mais o arquivo inteiro antes de decodificar, o que dobrava a memória usada. Arquivos acima de 1 GB são recusados com uma mensagem clara.
 - Seta ↓ ou ↑ no botão Importar volta a abrir a importação, já na primeira ou na última opção.
 - Durante a saída da lista para o mapa, o teclado também fica bloqueado na lista.
+- Ao selecionar outra música com o resumo aberto, o painel fica parado e só o conteúdo entra de novo: as letras em onda, o fundo borrado e a capa saindo do desfoque. Clicar de novo na mesma música não repete.
+- A onda da lista da Biblioteca anima as músicas que estão na tela, a partir da primeira visível. Antes, ela animava sempre as 14 primeiras da lista: com a lista rolada, as visíveis ficavam paradas e algumas apareciam no meio da animação.
 
 ## Novembro de 2026: segurança da importação por link
 

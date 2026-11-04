@@ -400,6 +400,53 @@
 
   /* Voltar ao mapa: a lista sai deslizando de leve para a direita e some
      (styles.css, .is-leaving); só depois o mapa ocupa o espaço. */
+  /* Troca de música com o resumo aberto: o painel fica parado e só o
+     conteúdo entra de novo (letras em onda e o fundo borrado da capa). A capa
+     sai do desfoque sozinha, porque perde has-image ao trocar de imagem.
+     Na primeira abertura, sair de hidden já faz a entrada completa. */
+  let shownDetailId = '';
+  function replayDetailsEntrance() {
+    if (!el.details.getAnimations) return;
+    el.details.getAnimations({ subtree: true })
+      .filter((animation) => String(animation.animationName || '').startsWith('cine-')
+        && animation.effect?.target !== el.details)
+      .forEach((animation) => { animation.cancel(); animation.play(); });
+    refocusArtwork();
+  }
+
+  /* A capa sai do desfoque pela transição de has-image. Com a imagem em
+     cache, o load chega antes de o navegador desenhar o estado borrado e a
+     transição nunca começa; o reflow garante que o borrado seja desenhado. */
+  function refocusArtwork() {
+    const art = el.detailArtwork;
+    if (!art.classList.contains('has-image')) return;
+    art.classList.remove('has-image');
+    void art.offsetWidth;
+    art.classList.add('has-image');
+  }
+
+  /* Onda da lista: só as músicas que estão na tela entram, a partir da
+     primeira visível. Contar pelo índice animava as primeiras da lista
+     mesmo roladas para fora da tela e deixava as visíveis paradas. */
+  const WAVE_MAX_ROWS = 14;
+  function waveVisibleTracks() {
+    const box = el.tracks.getBoundingClientRect();
+    if (!box.height) return;
+    let order = 0;
+    for (const row of el.tracks.children) {
+      const r = row.getBoundingClientRect();
+      if (r.bottom <= box.top || r.top >= box.bottom) continue;
+      if (order >= WAVE_MAX_ROWS) break;
+      row.classList.add('is-entering');
+      row.style.setProperty('--i', String(order));
+      row.addEventListener('animationend', (event) => {
+        // a subida é a mais longa das duas: só termina a onda depois dela
+        if (event.target === row && event.animationName === 'cine-lift') row.classList.remove('is-entering');
+      });
+      order += 1;
+    }
+  }
+
   let browserLeaveTimer = 0;
   function cancelBrowserLeave() {
     clearTimeout(browserLeaveTimer);
@@ -488,14 +535,6 @@
         const row = document.createElement('button');
         row.type = 'button';
         row.className = 'library__track';
-        if (entering && index < 14) {
-          row.classList.add('is-entering');
-          row.style.setProperty('--i', String(index));
-          row.addEventListener('animationend', (event) => {
-            // a subida é a mais longa das duas: só termina a onda depois dela
-            if (event.target === row && event.animationName === 'cine-lift') row.classList.remove('is-entering');
-          });
-        }
         row.dataset.id = item.id;
         row.setAttribute('role', 'option');
         const part = (className, value) => {
@@ -551,6 +590,7 @@
       el.tracks.replaceChildren(fragment);
       listSignature = signature;
       el.tracks.scrollTop = scrollTop;
+      if (entering) waveVisibleTracks();
       if (focusedId) [...el.tracks.children].find((row) => row.dataset.id === focusedId)?.focus({ preventScroll: true });
     }
     [...el.tracks.children].forEach((row, index) => {
@@ -906,7 +946,13 @@
       el.detailWashImage.src = item.thumbnail;
       el.detailWashBloom.src = item.thumbnail;
     }
-    if (!item) return;
+    if (!item) { shownDetailId = ''; return; }
+    if (item.id !== shownDetailId) {
+      // Trocar de música com o resumo já aberto repete a entrada dele. Ao
+      // abrir pela primeira vez, sair de hidden já faz a animação sozinho.
+      if (shownDetailId) replayDetailsEntrance();
+      shownDetailId = item.id;
+    }
     el.detailArtwork.hidden = !item || !item.thumbnail;
     el.detailRows.hidden = !item;
     el.organization.hidden = !item;
@@ -930,6 +976,7 @@
       el.detailArtworkImage.alt = `Capa de ${item.title}`;
       if (el.detailArtworkImage.dataset.src !== item.thumbnail) {
         el.detailArtwork.classList.remove('has-image');
+        void el.detailArtwork.offsetWidth; // desenha o borrado antes do load (imagem em cache)
         el.detailArtworkImage.dataset.src = item.thumbnail;
         el.detailArtworkImage.src = item.thumbnail;
       }

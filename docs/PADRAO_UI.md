@@ -165,8 +165,8 @@ Transições importantes começam rápido e terminam numa cauda longa, de um jei
 - **Modo foco:** a visualização do cabeçalho voa até a tela cheia (e volta ao sair) nessa mola, com o fundo escurecendo junto e as duas visualizações se cruzando no começo e no fim do voo. A interface por trás só some quando a visualização chega. A barra e o X chegam depois, em onda.
 - **Editor ↔ Biblioteca:** a área que chega sobe de leve e aparece, com o cabeçalho dela antes do conteúdo (`.is-arriving`). Só anima quando a troca acontece de fato.
 - **Mapa ↔ lista:** abrir uma categoria pelo mapa faz o painel da lista deslizar de leve da direita; voltar ao mapa faz ele sair pelo mesmo caminho (`.is-leaving`, 260 ms) antes de o mapa ocupar o espaço.
-- **Lista da Biblioteca:** ao abrir uma categoria ou buscar, as primeiras 14 músicas entram em onda, 28 ms uma depois da outra. Favoritar ou renomear não repete a onda.
-- **Resumo da música:** desliza de leve; capa, títulos e dados vêm em onda, e a capa sai de um desfoque até o foco. No celular, sobe em vez de deslizar.
+- **Lista da Biblioteca:** ao abrir uma categoria ou buscar, as músicas visíveis na tela (até 14) entram em onda a partir da primeira visível, 28 ms uma depois da outra. Favoritar ou renomear não repete a onda.
+- **Resumo da música:** desliza de leve; capa, títulos e dados vêm em onda, e a capa sai de um desfoque até o foco. Ao trocar de música com o painel aberto, ele fica parado e só o conteúdo entra de novo (letras em onda, fundo borrado e capa saindo do desfoque). No celular, sobe em vez de deslizar.
 - **Forma de onda ao carregar:** as barras são reveladas da esquerda para a direita numa frente suave, crescendo e acendendo (mola mais lenta, cerca de 1,4 s até assentar).
 - **Configurações:** o painel abre na curva de cauda longa e fecha rápido; ao abrir ou trocar de aba, as seções entram em onda.
 - **Barra de link:** o campo aparece de cima; a prévia do link entra em onda, com a capa saindo de um desfoque.
