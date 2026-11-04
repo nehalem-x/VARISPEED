@@ -50,6 +50,15 @@ test('transições cinematográficas usam os mesmos tokens e respeitam reduzir m
   assert.match(app, /if \(window\.Motion\.reduced\(\)\) \{\s*focusSpring\?\.stop\(\);/);
 });
 
+test('Biblioteca nunca apaga áudio guardado só porque a lista não o conhece', () => {
+  const library = read('library.js');
+  // A carga recupera a música a partir do registro do áudio, em vez de apagar órfãos.
+  assert.doesNotMatch(library, /deleteStoredMedia\(orphans\)/);
+  assert.match(library, /item: \{ \.\.\.item \}/);
+  // Gravar mantém músicas salvas por outra aba e só deixa sumir as removidas de propósito.
+  assert.match(library, /!known\.has\(item\.id\) && !removedIds\.has\(item\.id\)/);
+});
+
 test('keyboard focus stays in controls without external outlines or changing geometry', () => {
   const css = read('styles.css');
   // Match CSS declarations rather than a selector such as .btn--outline:focus-visible.

@@ -136,6 +136,9 @@
         size: blob.size,
         lastModified: finite(blob.lastModified),
         savedAt: now(),
+        // Cópia dos dados da música: se a lista do localStorage se perder,
+        // o hydrate recupera a música a partir daqui em vez de apagar o áudio.
+        item: { ...item },
       });
       tx.oncomplete = () => resolve();
       tx.onerror = () => reject(tx.error || new Error('Não foi possível armazenar o áudio'));
@@ -189,11 +192,32 @@
     } catch (_) { return []; }
   }
 
+  /* Músicas que esta aba tirou da lista de propósito (remover, limite, sem
+     áudio). Só elas podem sumir da lista salva; as que outra aba salvou e
+     esta não conhece são mantidas ao gravar. */
+  const removedIds = new Set();
+  let storageWarned = false;
+
+  function warnStorage(textValue) {
+    if (storageWarned) return;
+    storageWarned = true;
+    document.dispatchEvent(new CustomEvent('varispeed:status', { detail: { text: textValue } }));
+  }
+
   function write() {
-    try { localStorage.setItem(KEY, JSON.stringify(items.slice(0, LIMIT))); }
-    catch (_) { /* a biblioteca continua disponível em memória */ }
+    let ok = true;
+    try {
+      const known = new Set(items.map((item) => item.id));
+      // Outra aba pode ter salvo músicas que esta ainda não conhece.
+      const foreign = read().filter((item) => !known.has(item.id) && !removedIds.has(item.id));
+      localStorage.setItem(KEY, JSON.stringify([...items, ...foreign].slice(0, LIMIT)));
+    } catch (_) { ok = false; }
     try { localStorage.setItem(CATEGORY_KEY, JSON.stringify(categories.slice(0, CATEGORY_LIMIT))); }
-    catch (_) { /* as categorias continuam disponíveis em memória */ }
+    catch (_) { ok = false; }
+    // A lista continua em memória e o áudio continua no IndexedDB, de onde
+    // a música é recuperada na próxima abertura.
+    if (!ok) warnStorage('Não foi possível salvar a lista da Biblioteca neste navegador. As músicas voltam na próxima abertura.');
+    return ok;
   }
 
   function normalize(data = {}) {
@@ -263,11 +287,15 @@
         refreshDetails();
       } catch (_) {
         durable.delete(item.id);
+        document.dispatchEvent(new CustomEvent('varispeed:status', {
+          detail: { text: `Não foi possível guardar o áudio de ${item.title}. Ele fica na Biblioteca só até fechar o app.` },
+        }));
       }
     }
 
     const currentIds = new Set(items.map((entry) => entry.id));
     const evicted = [...previousIds].filter((id) => !currentIds.has(id));
+    evicted.forEach((id) => removedIds.add(id));
     evicted.forEach((id) => { cache.delete(id); durable.delete(id); });
     if (evicted.length) deleteStoredMedia(evicted).catch(() => {});
     return item;
@@ -287,13 +315,26 @@
     });
 
     const categoryIds = new Set(categories.map((category) => category.id));
-    items = savedItems
-      .filter((item) => cache.has(item.id) || (item.sourceType === 'remote' && item.sourceUrl))
+    const playable = (item) => cache.has(item.id) || (item.sourceType === 'remote' && item.sourceUrl);
+    savedItems.filter((item) => !playable(item)).forEach((item) => removedIds.add(item.id));
+    const kept = savedItems.filter(playable);
+    /* Áudio guardado sem música na lista: a lista do localStorage se perdeu
+       (cota cheia, outra aba gravou por cima). Nunca apagar: a música volta
+       com os dados guardados junto do áudio, ou só com o nome do arquivo. */
+    const keptIds = new Set(kept.map((item) => item.id));
+    const recovered = records
+      .filter((record) => record && record.id && record.blob instanceof Blob && !keptIds.has(record.id))
+      .map((record) => normalize({
+        ...(record.item && typeof record.item === 'object' ? record.item : {}),
+        id: record.id,
+        fileName: text(record.item?.fileName, text(record.name, 'audio')),
+        title: text(record.item?.title, text(record.name, 'Áudio recuperado').replace(/\.[a-z0-9]{2,5}$/i, '')),
+        size: finite(record.size),
+        lastModified: finite(record.lastModified),
+      }));
+    items = [...kept, ...recovered]
+      .slice(0, LIMIT)
       .map((item) => categoryIds.has(item.categoryId) ? item : normalize({ ...item, categoryId: '', id: item.id }));
-    const retainedIds = new Set(items.map((item) => item.id));
-    const orphans = records.map((record) => record && record.id).filter((id) => id && !retainedIds.has(id));
-    orphans.forEach((id) => { cache.delete(id); durable.delete(id); });
-    if (orphans.length) deleteStoredMedia(orphans).catch(() => {});
     write();
     refresh();
     notifyChange();
@@ -1196,6 +1237,7 @@
       if (opened !== false) {
         if (!sameFile) {
           items = items.filter((entry) => entry.id !== item.id);
+          removedIds.add(item.id);
           cache.delete(item.id);
           durable.delete(item.id);
           deleteStoredMedia(item.id).catch(() => {});
@@ -1222,6 +1264,7 @@
     const item = ok && items.find((entry) => entry.id === found.id);
     if (!item) return;
     items = items.filter((entry) => entry.id !== item.id);
+    removedIds.add(item.id);
     cache.delete(item.id);
     durable.delete(item.id);
     deleteStoredMedia(item.id).catch(() => {});

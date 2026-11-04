@@ -1,5 +1,11 @@
 # Registro de mudanças
 
+## Novembro de 2026: Biblioteca sem perda de músicas
+
+- Se o navegador não conseguir gravar a lista da Biblioteca (armazenamento cheio, modo privado), as músicas não são mais apagadas. Antes, na abertura seguinte, o áudio dessas músicas era apagado de vez. Agora a música volta, com os dados guardados junto do áudio, e um aviso diz que a lista não pôde ser salva.
+- Com o app aberto em duas abas, uma não apaga mais as músicas salvas na outra: ao gravar, cada aba mantém as músicas que a outra salvou. Só some da lista o que foi removido de propósito.
+- Quando o áudio de uma música não pode ser guardado, um aviso diz que ela fica na Biblioteca só até fechar o app.
+
 ## Novembro de 2026: transições na Biblioteca e no carregamento
 
 - Editor ↔ Biblioteca: a área que chega sobe de leve e aparece, com o cabeçalho primeiro e o conteúdo logo depois.
